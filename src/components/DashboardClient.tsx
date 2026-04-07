@@ -8,6 +8,7 @@ export default function DashboardClient({ profile, groups, players, completions,
   const supabase = createClient()
   const router = useRouter()
   const [activeGroup, setActiveGroup] = useState(groups?.[0]?.id || null)
+  const [copiedId, setCopiedId] = useState(null)
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -36,7 +37,13 @@ export default function DashboardClient({ profile, groups, players, completions,
   function getInitials(name) {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'XX'
   }
-
+  function copyPlayerLink(playerId) {
+    const url = `${window.location.origin}/player?id=${playerId}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(playerId)
+      setTimeout(() => setCopiedId(null), 2000)
+    })
+  }
   const totalCompletions = groupPlayers.reduce((sum, p) => sum + getCompletionCount(p.id), 0)
   const totalPossible = groupPlayers.length * getTotalDrills()
   const overallPct = totalPossible > 0 ? Math.round((totalCompletions / totalPossible) * 100) : 0
@@ -155,6 +162,8 @@ export default function DashboardClient({ profile, groups, players, completions,
                       <div key={player.id} style={{ padding: '14px 20px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(244,88,26,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600, color: '#F4581A', flexShrink: 0 }}>
                           {getInitials(player.full_name)}
+                          
+
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff' }}>{player.full_name}</div>
@@ -166,9 +175,16 @@ export default function DashboardClient({ profile, groups, players, completions,
                           </div>
                           <div style={{ fontSize: '11px', color: '#6B6B72' }}>{done} / {total} drills</div>
                         </div>
-                        <div style={{ fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: color + '20', color: color, whiteSpace: 'nowrap' }}>
-                          {pct === 100 ? 'Done' : pct > 0 ? 'In progress' : 'Not started'}
-                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+  <div style={{ fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: color + '20', color: color, whiteSpace: 'nowrap' }}>
+    {pct === 100 ? 'Done' : pct > 0 ? 'In progress' : 'Not started'}
+  </div>
+  <button
+  onClick={() => copyPlayerLink(player.id)}
+  style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '99px', border: `1px solid ${copiedId === player.id ? '#1DB87A' : '#2A2A2D'}`, background: 'transparent', color: copiedId === player.id ? '#1DB87A' : '#6B6B72', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
+  {copiedId === player.id ? '✓ Copied!' : 'Copy link'}
+</button>
+</div>
                       </div>
                     )
                   })
