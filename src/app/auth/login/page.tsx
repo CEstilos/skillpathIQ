@@ -10,10 +10,10 @@ export default function LoginPage() {
   const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  async function handleLogin(e) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
@@ -49,7 +49,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p style={{ fontSize: '13px', color: '#6B6B72', textAlign: 'center', marginTop: '20px' }}>
-          Don't have an account? <Link href="/auth/signup" style={{ color: '#F4581A', textDecoration: 'none' }}>Sign up free</Link>
+          Don&apos;t have an account? <Link href="/auth/signup" style={{ color: '#F4581A', textDecoration: 'none' }}>Sign up free</Link>
         </p>
       </div>
     </div>

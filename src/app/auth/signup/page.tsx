@@ -11,10 +11,10 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  async function handleSignup(e) {
+  async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
