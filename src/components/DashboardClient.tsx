@@ -28,6 +28,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const [activeFilter, setActiveFilter] = useState<string>('all')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [search, setSearch] = useState('')
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -104,9 +105,9 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   }
 
   const filteredPlayers = players.filter(p => {
-    if (activeFilter === 'all') return true
-    if (activeFilter === 'individual') return !p.group_id
-    return p.group_id === activeFilter
+    const matchesFilter = activeFilter === 'all' ? true : activeFilter === 'individual' ? !p.group_id : p.group_id === activeFilter
+    const matchesSearch = search === '' || p.full_name.toLowerCase().includes(search.toLowerCase()) || p.parent_email?.toLowerCase().includes(search.toLowerCase())
+    return matchesFilter && matchesSearch
   })
 
   const activeCount = players.filter(p => getStatus(p.id) === 'active').length
@@ -229,7 +230,16 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
             + Group
           </button>
         </div>
-
+{/* SEARCH */}
+<div style={{ marginBottom: '16px' }}>
+  <input
+    type="text"
+    placeholder="Search players by name or parent email..."
+    value={search}
+    onChange={e => setSearch(e.target.value)}
+    style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 14px', fontSize: '14px', color: '#ffffff', outline: 'none' }}
+  />
+</div>
         {/* DESKTOP TABLE */}
         <div className="player-card-grid" style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
