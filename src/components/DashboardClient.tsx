@@ -34,7 +34,7 @@ export default function DashboardClient({ profile, groups, players, completions,
   const currentGroup = groups?.find(g => g.id === activeGroup)
   const groupPlayers = players?.filter(p => p.group_id === activeGroup) || []
 
-  function getCompletionCount(playerId) {
+  function getCompletionCount(playerId: string) {
     return completions?.filter(c => c.player_id === playerId).length || 0
   }
 
@@ -44,16 +44,16 @@ export default function DashboardClient({ profile, groups, players, completions,
     return drills?.filter(d => d.drill_week_id === currentWeek.id).length || 0
   }
 
-  function getCompletionPct(playerId) {
+  function getCompletionPct(playerId: string) { {
     const done = getCompletionCount(playerId)
     const total = getTotalDrills()
     return total > 0 ? Math.round((done / total) * 100) : 0
   }
 
-  function getInitials(name) {
+  function getInitials(name: string) {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'XX'
   }
-  function copyPlayerLink(playerId) {
+  function copyPlayerLink(playerId: string) {
     const url = `${window.location.origin}/player?id=${playerId}`
     navigator.clipboard.writeText(url).then(() => {
       setCopiedId(playerId)
