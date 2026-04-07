@@ -200,7 +200,7 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
               const statusStyle = getStatusStyle(player.status)
               const isLast = i === filtered.length - 1
               return (
-                <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr 1.5fr'', gap: '16px', padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', alignItems: 'center', transition: 'background 0.1s' }}>
+                <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr 1fr', gap: '16px', padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', alignItems: 'center', transition: 'background 0.1s' }}>
 
                   {/* PLAYER */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
