@@ -73,6 +73,7 @@ export default function DashboardClient({ profile, groups, players, completions,
           SkillPath<span style={{ color: '#F4581A' }}>IQ</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '13px', color: '#6B6B72', background: 'none', border: 'none', cursor: 'pointer' }}>Clients</button>
           <span style={{ fontSize: '14px', color: '#6B6B72' }}>{profile?.full_name}</span>
           <button onClick={handleSignOut} style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#6B6B72', cursor: 'pointer' }}>
             Sign out
