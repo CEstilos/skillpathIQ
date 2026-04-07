@@ -115,29 +115,30 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const lapsedCount = players.filter(p => getStatus(p.id) === 'lapsed').length
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden' }}>
+    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
 
-      <style>{`
-        * { box-sizing: border-box; }
-        @media (max-width: 640px) {
-          .nav-links { display: none !important; }
-          .nav-menu-btn { display: flex !important; }
-          .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .page-header { flex-direction: column !important; gap: 12px !important; }
-          .header-buttons { width: 100% !important; }
-          .header-buttons button { flex: 1 !important; }
-          .player-card-grid { display: none !important; }
-          .player-cards { display: flex !important; }
-        }
-        @media (min-width: 641px) {
-          .nav-menu-btn { display: none !important; }
-          .mobile-menu { display: none !important; }
-          .player-cards { display: none !important; }
-        }
-      `}</style>
+<style>{`
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow-x: hidden; max-width: 100vw; }
+  @media (max-width: 640px) {
+    .nav-links { display: none !important; }
+    .nav-menu-btn { display: flex !important; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .page-header { flex-direction: column !important; gap: 12px !important; }
+    .header-buttons { width: 100% !important; }
+    .header-buttons button { flex: 1 !important; }
+    .player-card-grid { display: none !important; }
+    .player-cards { display: flex !important; }
+  }
+  @media (min-width: 641px) {
+    .nav-menu-btn { display: none !important; }
+    .mobile-menu { display: none !important; }
+    .player-cards { display: none !important; }
+  }
+`}</style>
 
       {/* NAV */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100, width: '100%' }}>
+      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100, width: '100%', maxWidth: '100vw' }}>
         <div style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px', flexShrink: 0 }}>
           SkillPath<span style={{ color: '#F4581A' }}>IQ</span>
         </div>
