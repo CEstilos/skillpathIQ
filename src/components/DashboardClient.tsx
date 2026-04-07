@@ -24,7 +24,7 @@ export default function DashboardClient({ profile, groups, players, completions,
   const supabase = createClient()
   const router = useRouter()
   const [activeGroup, setActiveGroup] = useState(groups?.[0]?.id || null)
-  const [copiedId, setCopiedId] = useState(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -44,7 +44,7 @@ export default function DashboardClient({ profile, groups, players, completions,
     return drills?.filter(d => d.drill_week_id === currentWeek.id).length || 0
   }
 
-  function getCompletionPct(playerId: string) { {
+  function getCompletionPct(playerId: string) {
     const done = getCompletionCount(playerId)
     const total = getTotalDrills()
     return total > 0 ? Math.round((done / total) * 100) : 0
@@ -53,6 +53,7 @@ export default function DashboardClient({ profile, groups, players, completions,
   function getInitials(name: string) {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'XX'
   }
+
   function copyPlayerLink(playerId: string) {
     const url = `${window.location.origin}/player?id=${playerId}`
     navigator.clipboard.writeText(url).then(() => {
@@ -60,14 +61,13 @@ export default function DashboardClient({ profile, groups, players, completions,
       setTimeout(() => setCopiedId(null), 2000)
     })
   }
+
   const totalCompletions = groupPlayers.reduce((sum, p) => sum + getCompletionCount(p.id), 0)
   const totalPossible = groupPlayers.length * getTotalDrills()
   const overallPct = totalPossible > 0 ? Math.round((totalCompletions / totalPossible) * 100) : 0
 
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif' }}>
-
-      {/* NAV */}
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '60px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
           SkillPath<span style={{ color: '#F4581A' }}>IQ</span>
@@ -81,56 +81,37 @@ export default function DashboardClient({ profile, groups, players, completions,
       </nav>
 
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px' }}>
-
-        {/* PAGE HEADER */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px' }}>
           <div>
-            <h1 style={{ fontFamily: 'monospace', fontSize: '32px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0 }}>
-              Dashboard
-            </h1>
+            <h1 style={{ fontFamily: 'monospace', fontSize: '32px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0 }}>Dashboard</h1>
             <p style={{ fontSize: '14px', color: '#6B6B72', marginTop: '6px' }}>
               {groups?.length === 0 ? 'Get started by creating your first group' : `${groups?.length} group${groups?.length !== 1 ? 's' : ''} · ${players?.length} player${players?.length !== 1 ? 's' : ''}`}
             </p>
           </div>
-          <button
-            onClick={() => router.push('/dashboard/groups/new')}
-            style={{ background: '#F4581A', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={() => router.push('/dashboard/groups/new')} style={{ background: '#F4581A', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
             + New group
           </button>
         </div>
 
         {groups?.length === 0 ? (
-          /* EMPTY STATE */
           <div style={{ textAlign: 'center', padding: '80px 0' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏀</div>
             <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>No groups yet</h2>
             <p style={{ fontSize: '14px', color: '#6B6B72', marginBottom: '24px' }}>Create your first training group to get started</p>
-            <button
-              onClick={() => router.push('/dashboard/groups/new')}
-              style={{ background: '#F4581A', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px 24px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => router.push('/dashboard/groups/new')} style={{ background: '#F4581A', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px 24px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}>
               Create your first group
             </button>
           </div>
         ) : (
           <>
-            {/* GROUP TABS */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
               {groups?.map(g => (
-                <button
-                  key={g.id}
-                  onClick={() => setActiveGroup(g.id)}
-                  style={{
-                    padding: '8px 18px', borderRadius: '8px', border: '1px solid #2A2A2D',
-                    background: activeGroup === g.id ? '#F4581A' : 'transparent',
-                    color: activeGroup === g.id ? '#ffffff' : '#6B6B72',
-                    fontSize: '14px', fontWeight: 500, cursor: 'pointer'
-                  }}>
+                <button key={g.id} onClick={() => setActiveGroup(g.id)} style={{ padding: '8px 18px', borderRadius: '8px', border: '1px solid #2A2A2D', background: activeGroup === g.id ? '#F4581A' : 'transparent', color: activeGroup === g.id ? '#ffffff' : '#6B6B72', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>
                   {g.name}
                 </button>
               ))}
             </div>
 
-            {/* STAT ROW */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px', marginBottom: '28px' }}>
               {[
                 { label: 'Players', value: groupPlayers.length, color: '#ffffff' },
@@ -145,16 +126,11 @@ export default function DashboardClient({ profile, groups, players, completions,
               ))}
             </div>
 
-            {/* MAIN GRID */}
             <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '20px' }}>
-
-              {/* PLAYER LIST */}
               <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', overflow: 'hidden' }}>
                 <div style={{ padding: '18px 20px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Players</span>
-                  <button
-                    onClick={() => router.push(`/dashboard/players/new?group=${activeGroup}`)}
-                    style={{ fontSize: '12px', color: '#F4581A', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>
+                  <button onClick={() => router.push(`/dashboard/players/new?group=${activeGroup}`)} style={{ fontSize: '12px', color: '#F4581A', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>
                     + Add player
                   </button>
                 </div>
@@ -162,9 +138,7 @@ export default function DashboardClient({ profile, groups, players, completions,
                 {groupPlayers.length === 0 ? (
                   <div style={{ padding: '40px 20px', textAlign: 'center' }}>
                     <p style={{ fontSize: '14px', color: '#6B6B72', marginBottom: '16px' }}>No players in this group yet</p>
-                    <button
-                      onClick={() => router.push(`/dashboard/players/new?group=${activeGroup}`)}
-                      style={{ background: '#F4581A', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                    <button onClick={() => router.push(`/dashboard/players/new?group=${activeGroup}`)} style={{ background: '#F4581A', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
                       Add first player
                     </button>
                   </div>
@@ -174,12 +148,11 @@ export default function DashboardClient({ profile, groups, players, completions,
                     const done = getCompletionCount(player.id)
                     const total = getTotalDrills()
                     const color = pct === 100 ? '#1DB87A' : pct >= 40 ? '#F5A623' : '#E03131'
+                    const isCopied = copiedId === player.id
                     return (
                       <div key={player.id} style={{ padding: '14px 20px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(244,88,26,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600, color: '#F4581A', flexShrink: 0 }}>
                           {getInitials(player.full_name)}
-                          
-
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff' }}>{player.full_name}</div>
@@ -192,22 +165,19 @@ export default function DashboardClient({ profile, groups, players, completions,
                           <div style={{ fontSize: '11px', color: '#6B6B72' }}>{done} / {total} drills</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-  <div style={{ fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: color + '20', color: color, whiteSpace: 'nowrap' }}>
-    {pct === 100 ? 'Done' : pct > 0 ? 'In progress' : 'Not started'}
-  </div>
-  <button
-  onClick={() => copyPlayerLink(player.id)}
-  style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '99px', border: `1px solid ${copiedId === player.id ? '#1DB87A' : '#2A2A2D'}`, background: 'transparent', color: copiedId === player.id ? '#1DB87A' : '#6B6B72', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
-  {copiedId === player.id ? '✓ Copied!' : 'Copy link'}
-</button>
-</div>
+                          <div style={{ fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: color + '20', color: color, whiteSpace: 'nowrap' }}>
+                            {pct === 100 ? 'Done' : pct > 0 ? 'In progress' : 'Not started'}
+                          </div>
+                          <button onClick={() => copyPlayerLink(player.id)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '99px', border: `1px solid ${isCopied ? '#1DB87A' : '#2A2A2D'}`, background: 'transparent', color: isCopied ? '#1DB87A' : '#6B6B72', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
+                            {isCopied ? '✓ Copied!' : 'Copy link'}
+                          </button>
+                        </div>
                       </div>
                     )
                   })
                 )}
               </div>
 
-              {/* GROUP INFO */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '20px' }}>
                   <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Group info</div>
@@ -229,11 +199,8 @@ export default function DashboardClient({ profile, groups, players, completions,
                     { label: '+ Assign drill week', path: `/dashboard/drills/new?group=${activeGroup}` },
                     { label: '+ Add player', path: `/dashboard/players/new?group=${activeGroup}` },
                     { label: 'View parent reports', path: `/dashboard/reports?group=${activeGroup}` },
-                  ].map(action => (
-                    <button
-                      key={action.label}
-                      onClick={() => router.push(action.path)}
-                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 0', borderBottom: '1px solid #2A2A2D', background: 'none', border: 'none', borderBottom: '1px solid #2A2A2D', color: '#F4581A', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>
+                  ].map((action, i) => (
+                    <button key={action.label} onClick={() => router.push(action.path)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 0', background: 'none', border: 'none', borderBottom: i < 2 ? '1px solid #2A2A2D' : 'none', color: '#F4581A', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>
                       {action.label}
                     </button>
                   ))}
