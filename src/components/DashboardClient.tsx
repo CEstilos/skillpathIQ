@@ -27,6 +27,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<string>('all')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -113,40 +114,70 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const lapsedCount = players.filter(p => getStatus(p.id) === 'lapsed').length
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden' }}>
 
       <style>{`
+        * { box-sizing: border-box; }
         @media (max-width: 640px) {
-          .nav-name { display: none !important; }
+          .nav-links { display: none !important; }
+          .nav-menu-btn { display: flex !important; }
           .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .page-header { flex-direction: column !important; gap: 12px !important; }
           .header-buttons { width: 100% !important; }
           .header-buttons button { flex: 1 !important; }
-          .filter-scroll { overflow-x: auto !important; padding-bottom: 4px !important; }
           .player-card-grid { display: none !important; }
           .player-cards { display: flex !important; }
         }
         @media (min-width: 641px) {
+          .nav-menu-btn { display: none !important; }
+          .mobile-menu { display: none !important; }
           .player-cards { display: none !important; }
         }
       `}</style>
 
       {/* NAV */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
+      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100, width: '100%' }}>
+        <div style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px', flexShrink: 0 }}>
           SkillPath<span style={{ color: '#F4581A' }}>IQ</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+
+        {/* DESKTOP NAV */}
+        <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button style={{ fontSize: '13px', color: '#ffffff', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Dashboard</button>
           <button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '13px', color: '#6B6B72', background: 'none', border: 'none', cursor: 'pointer' }}>Clients</button>
-          <span className="nav-name" style={{ fontSize: '13px', color: '#6B6B72' }}>{profile?.full_name}</span>
-          <button onClick={handleSignOut} style={{ fontSize: '12px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#6B6B72', cursor: 'pointer' }}>
-            Out
+          <span style={{ fontSize: '13px', color: '#6B6B72' }}>{profile?.full_name}</span>
+          <button onClick={handleSignOut} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#6B6B72', cursor: 'pointer' }}>
+            Log out
           </button>
         </div>
+
+        {/* MOBILE HAMBURGER */}
+        <button className="nav-menu-btn" onClick={() => setMenuOpen(!menuOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexDirection: 'column', gap: '5px', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '20px', height: '2px', background: '#ffffff', borderRadius: '2px' }} />
+          <div style={{ width: '20px', height: '2px', background: '#ffffff', borderRadius: '2px' }} />
+          <div style={{ width: '20px', height: '2px', background: '#ffffff', borderRadius: '2px' }} />
+        </button>
       </nav>
 
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px' }}>
+      {/* MOBILE MENU DROPDOWN */}
+      {menuOpen && (
+        <div className="mobile-menu" style={{ background: '#1A1A1C', borderBottom: '1px solid #2A2A2D', padding: '8px 0', width: '100%' }}>
+          <button onClick={() => { setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#ffffff', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+            Dashboard
+          </button>
+          <button onClick={() => { router.push('/dashboard/clients'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#6B6B72', fontSize: '14px', cursor: 'pointer' }}>
+            Clients
+          </button>
+          <div style={{ padding: '12px 20px', fontSize: '13px', color: '#6B6B72', borderTop: '1px solid #2A2A2D', marginTop: '4px' }}>
+            {profile?.full_name}
+          </div>
+          <button onClick={handleSignOut} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#E03131', fontSize: '14px', cursor: 'pointer' }}>
+            Log out
+          </button>
+        </div>
+      )}
+
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px', width: '100%' }}>
 
         {/* PAGE HEADER */}
         <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -182,7 +213,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
         </div>
 
         {/* FILTER TABS */}
-        <div className="filter-scroll" style={{ display: 'flex', gap: '8px', marginBottom: '16px', whiteSpace: 'nowrap' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
           <button onClick={() => setActiveFilter('all')} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: activeFilter === 'all' ? '#F4581A' : 'transparent', color: activeFilter === 'all' ? '#ffffff' : '#6B6B72', fontSize: '13px', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>
             All ({players.length})
           </button>
@@ -291,21 +322,17 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
               const isCopied = copiedId === player.id
               return (
                 <div key={player.id} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '16px' }}>
-                  {/* CARD HEADER */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(244,88,26,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600, color: '#F4581A', flexShrink: 0 }}>{getInitials(player.full_name)}</div>
                       <div>
                         <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff' }}>{player.full_name}</div>
-                        <div style={{ fontSize: '12px', color: '#6B6B72', marginTop: '1px' }}>
-                          {group ? group.name : 'Individual'}
-                        </div>
+                        <div style={{ fontSize: '12px', color: '#6B6B72', marginTop: '1px' }}>{group ? group.name : 'Individual'}</div>
                       </div>
                     </div>
-                    <span style={{ fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color }}>{statusStyle.label}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color, flexShrink: 0 }}>{statusStyle.label}</span>
                   </div>
 
-                  {/* CARD DETAILS */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
                     <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '10px' }}>
                       <div style={{ fontSize: '10px', color: '#6B6B72', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Last session</div>
@@ -325,7 +352,6 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                     </div>
                   </div>
 
-                  {/* CARD ACTIONS */}
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
                       + Log session
