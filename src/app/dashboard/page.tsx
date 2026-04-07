@@ -14,22 +14,23 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
+  const { data: players } = await supabase
+    .from('players')
+    .select('*')
+    .eq('trainer_id', user.id)
+    .order('created_at', { ascending: false })
+
   const { data: groups } = await supabase
     .from('groups')
     .select('*')
     .eq('trainer_id', user.id)
     .order('created_at', { ascending: true })
 
-  const { data: players } = await supabase
-    .from('players')
+  const { data: sessions } = await supabase
+    .from('sessions')
     .select('*')
     .eq('trainer_id', user.id)
-    .order('created_at', { ascending: true })
-
-  const { data: completions } = await supabase
-    .from('completions')
-    .select('*')
-    .in('player_id', players?.map(p => p.id) || [])
+    .order('session_date', { ascending: false })
 
   const { data: drillWeeks } = await supabase
     .from('drill_weeks')
@@ -42,14 +43,20 @@ export default async function DashboardPage() {
     .select('*')
     .eq('trainer_id', user.id)
 
+  const { data: completions } = await supabase
+    .from('completions')
+    .select('*')
+    .in('player_id', players?.map(p => p.id) || [])
+
   return (
     <DashboardClient
       profile={profile}
-      groups={groups || []}
       players={players || []}
-      completions={completions || []}
+      groups={groups || []}
+      sessions={sessions || []}
       drillWeeks={drillWeeks || []}
       drills={drills || []}
+      completions={completions || []}
     />
   )
 }
