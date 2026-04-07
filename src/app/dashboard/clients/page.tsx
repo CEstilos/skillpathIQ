@@ -25,18 +25,18 @@ export default async function ClientsPage() {
     .select('*')
     .eq('trainer_id', user.id)
 
-  const { data: drillWeeks } = await supabase
-    .from('drill_weeks')
+  const { data: sessions } = await supabase
+    .from('sessions')
     .select('*')
     .eq('trainer_id', user.id)
-    .order('week_start', { ascending: false })
+    .order('session_date', { ascending: false })
 
   return (
     <ClientsPageClient
       profile={profile}
       players={players || []}
       groups={groups || []}
-      drillWeeks={drillWeeks || []}
+      sessions={sessions || []}
     />
   )
 }

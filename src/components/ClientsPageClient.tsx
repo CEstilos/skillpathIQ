@@ -4,46 +4,44 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Profile { id: string; full_name: string; email: string }
-interface Player { id: string; full_name: string; parent_email: string; group_id: string; created_at: string }
+interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; created_at: string }
 interface Group { id: string; name: string; sport: string }
-interface DrillWeek { id: string; group_id: string; week_start: string }
+interface Session { id: string; player_id: string; session_date: string; notes: string | null }
 
 interface Props {
   profile: Profile | null
   players: Player[]
   groups: Group[]
-  drillWeeks: DrillWeek[]
+  sessions: Session[]
 }
 
 type StatusFilter = 'all' | 'active' | 'at-risk' | 'lapsed'
 
-export default function ClientsPageClient({ profile, players, groups, drillWeeks }: Props) {
+export default function ClientsPageClient({ profile, players, groups, sessions }: Props) {
   const router = useRouter()
   const [filter, setFilter] = useState<StatusFilter>('all')
   const [search, setSearch] = useState('')
   const [reengagedId, setReengagedId] = useState<string | null>(null)
 
-  function getGroup(groupId: string) {
-    return groups.find(g => g.id === groupId)
+  function getGroup(groupId: string | null) {
+    if (!groupId) return null
+    return groups.find(g => g.id === groupId) || null
   }
 
-  function getLastSessionDate(player: Player) {
-    const groupWeeks = drillWeeks.filter(w => w.group_id === player.group_id)
-    if (!groupWeeks.length) return null
-    return groupWeeks[0].week_start
+  function getLastSession(playerId: string) {
+    const playerSessions = sessions.filter(s => s.player_id === playerId)
+    if (!playerSessions.length) return null
+    return playerSessions[0]
   }
 
   function getDaysSince(dateStr: string | null) {
     if (!dateStr) return null
-    const date = new Date(dateStr)
-    const now = new Date()
-    const diff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-    return diff
+    return Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24))
   }
 
-  function getStatus(player: Player): 'active' | 'at-risk' | 'lapsed' | 'new' {
-    const lastSession = getLastSessionDate(player)
-    const days = getDaysSince(lastSession)
+  function getStatus(playerId: string): 'active' | 'at-risk' | 'lapsed' | 'new' {
+    const last = getLastSession(playerId)
+    const days = getDaysSince(last?.session_date || null)
     if (days === null) return 'new'
     if (days <= 14) return 'active'
     if (days <= 30) return 'at-risk'
@@ -73,6 +71,10 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
     return `${Math.floor(days / 30)} month${Math.floor(days / 30) !== 1 ? 's' : ''} ago`
   }
 
+  function getInitials(name: string) {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'
+  }
+
   function copyReengageMessage(player: Player) {
     const firstName = player.full_name.split(' ')[0]
     const message = `Hey! Just wanted to check in on ${firstName} — we haven't trained together in a little while and I'd love to get them back on the court. Let me know if you want to schedule a session soon!`
@@ -81,15 +83,12 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
       setTimeout(() => setReengagedId(null), 2000)
     })
   }
-  function getInitials(name: string) {
-    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'
-  }
 
   const enrichedPlayers = players.map(p => ({
     ...p,
-    status: getStatus(p),
-    lastSession: getLastSessionDate(p),
-    daysAgo: getDaysSince(getLastSessionDate(p)),
+    status: getStatus(p.id),
+    lastSession: getLastSession(p.id),
+    daysAgo: getDaysSince(getLastSession(p.id)?.session_date || null),
     group: getGroup(p.group_id),
   }))
 
@@ -134,7 +133,7 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
         {/* PAGE HEADER */}
         <div style={{ marginBottom: '28px' }}>
           <h1 style={{ fontFamily: 'monospace', fontSize: '32px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0 }}>Clients</h1>
-          <p style={{ fontSize: '14px', color: '#6B6B72', marginTop: '6px' }}>Track every player you have trained and their activity status</p>
+          <p style={{ fontSize: '14px', color: '#6B6B72', marginTop: '6px' }}>Every player you have trained and their current status</p>
         </div>
 
         {/* STAT ROW */}
@@ -154,36 +153,19 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
 
         {/* FILTERS + SEARCH */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', gap: '16px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {filterOptions.map(f => (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
-                style={{
-                  padding: '7px 16px', borderRadius: '8px',
-                  border: `1px solid ${filter === f.key ? f.color : '#2A2A2D'}`,
-                  background: filter === f.key ? f.color + '18' : 'transparent',
-                  color: filter === f.key ? f.color : '#6B6B72',
-                  fontSize: '13px', fontWeight: 500, cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}>
+              <button key={f.key} onClick={() => setFilter(f.key)} style={{ padding: '7px 16px', borderRadius: '8px', border: `1px solid ${filter === f.key ? f.color : '#2A2A2D'}`, background: filter === f.key ? f.color + '18' : 'transparent', color: filter === f.key ? f.color : '#6B6B72', fontSize: '13px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}>
                 {f.label}
               </button>
             ))}
           </div>
-          <input
-            type="text"
-            placeholder="Search by name or email..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', color: '#ffffff', outline: 'none', width: '240px' }}
-          />
+          <input type="text" placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', color: '#ffffff', outline: 'none', width: '240px' }} />
         </div>
 
         {/* CLIENT LIST */}
         <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', overflow: 'hidden' }}>
-          {/* TABLE HEADER */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr 1.5fr', gap: '16px', padding: '12px 20px', borderBottom: '1px solid #2A2A2D' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1.5fr', gap: '16px', padding: '12px 20px', borderBottom: '1px solid #2A2A2D' }}>
             {['Player', 'Group', 'Last session', 'Days ago', 'Status'].map(h => (
               <div key={h} style={{ fontSize: '11px', fontWeight: 600, color: '#6B6B72', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</div>
             ))}
@@ -192,7 +174,7 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
           {filtered.length === 0 ? (
             <div style={{ padding: '48px 20px', textAlign: 'center' }}>
               <p style={{ fontSize: '14px', color: '#6B6B72' }}>
-                {players.length === 0 ? 'No clients yet — add players to your groups to see them here.' : 'No clients match your current filter.'}
+                {players.length === 0 ? 'No clients yet — add players to get started.' : 'No clients match your current filter.'}
               </p>
             </div>
           ) : (
@@ -200,7 +182,7 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
               const statusStyle = getStatusStyle(player.status)
               const isLast = i === filtered.length - 1
               return (
-                <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr 1fr', gap: '16px', padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', alignItems: 'center', transition: 'background 0.1s' }}>
+                <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1.5fr', gap: '16px', padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', alignItems: 'center' }}>
 
                   {/* PLAYER */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -214,17 +196,20 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
                   </div>
 
                   {/* GROUP */}
-                  <div style={{ fontSize: '13px', color: '#a0a0a8' }}>
+                  <div>
                     {player.group ? (
-                      <span style={{ background: '#2A2A2D', padding: '3px 8px', borderRadius: '6px', fontSize: '12px', textTransform: 'capitalize' }}>
-                        {player.group.name}
-                      </span>
-                    ) : '—'}
+                      <span style={{ background: '#2A2A2D', padding: '3px 8px', borderRadius: '6px', fontSize: '12px', color: '#a0a0a8' }}>{player.group.name}</span>
+                    ) : (
+                      <span style={{ fontSize: '12px', color: '#6B6B72' }}>Individual</span>
+                    )}
                   </div>
 
                   {/* LAST SESSION DATE */}
-                  <div style={{ fontSize: '13px', color: '#a0a0a8' }}>
-                    {formatDate(player.lastSession)}
+                  <div>
+                    <div style={{ fontSize: '13px', color: '#a0a0a8' }}>{formatDate(player.lastSession?.session_date || null)}</div>
+                    {player.lastSession?.notes && (
+                      <div style={{ fontSize: '11px', color: '#6B6B72', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>{player.lastSession.notes}</div>
+                    )}
                   </div>
 
                   {/* DAYS AGO */}
@@ -232,26 +217,20 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
                     {formatDaysAgo(player.daysAgo)}
                   </div>
 
-                  {/* STATUS */}
-                  {/* STATUS */}
-<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-  <span style={{ fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color, whiteSpace: 'nowrap' }}>
-    {statusStyle.label}
-  </span>
-  {(player.status === 'lapsed' || player.status === 'at-risk') && (
-    <button
-      onClick={() => copyReengageMessage(player)}
-      style={{
-        fontSize: '11px', padding: '4px 10px', borderRadius: '99px',
-        border: `1px solid ${reengagedId === player.id ? '#1DB87A' : '#2A2A2D'}`,
-        background: 'transparent',
-        color: reengagedId === player.id ? '#1DB87A' : '#6B6B72',
-        cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s'
-      }}>
-      {reengagedId === player.id ? '✓ Copied!' : 'Re-engage'}
-    </button>
-  )}
-</div>
+                  {/* STATUS + RE-ENGAGE */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color, whiteSpace: 'nowrap' }}>
+                      {statusStyle.label}
+                    </span>
+                    {(player.status === 'lapsed' || player.status === 'at-risk') && (
+                      <button onClick={() => copyReengageMessage(player)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '99px', border: `1px solid ${reengagedId === player.id ? '#1DB87A' : '#2A2A2D'}`, background: 'transparent', color: reengagedId === player.id ? '#1DB87A' : '#6B6B72', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
+                        {reengagedId === player.id ? '✓ Copied!' : 'Re-engage'}
+                      </button>
+                    )}
+                    <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '99px', border: '1px solid #2A2A2D', background: 'transparent', color: '#6B6B72', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      + Session
+                    </button>
+                  </div>
                 </div>
               )
             })
@@ -267,9 +246,7 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
               </div>
               <div style={{ fontSize: '13px', color: '#6B6B72' }}>Reach out now to bring them back before they churn</div>
             </div>
-            <button
-              onClick={() => setFilter('lapsed')}
-              style={{ background: '#E03131', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <button onClick={() => setFilter('lapsed')} style={{ background: '#E03131', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               View lapsed
             </button>
           </div>
