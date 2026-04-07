@@ -4,7 +4,23 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
-export default function DashboardClient({ profile, groups, players, completions, drillWeeks, drills }) {
+interface Profile { id: string; full_name: string; email: string }
+interface Group { id: string; name: string; sport: string; session_day: string; session_time: string; trainer_id: string }
+interface Player { id: string; full_name: string; parent_email: string; group_id: string; trainer_id: string }
+interface Completion { id: string; player_id: string; drill_id: string }
+interface DrillWeek { id: string; group_id: string; title: string; week_start: string }
+interface Drill { id: string; drill_week_id: string; trainer_id: string; title: string }
+
+interface Props {
+  profile: Profile | null
+  groups: Group[]
+  players: Player[]
+  completions: Completion[]
+  drillWeeks: DrillWeek[]
+  drills: Drill[]
+}
+
+export default function DashboardClient({ profile, groups, players, completions, drillWeeks, drills }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [activeGroup, setActiveGroup] = useState(groups?.[0]?.id || null)
