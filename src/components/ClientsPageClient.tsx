@@ -21,6 +21,7 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
   const router = useRouter()
   const [filter, setFilter] = useState<StatusFilter>('all')
   const [search, setSearch] = useState('')
+  const [reengagedId, setReengagedId] = useState<string | null>(null)
 
   function getGroup(groupId: string) {
     return groups.find(g => g.id === groupId)
@@ -72,6 +73,14 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
     return `${Math.floor(days / 30)} month${Math.floor(days / 30) !== 1 ? 's' : ''} ago`
   }
 
+  function copyReengageMessage(player: Player) {
+    const firstName = player.full_name.split(' ')[0]
+    const message = `Hey! Just wanted to check in on ${firstName} — we haven't trained together in a little while and I'd love to get them back on the court. Let me know if you want to schedule a session soon!`
+    navigator.clipboard.writeText(message).then(() => {
+      setReengagedId(player.id)
+      setTimeout(() => setReengagedId(null), 2000)
+    })
+  }
   function getInitials(name: string) {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'
   }
@@ -174,7 +183,7 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
         {/* CLIENT LIST */}
         <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', overflow: 'hidden' }}>
           {/* TABLE HEADER */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr 1fr', gap: '16px', padding: '12px 20px', borderBottom: '1px solid #2A2A2D' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr 1.5fr', gap: '16px', padding: '12px 20px', borderBottom: '1px solid #2A2A2D' }}>
             {['Player', 'Group', 'Last session', 'Days ago', 'Status'].map(h => (
               <div key={h} style={{ fontSize: '11px', fontWeight: 600, color: '#6B6B72', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</div>
             ))}
@@ -191,7 +200,7 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
               const statusStyle = getStatusStyle(player.status)
               const isLast = i === filtered.length - 1
               return (
-                <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr 1fr', gap: '16px', padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', alignItems: 'center', transition: 'background 0.1s' }}>
+                <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr 1.5fr'', gap: '16px', padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', alignItems: 'center', transition: 'background 0.1s' }}>
 
                   {/* PLAYER */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -224,11 +233,25 @@ export default function ClientsPageClient({ profile, players, groups, drillWeeks
                   </div>
 
                   {/* STATUS */}
-                  <div>
-                    <span style={{ fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color, whiteSpace: 'nowrap' }}>
-                      {statusStyle.label}
-                    </span>
-                  </div>
+                  {/* STATUS */}
+<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+  <span style={{ fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color, whiteSpace: 'nowrap' }}>
+    {statusStyle.label}
+  </span>
+  {(player.status === 'lapsed' || player.status === 'at-risk') && (
+    <button
+      onClick={() => copyReengageMessage(player)}
+      style={{
+        fontSize: '11px', padding: '4px 10px', borderRadius: '99px',
+        border: `1px solid ${reengagedId === player.id ? '#1DB87A' : '#2A2A2D'}`,
+        background: 'transparent',
+        color: reengagedId === player.id ? '#1DB87A' : '#6B6B72',
+        cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s'
+      }}>
+      {reengagedId === player.id ? '✓ Copied!' : 'Re-engage'}
+    </button>
+  )}
+</div>
                 </div>
               )
             })
