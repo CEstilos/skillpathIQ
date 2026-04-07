@@ -31,12 +31,25 @@ export default async function DashboardPage() {
     .select('*')
     .in('player_id', players?.map(p => p.id) || [])
 
+  const { data: drillWeeks } = await supabase
+    .from('drill_weeks')
+    .select('*')
+    .eq('trainer_id', user.id)
+    .order('week_start', { ascending: false })
+
+  const { data: drills } = await supabase
+    .from('drills')
+    .select('*')
+    .eq('trainer_id', user.id)
+
   return (
     <DashboardClient
       profile={profile}
       groups={groups || []}
       players={players || []}
       completions={completions || []}
+      drillWeeks={drillWeeks || []}
+      drills={drills || []}
     />
   )
 }

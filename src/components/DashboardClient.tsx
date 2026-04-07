@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
-export default function DashboardClient({ profile, groups, players, completions }) {
+export default function DashboardClient({ profile, groups, players, completions, drillWeeks, drills }) {
   const supabase = createClient()
   const router = useRouter()
   const [activeGroup, setActiveGroup] = useState(groups?.[0]?.id || null)
@@ -22,7 +22,9 @@ export default function DashboardClient({ profile, groups, players, completions 
   }
 
   function getTotalDrills() {
-    return 5
+    const currentWeek = drillWeeks?.find(w => w.group_id === activeGroup)
+    if (!currentWeek) return 0
+    return drills?.filter(d => d.drill_week_id === currentWeek.id).length || 0
   }
 
   function getCompletionPct(playerId) {
