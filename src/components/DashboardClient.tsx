@@ -146,8 +146,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
         {/* DESKTOP NAV */}
         <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <button style={{ fontSize: '15px', color: '#ffffff', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Training Hub</button>
-<button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>Clients</button>
-<button onClick={() => router.push('/dashboard/business')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>Business</button>
+<button onClick={() => router.push('/dashboard/business')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>My Numbers</button>
 <button onClick={() => router.push('/dashboard/settings')} style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>Settings</button>
           <span style={{ fontSize: '13px', color: '#9A9A9F' }}>{profile?.full_name}</span>
           <button onClick={handleSignOut} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
@@ -168,9 +167,6 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
         <div className="mobile-menu" style={{ background: '#1A1A1C', borderBottom: '1px solid #2A2A2D', padding: '8px 0', width: '100%' }}>
           <button onClick={() => { setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#ffffff', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
             Dashboard
-          </button>
-          <button onClick={() => { router.push('/dashboard/clients'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>
-            Clients
           </button>
           <button onClick={() => { router.push('/dashboard/business'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>
   Business
