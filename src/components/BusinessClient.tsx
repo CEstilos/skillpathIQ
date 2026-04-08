@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase'
 
 interface Profile { id: string; full_name: string; individual_rate: number | null; group_rate: number | null }
 interface Player { id: string; full_name: string; created_at: string; custom_rate: number | null }
@@ -14,6 +15,12 @@ interface Props {
 
 export default function BusinessClient({ profile, players, sessions }: Props) {
   const router = useRouter()
+  const supabase = createClient()
+
+async function handleSignOut() {
+  await supabase.auth.signOut()
+  router.push('/auth/login')
+}
 
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -145,6 +152,9 @@ export default function BusinessClient({ profile, players, sessions }: Props) {
   <button style={{ fontSize: '15px', color: '#ffffff', background: 'none', border: 'none', borderBottom: '2px solid #00FF9F', paddingBottom: '4px', cursor: 'pointer', fontWeight: 600 }}>My Numbers</button>
   <button onClick={() => router.push('/dashboard/settings')} style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Settings</button>
   <span style={{ fontSize: '13px', color: '#9A9A9F' }}>{profile?.full_name}</span>
+<button onClick={handleSignOut} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
+  Log out
+</button>
 </div>
       </nav>
 
