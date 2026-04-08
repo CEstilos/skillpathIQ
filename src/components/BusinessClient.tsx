@@ -141,9 +141,9 @@ export default function BusinessClient({ profile, players, sessions }: Props) {
           SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={() => router.push('/dashboard')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>Training Hub</button>
-          <button style={{ fontSize: '15px', color: '#ffffff', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>My Numbers</button>
-          <button onClick={() => router.push('/dashboard/settings')} style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>Settings</button>
+        <button onClick={() => router.push('/dashboard')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Training Hub</button>
+<button style={{ fontSize: '15px', color: '#ffffff', background: 'none', border: 'none', borderBottom: '2px solid #00FF9F', paddingBottom: '4px', cursor: 'pointer', fontWeight: 600 }}>My Numbers</button>
+<button onClick={() => router.push('/dashboard/settings')} style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Settings</button>
         </div>
       </nav>
 
@@ -152,7 +152,7 @@ export default function BusinessClient({ profile, players, sessions }: Props) {
         {/* HEADER */}
         <div className="biz-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div>
-            <h1 style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0 }}>My Numbers</h1>
+          <h1 style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0 }}>My Numbers</h1>
             <p style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '4px' }}>{now.toLocaleString('default', { month: 'long', year: 'numeric' })} · {now.getFullYear()} overview</p>
           </div>
           {!hasRates && (
