@@ -98,7 +98,7 @@ function ReportsView() {
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif' }}>
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '60px', borderBottom: '1px solid #2A2A2D' }}>
         <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-          SkillPath<span style={{ color: '#F4581A' }}>IQ</span>
+          SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
         <Link href="/dashboard" style={{ fontSize: '13px', color: '#6B6B72', textDecoration: 'none' }}>← Back to dashboard</Link>
       </nav>
@@ -111,7 +111,7 @@ function ReportsView() {
 
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
           {players.map(p => (
-            <button key={p.id} onClick={() => setSelectedPlayer(p.id)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #2A2A2D', background: selectedPlayer === p.id ? '#F4581A' : 'transparent', color: selectedPlayer === p.id ? '#ffffff' : '#6B6B72', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
+            <button key={p.id} onClick={() => setSelectedPlayer(p.id)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #2A2A2D', background: selectedPlayer === p.id ? '#00FF9F' : 'transparent', color: selectedPlayer === p.id ? '#ffffff' : '#6B6B72', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
               {p.full_name}
             </button>
           ))}
@@ -121,7 +121,7 @@ function ReportsView() {
           <div style={{ background: '#ffffff', borderRadius: '16px', overflow: 'hidden', color: '#0E0E0F' }}>
             <div style={{ background: '#0E0E0F', padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-                SkillPath<span style={{ color: '#F4581A' }}>IQ</span>
+                SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
               </div>
               <div style={{ fontSize: '12px', color: '#6B6B72' }}>Weekly player report</div>
             </div>
@@ -140,7 +140,7 @@ function ReportsView() {
                   This week&apos;s summary — {drillWeek?.title}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(29,184,122,0.15)', color: '#0D6B47', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 600 }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(29,184,122,0.15)', color: '#00CC7F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 600 }}>
                     {getInitials(player.full_name)}
                   </div>
                   <div>
@@ -155,7 +155,7 @@ function ReportsView() {
                     { label: 'Focus', value: drillWeek?.title || '—' },
                   ].map(s => (
                     <div key={s.label} style={{ background: '#ffffff', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                      <div style={{ fontFamily: 'monospace', fontSize: '22px', fontWeight: 700, color: s.green ? '#0D6B47' : '#0E0E0F' }}>{s.value}</div>
+                      <div style={{ fontFamily: 'monospace', fontSize: '22px', fontWeight: 700, color: s.green ? '#00CC7F' : '#0E0E0F' }}>{s.value}</div>
                       <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>{s.label}</div>
                     </div>
                   ))}
@@ -180,7 +180,7 @@ function ReportsView() {
               </p>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingTop: '20px', borderTop: '1px solid #e5e5e5' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F4581A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#00FF9F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>
                   {getInitials(profile?.full_name || '')}
                 </div>
                 <div>

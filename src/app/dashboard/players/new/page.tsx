@@ -55,7 +55,7 @@ function NewPlayerForm() {
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif' }}>
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '60px', borderBottom: '1px solid #2A2A2D' }}>
         <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-          SkillPath<span style={{ color: '#F4581A' }}>IQ</span>
+          SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
         <Link href="/dashboard" style={{ fontSize: '13px', color: '#6B6B72', textDecoration: 'none' }}>← Back</Link>
       </nav>
@@ -64,7 +64,7 @@ function NewPlayerForm() {
         <p style={{ fontSize: '14px', color: '#6B6B72', marginBottom: '32px' }}>Group is optional — individual players work just as well</p>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '16px 20px', marginBottom: '28px' }}>
-          <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(244,88,26,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 600, color: '#F4581A', flexShrink: 0 }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
             {fullName ? getInitials(fullName) : '??'}
           </div>
           <div>
@@ -94,7 +94,7 @@ function NewPlayerForm() {
 
           {error && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{error}</p>}
 
-          <button type="submit" disabled={loading} style={{ background: '#F4581A', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', marginTop: '4px' }}>
+          <button type="submit" disabled={loading} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', marginTop: '4px' }}>
             {loading ? 'Adding player...' : 'Add player'}
           </button>
         </form>

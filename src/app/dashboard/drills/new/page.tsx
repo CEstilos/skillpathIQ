@@ -88,7 +88,7 @@ function NewDrillWeekForm() {
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif' }}>
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '60px', borderBottom: '1px solid #2A2A2D' }}>
         <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-          SkillPath<span style={{ color: '#F4581A' }}>IQ</span>
+          SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
         <Link href="/dashboard" style={{ fontSize: '13px', color: '#6B6B72', textDecoration: 'none' }}>← Back to dashboard</Link>
       </nav>
@@ -115,7 +115,7 @@ function NewDrillWeekForm() {
             {drills.map((drill, index) => (
               <div key={index} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#F4581A' }}>Drill {index + 1}</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#00FF9F' }}>Drill {index + 1}</span>
                   {drills.length > 1 && (
                     <button type="button" onClick={() => removeDrill(index)} style={{ fontSize: '12px', color: '#6B6B72', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
                   )}
@@ -151,7 +151,7 @@ function NewDrillWeekForm() {
 
           {error && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{error}</p>}
 
-          <button type="submit" disabled={loading} style={{ background: '#F4581A', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '14px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}>
+          <button type="submit" disabled={loading} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '14px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}>
             {loading ? 'Assigning drills...' : 'Assign drill week'}
           </button>
         </form>

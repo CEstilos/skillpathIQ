@@ -35,7 +35,7 @@ export default function SignupPage() {
     <div style={{ minHeight: '100vh', background: '#0E0E0F', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
       <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '40px', width: '100%', maxWidth: '420px' }}>
         <div style={{ fontFamily: 'monospace', fontSize: '22px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px', marginBottom: '24px' }}>
-          SkillPath<span style={{ color: '#F4581A' }}>IQ</span>
+          SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
         <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>Create your account</h1>
         <p style={{ fontSize: '14px', color: '#6B6B72', marginBottom: '28px' }}>Start tracking your players progress</p>
@@ -53,12 +53,12 @@ export default function SignupPage() {
             <input style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }} type="password" placeholder="Min. 8 characters" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} />
           </div>
           {error && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{error}</p>}
-          <button style={{ background: '#F4581A', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }} type="submit" disabled={loading}>
+          <button style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }} type="submit" disabled={loading}>
             {loading ? 'Creating account...' : 'Create account'}
           </button>
         </form>
         <p style={{ fontSize: '13px', color: '#6B6B72', textAlign: 'center', marginTop: '20px' }}>
-          Already have an account? <Link href="/auth/login" style={{ color: '#F4581A', textDecoration: 'none' }}>Sign in</Link>
+          Already have an account? <Link href="/auth/login" style={{ color: '#00FF9F', textDecoration: 'none' }}>Sign in</Link>
         </p>
       </div>
     </div>

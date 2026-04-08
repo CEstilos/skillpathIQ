@@ -81,7 +81,7 @@ function NewSessionForm() {
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif' }}>
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '60px', borderBottom: '1px solid #2A2A2D' }}>
         <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-          SkillPath<span style={{ color: '#F4581A' }}>IQ</span>
+          SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
         <Link href="/dashboard" style={{ fontSize: '13px', color: '#6B6B72', textDecoration: 'none' }}>← Back</Link>
       </nav>
@@ -101,7 +101,7 @@ function NewSessionForm() {
           {/* PLAYER SELECTION */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Who did you train? <span style={{ color: '#F4581A' }}>*</span></label>
+              <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Who did you train? <span style={{ color: '#00FF9F' }}>*</span></label>
               <span style={{ fontSize: '12px', color: '#6B6B72' }}>{selectedPlayers.length} selected</span>
             </div>
 
@@ -110,7 +110,7 @@ function NewSessionForm() {
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '4px' }}>
                 <span style={{ fontSize: '12px', color: '#6B6B72', alignSelf: 'center' }}>Quick select:</span>
                 {groups.map(g => (
-                  <button key={g.id} type="button" onClick={() => selectGroup(g.id)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#F4581A', cursor: 'pointer' }}>
+                  <button key={g.id} type="button" onClick={() => selectGroup(g.id)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#00FF9F', cursor: 'pointer' }}>
                     {g.name}
                   </button>
                 ))}
@@ -133,14 +133,14 @@ function NewSessionForm() {
                 const isLast = i === filteredPlayers.length - 1
                 return (
                   <div key={player.id} onClick={() => togglePlayer(player.id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', cursor: 'pointer', background: isSelected ? 'rgba(244,88,26,0.08)' : 'transparent', transition: 'background 0.1s' }}>
-                    <div style={{ width: '20px', height: '20px', borderRadius: '4px', border: isSelected ? 'none' : '1.5px solid #6B6B72', background: isSelected ? '#F4581A' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+                    <div style={{ width: '20px', height: '20px', borderRadius: '4px', border: isSelected ? 'none' : '1.5px solid #6B6B72', background: isSelected ? '#00FF9F' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
                       {isSelected && (
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                           <polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       )}
                     </div>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(244,88,26,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600, color: '#F4581A', flexShrink: 0 }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
                       {getInitials(player.full_name)}
                     </div>
                     <div style={{ fontSize: '14px', fontWeight: 500, color: isSelected ? '#ffffff' : '#a0a0a8' }}>{player.full_name}</div>
@@ -162,7 +162,7 @@ function NewSessionForm() {
 
           {error && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{error}</p>}
 
-          <button type="submit" disabled={loading} style={{ background: '#F4581A', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}>
+          <button type="submit" disabled={loading} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}>
             {loading ? 'Logging session...' : `Log session${selectedPlayers.length > 1 ? ` for ${selectedPlayers.length} players` : ''}`}
           </button>
         </form>

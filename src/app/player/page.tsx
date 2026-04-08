@@ -86,12 +86,12 @@ function PlayerView() {
       <div style={{ maxWidth: '440px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-            SkillPath<span style={{ color: '#F4581A' }}>IQ</span>
+            SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
           </div>
         </div>
 
         <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '24px', marginBottom: '16px', textAlign: 'center' }}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(29,184,122,0.2)', color: '#1DB87A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 600, margin: '0 auto 12px' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', color: '#00FF9F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 600, margin: '0 auto 12px' }}>
             {getInitials(player.full_name)}
           </div>
           <div style={{ fontFamily: 'monospace', fontSize: '24px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', marginBottom: '4px' }}>
@@ -108,13 +108,13 @@ function PlayerView() {
                 <span style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 700, color: '#ffffff' }}>{doneCount} / {totalCount}</span>
               </div>
               <div style={{ height: '8px', background: '#2A2A2D', borderRadius: '99px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: pct + '%', background: allDone ? '#1DB87A' : '#F4581A', borderRadius: '99px', transition: 'width 0.4s ease' }} />
+                <div style={{ height: '100%', width: pct + '%', background: allDone ? '#00FF9F' : '#00FF9F', borderRadius: '99px', transition: 'width 0.4s ease' }} />
               </div>
             </div>
 
             {allDone && (
-              <div style={{ background: 'rgba(29,184,122,0.1)', border: '1px solid #1DB87A', borderRadius: '12px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-                <p style={{ fontSize: '15px', color: '#1DB87A', fontWeight: 600, margin: 0 }}>🔥 All drills done! Coach will see your progress.</p>
+              <div style={{ background: 'rgba(0,255,159,0.1)', border: '1px solid #00FF9F', borderRadius: '12px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
+                <p style={{ fontSize: '15px', color: '#00FF9F', fontWeight: 600, margin: 0 }}>🔥 All drills done! Coach will see your progress.</p>
               </div>
             )}
 
@@ -122,8 +122,8 @@ function PlayerView() {
               {drills.map(drill => {
                 const isDone = completions.some(c => c.drill_id === drill.id)
                 return (
-                  <div key={drill.id} onClick={() => toggleDrill(drill.id)} style={{ background: isDone ? 'rgba(29,184,122,0.05)' : '#1A1A1C', border: `1px solid ${isDone ? '#1DB87A' : '#2A2A2D'}`, borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', transition: 'all 0.15s' }}>
-                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: isDone ? 'none' : '2px solid #6B6B72', background: isDone ? '#1DB87A' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+                  <div key={drill.id} onClick={() => toggleDrill(drill.id)} style={{ background: isDone ? 'rgba(0,255,159,0.05)' : '#1A1A1C', border: `1px solid ${isDone ? '#00FF9F' : '#2A2A2D'}`, borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: isDone ? 'none' : '2px solid #6B6B72', background: isDone ? '#00FF9F' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
                       {isDone && (
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                           <polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

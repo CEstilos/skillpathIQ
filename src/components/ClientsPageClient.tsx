@@ -50,7 +50,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
 
   function getStatusStyle(status: string) {
     switch (status) {
-      case 'active': return { bg: 'rgba(29,184,122,0.15)', color: '#1DB87A', label: 'Active' }
+      case 'active': return { bg: 'rgba(0,255,159,0.12)', color: '#00FF9F', label: 'Active' }
       case 'at-risk': return { bg: 'rgba(245,166,35,0.15)', color: '#F5A623', label: 'At risk' }
       case 'lapsed': return { bg: 'rgba(224,49,49,0.15)', color: '#E03131', label: 'Lapsed' }
       default: return { bg: 'rgba(107,107,114,0.15)', color: '#6B6B72', label: 'New' }
@@ -108,7 +108,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
 
   const filterOptions: { key: StatusFilter; label: string; color: string }[] = [
     { key: 'all', label: `All (${counts.all})`, color: '#ffffff' },
-    { key: 'active', label: `Active (${counts.active})`, color: '#1DB87A' },
+    { key: 'active', label: `Active (${counts.active})`, color: '#00FF9F' },
     { key: 'at-risk', label: `At risk (${counts['at-risk']})`, color: '#F5A623' },
     { key: 'lapsed', label: `Lapsed (${counts.lapsed})`, color: '#E03131' },
   ]
@@ -119,7 +119,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
       {/* NAV */}
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '60px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-          SkillPath<span style={{ color: '#F4581A' }}>IQ</span>
+          SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <button onClick={() => router.push('/dashboard')} style={{ fontSize: '13px', color: '#6B6B72', background: 'none', border: 'none', cursor: 'pointer' }}>Dashboard</button>
@@ -140,7 +140,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px', marginBottom: '28px' }}>
           {[
             { label: 'Total clients', value: counts.all, color: '#ffffff' },
-            { label: 'Active', value: counts.active, color: '#1DB87A' },
+            { label: 'Active', value: counts.active, color: '#00FF9F' },
             { label: 'At risk', value: counts['at-risk'], color: '#F5A623' },
             { label: 'Lapsed', value: counts.lapsed, color: '#E03131' },
           ].map(s => (
@@ -186,7 +186,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
 
                   {/* PLAYER */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(244,88,26,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#F4581A', flexShrink: 0 }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
                       {getInitials(player.full_name)}
                     </div>
                     <div>
@@ -223,7 +223,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
                       {statusStyle.label}
                     </span>
                     {(player.status === 'lapsed' || player.status === 'at-risk') && (
-                      <button onClick={() => copyReengageMessage(player)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '99px', border: `1px solid ${reengagedId === player.id ? '#1DB87A' : '#2A2A2D'}`, background: 'transparent', color: reengagedId === player.id ? '#1DB87A' : '#6B6B72', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
+                      <button onClick={() => copyReengageMessage(player)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '99px', border: `1px solid ${reengagedId === player.id ? '#00FF9F' : '#2A2A2D'}`, background: 'transparent', color: reengagedId === player.id ? '#00FF9F' : '#6B6B72', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
                         {reengagedId === player.id ? '✓ Copied!' : 'Re-engage'}
                       </button>
                     )}
