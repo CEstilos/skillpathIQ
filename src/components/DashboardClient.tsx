@@ -258,10 +258,10 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
               + Assign drills
             </button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: '16px', padding: '10px 20px', borderBottom: '1px solid #2A2A2D' }}>
-            {['Player', 'Group', 'Last session', 'Drills', 'Status'].map(h => (
-              <div key={h} style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</div>
-            ))}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.5fr', gap: '16px', padding: '10px 20px', borderBottom: '1px solid #2A2A2D' }}>
+          {['Player', 'Group', 'Last session', 'Drills', 'Status', 'Actions'].map(h => (
+  <div key={h} style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</div>
+))}
           </div>
           {filteredPlayers.length === 0 ? (
             <div style={{ padding: '48px 20px', textAlign: 'center' }}>
@@ -279,7 +279,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
               const isCopied = copiedId === player.id
               const isLast = i === filteredPlayers.length - 1
               return (
-                <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: '16px', padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', alignItems: 'center' }}>
+                <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.5fr', gap: '16px', padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>{getInitials(player.full_name)}</div>
                     <div>
@@ -302,11 +302,14 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                       </div>
                     ) : <span style={{ fontSize: '12px', color: '#9A9A9F' }}>No drills</span>}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color, whiteSpace: 'nowrap' }}>{statusStyle.label}</span>
-                    <button onClick={() => copyPlayerLink(player.id)} style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '99px', border: `1px solid ${isCopied ? '#00FF9F' : '#2A2A2D'}`, background: 'transparent', color: isCopied ? '#00FF9F' : '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap' }}>{isCopied ? '✓' : 'Link'}</button>
-                    <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '99px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Session</button>
-                  </div>
+                  <div>
+  <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color, whiteSpace: 'nowrap' }}>{statusStyle.label}</span>
+</div>
+<div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+  <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>+ Session</button>
+  <button onClick={() => copyPlayerLink(player.id)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: `1px solid ${isCopied ? '#00FF9F' : '#2A2A2D'}`, background: 'transparent', color: isCopied ? '#00FF9F' : '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>{isCopied ? '✓ Copied!' : 'Player link'}</button>
+  <button onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>Assign drills</button>
+</div>
                 </div>
               )
             })
