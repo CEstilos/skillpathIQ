@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 
@@ -89,7 +88,7 @@ function PlayerView() {
         <img
   src="/logo.png"
   alt="SkillPathIQ"
-  onClick={() => router.push('/dashboard')}
+  onClick={() => window.location.href='/dashboard'}
   style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }}
 />
         </div>
