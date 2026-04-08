@@ -22,12 +22,41 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+const [confirmPassword, setConfirmPassword] = useState('')
+const [passwordLoading, setPasswordLoading] = useState(false)
+const [passwordSaved, setPasswordSaved] = useState(false)
+const [passwordError, setPasswordError] = useState<string | null>(null)
 
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
+
+    async function handlePasswordChange() {
+      setPasswordError(null)
+      if (newPassword.length < 8) {
+        setPasswordError('Password must be at least 8 characters')
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        setPasswordError('Passwords do not match')
+        return
+      }
+      setPasswordLoading(true)
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) {
+        setPasswordError(error.message)
+        setPasswordLoading(false)
+        return
+      }
+      setPasswordSaved(true)
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => setPasswordSaved(false), 3000)
+      setPasswordLoading(false)
+    }
 
     const { error } = await supabase
       .from('profiles')
@@ -116,7 +145,44 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
           </div>
 
           {error && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{error}</p>}
+          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+  <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Change password</div>
 
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>New password</label>
+    <input
+      style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
+      type="password"
+      placeholder="Min. 8 characters"
+      value={newPassword}
+      onChange={e => setNewPassword(e.target.value)}
+      minLength={8}
+    />
+  </div>
+
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Confirm new password</label>
+    <input
+      style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
+      type="password"
+      placeholder="Repeat new password"
+      value={confirmPassword}
+      onChange={e => setConfirmPassword(e.target.value)}
+      minLength={8}
+    />
+  </div>
+
+  {passwordError && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{passwordError}</p>}
+  {passwordSaved && <p style={{ fontSize: '13px', color: '#00FF9F', background: 'rgba(0,255,159,0.06)', border: '1px solid rgba(0,255,159,0.2)', borderRadius: '8px', padding: '10px 14px' }}>Password updated successfully</p>}
+
+  <button
+    type="button"
+    onClick={handlePasswordChange}
+    disabled={passwordLoading || !newPassword}
+    style={{ background: newPassword ? '#00FF9F' : '#2A2A2D', color: newPassword ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '15px', fontWeight: 700, cursor: newPassword ? 'pointer' : 'default' }}>
+    {passwordSaved ? '✓ Password updated!' : passwordLoading ? 'Updating...' : 'Update password'}
+  </button>
+</div>
           <button
             type="submit"
             disabled={loading}
