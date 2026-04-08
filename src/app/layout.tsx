@@ -15,10 +15,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" style={{ background: '#0E0E0F' }}>
-      <head>
-        <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700&display=swap" rel="stylesheet" />
-      </head>
       <body style={{ margin: 0, padding: 0, background: '#0E0E0F', overflowX: 'hidden' }}>
+        <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700&display=swap" rel="stylesheet" />
         {children}
       </body>
     </html>
