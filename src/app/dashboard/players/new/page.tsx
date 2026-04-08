@@ -54,13 +54,16 @@ function NewPlayerForm() {
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif' }}>
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '60px', borderBottom: '1px solid #2A2A2D' }}>
-        <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-          SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
-        </div>
+      <img
+  src="/logo.png"
+  alt="SkillPathIQ"
+  onClick={() => router.push('/dashboard')}
+  style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }}
+/>
         <Link href="/dashboard" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>← Back</Link>
       </nav>
       <div style={{ maxWidth: '480px', margin: '48px auto', padding: '0 16px' }}>
-        <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>Add a player</h1>
+        <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '8px' }}>Add a player</h1>
         <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '32px' }}>Group is optional — individual players work just as well</p>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '16px 20px', marginBottom: '28px' }}>

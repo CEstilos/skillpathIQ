@@ -85,9 +85,12 @@ function PlayerView() {
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', padding: '24px 16px' }}>
       <div style={{ maxWidth: '440px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-            SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
-          </div>
+        <img
+  src="/logo.png"
+  alt="SkillPathIQ"
+  onClick={() => router.push('/dashboard')}
+  style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }}
+/>
         </div>
 
         <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '24px', marginBottom: '16px', textAlign: 'center' }}>

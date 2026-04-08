@@ -118,9 +118,12 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
 
       {/* NAV */}
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '60px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-          SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
-        </div>
+      <img
+  src="/logo.png"
+  alt="SkillPathIQ"
+  onClick={() => router.push('/dashboard')}
+  style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }}
+/>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
         <button onClick={() => router.push('/dashboard')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Training Hub</button>
 <button onClick={() => router.push('/dashboard/business')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>My Numbers</button>

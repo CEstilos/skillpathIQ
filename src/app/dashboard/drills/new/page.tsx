@@ -122,14 +122,17 @@ function NewDrillWeekForm() {
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif' }}>
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '60px', borderBottom: '1px solid #2A2A2D' }}>
-        <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-          SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
-        </div>
+      <img
+  src="/logo.png"
+  alt="SkillPathIQ"
+  onClick={() => router.push('/dashboard')}
+  style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }}
+/>
         <Link href="/dashboard" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>← Back</Link>
       </nav>
 
       <div style={{ maxWidth: '640px', margin: '48px auto', padding: '0 16px' }}>
-        <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>Assign drills</h1>
+        <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '8px' }}>Assign drills</h1>
         <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '32px' }}>Assign to a group or an individual player</p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>

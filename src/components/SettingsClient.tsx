@@ -71,21 +71,31 @@ const [passwordError, setPasswordError] = useState<string | null>(null)
     setTimeout(() => setPasswordSaved(false), 3000)
     setPasswordLoading(false)
   }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    router.push('/auth/login')
+  }
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif' }}>
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F' }}>
-        <span style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-          SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
-        </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <img
+  src="/logo.png"
+  alt="SkillPathIQ"
+  onClick={() => router.push('/dashboard')}
+  style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }}
+/>
+<div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
   <button onClick={() => router.push('/dashboard')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Training Hub</button>
   <button onClick={() => router.push('/dashboard/business')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>My Numbers</button>
   <button style={{ fontSize: '13px', color: '#ffffff', background: 'none', border: 'none', borderBottom: '2px solid #00FF9F', paddingBottom: '4px', cursor: 'pointer', fontWeight: 600 }}>Settings</button>
+  <span style={{ fontSize: '13px', color: '#9A9A9F' }}>{profile?.full_name}</span>
+  <button onClick={handleSignOut} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Log out</button>
 </div>
       </nav>
 
       <div style={{ maxWidth: '480px', margin: '48px auto', padding: '0 16px' }}>
-        <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>Settings</h1>
+        <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '8px' }}>Settings</h1>
         <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '32px' }}>Set your default session rates for revenue tracking</p>
 
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

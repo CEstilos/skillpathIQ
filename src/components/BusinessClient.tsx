@@ -144,9 +144,12 @@ async function handleSignOut() {
 
       {/* NAV */}
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100, width: '100%' }}>
-        <span style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-          SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
-        </span>
+      <img
+  src="/logo.png"
+  alt="SkillPathIQ"
+  onClick={() => router.push('/dashboard')}
+  style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }}
+/>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
   <button onClick={() => router.push('/dashboard')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Training Hub</button>
   <button style={{ fontSize: '15px', color: '#ffffff', background: 'none', border: 'none', borderBottom: '2px solid #00FF9F', paddingBottom: '4px', cursor: 'pointer', fontWeight: 600 }}>My Numbers</button>
@@ -163,7 +166,7 @@ async function handleSignOut() {
         {/* HEADER */}
         <div className="biz-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div>
-          <h1 style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0 }}>My Numbers</h1>
+          <h1 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '28px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0 }}>My Numbers</h1>
             <p style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '4px' }}>{now.toLocaleString('default', { month: 'long', year: 'numeric' })} · {now.getFullYear()} overview</p>
           </div>
           {!hasRates && (

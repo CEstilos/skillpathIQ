@@ -34,9 +34,12 @@ export default function SignupPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
       <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '40px', width: '100%', maxWidth: '420px' }}>
-        <div style={{ fontFamily: 'monospace', fontSize: '22px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px', marginBottom: '24px' }}>
-          SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
-        </div>
+      <img
+  src="/logo.png"
+  alt="SkillPathIQ"
+  onClick={() => router.push('/dashboard')}
+  style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }}
+/>
         <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>Create your account</h1>
         <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '28px' }}>Start tracking your players progress</p>
         <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

@@ -191,7 +191,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
         {/* PAGE HEADER */}
         <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
           <div>
-            <h1 style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0 }}>Training Hub</h1>
+            <h1 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '28px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0 }}>Training Hub</h1>
             <p style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '4px' }}>
               {players.length === 0 ? 'Add your first player' : `${players.length} player${players.length !== 1 ? 's' : ''} · ${groups.length} group${groups.length !== 1 ? 's' : ''}`}
             </p>
@@ -216,7 +216,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           ].map(s => (
             <div key={s.label} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px' }}>
               <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>{s.label}</div>
-              <div style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '28px', fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</div>
             </div>
           ))}
         </div>
