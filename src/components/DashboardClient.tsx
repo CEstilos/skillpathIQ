@@ -143,7 +143,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   src="/logo.png"
   alt="SkillPathIQ"
   onClick={() => router.push('/dashboard')}
-  style={{ height: '128px', width: 'auto', cursor: 'pointer', flexShrink: 0 }}
+  style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }}
 />
 
         {/* DESKTOP NAV */}
