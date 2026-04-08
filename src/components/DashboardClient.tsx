@@ -145,8 +145,10 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
 
         {/* DESKTOP NAV */}
         <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button style={{ fontSize: '13px', color: '#ffffff', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Training Hub</button>
-          <button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>Clients</button>
+        <button style={{ fontSize: '15px', color: '#ffffff', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Training Hub</button>
+<button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>Clients</button>
+<button onClick={() => router.push('/dashboard/business')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>Business</button>
+<button onClick={() => router.push('/dashboard/settings')} style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>Settings</button>
           <span style={{ fontSize: '13px', color: '#9A9A9F' }}>{profile?.full_name}</span>
           <button onClick={handleSignOut} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
             Log out
@@ -170,6 +172,12 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           <button onClick={() => { router.push('/dashboard/clients'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>
             Clients
           </button>
+          <button onClick={() => { router.push('/dashboard/business'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>
+  Business
+</button>
+<button onClick={() => { router.push('/dashboard/settings'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>
+  Settings
+</button>
           <div style={{ padding: '12px 20px', fontSize: '13px', color: '#9A9A9F', borderTop: '1px solid #2A2A2D', marginTop: '4px' }}>
             {profile?.full_name}
           </div>
@@ -216,14 +224,14 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
 
         {/* FILTER TABS */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-          <button onClick={() => setActiveFilter('all')} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: activeFilter === 'all' ? '#00FF9F' : 'transparent', color: activeFilter === 'all' ? '#ffffff' : '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>
+          <button onClick={() => setActiveFilter('all')} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: activeFilter === 'all' ? '#00FF9F' : 'transparent', color: activeFilter === 'all' ? '#0E0E0F' : '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>
             All ({players.length})
           </button>
-          <button onClick={() => setActiveFilter('individual')} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: activeFilter === 'individual' ? '#00FF9F' : 'transparent', color: activeFilter === 'individual' ? '#ffffff' : '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>
+          <button onClick={() => setActiveFilter('individual')} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: activeFilter === 'individual' ? '#00FF9F' : 'transparent', color: activeFilter === 'individual' ? '#0E0E0F' : '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>
             Individual ({players.filter(p => !p.group_id).length})
           </button>
           {groups.map(g => (
-            <button key={g.id} onClick={() => setActiveFilter(g.id)} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: activeFilter === g.id ? '#00FF9F' : 'transparent', color: activeFilter === g.id ? '#ffffff' : '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>
+            <button key={g.id} onClick={() => setActiveFilter(g.id)} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: activeFilter === g.id ? '#00FF9F' : 'transparent', color: activeFilter === g.id ? '#0E0E0F' : '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>
               {g.name} ({players.filter(p => p.group_id === g.id).length})
             </button>
           ))}
