@@ -282,7 +282,7 @@ function NewDrillWeekForm() {
           {error && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{error}</p>}
 
           <button type="submit" disabled={loading} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '14px', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}>
-            {loading ? 'Assigning drills...' : 'Assign drill week'}
+            {loading ? 'Assigning drill work...' : 'Assign drill work'}
           </button>
         </form>
       </div>
