@@ -22,7 +22,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
+
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
