@@ -34,30 +34,6 @@ const [passwordError, setPasswordError] = useState<string | null>(null)
     setLoading(true)
     setError(null)
 
-    async function handlePasswordChange() {
-      setPasswordError(null)
-      if (newPassword.length < 8) {
-        setPasswordError('Password must be at least 8 characters')
-        return
-      }
-      if (newPassword !== confirmPassword) {
-        setPasswordError('Passwords do not match')
-        return
-      }
-      setPasswordLoading(true)
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) {
-        setPasswordError(error.message)
-        setPasswordLoading(false)
-        return
-      }
-      setPasswordSaved(true)
-      setNewPassword('')
-      setConfirmPassword('')
-      setTimeout(() => setPasswordSaved(false), 3000)
-      setPasswordLoading(false)
-    }
-
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -72,7 +48,29 @@ const [passwordError, setPasswordError] = useState<string | null>(null)
     setTimeout(() => setSaved(false), 2000)
     setLoading(false)
   }
-
+  async function handlePasswordChange() {
+    setPasswordError(null)
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match')
+      return
+    }
+    setPasswordLoading(true)
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) {
+      setPasswordError(error.message)
+      setPasswordLoading(false)
+      return
+    }
+    setPasswordSaved(true)
+    setNewPassword('')
+    setConfirmPassword('')
+    setTimeout(() => setPasswordSaved(false), 3000)
+    setPasswordLoading(false)
+  }
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif' }}>
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F' }}>
