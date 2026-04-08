@@ -90,12 +90,12 @@ function NewDrillWeekForm() {
         <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
           SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
-        <Link href="/dashboard" style={{ fontSize: '13px', color: '#6B6B72', textDecoration: 'none' }}>← Back to dashboard</Link>
+        <Link href="/dashboard" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>← Back to dashboard</Link>
       </nav>
 
       <div style={{ maxWidth: '640px', margin: '48px auto', padding: '0 16px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>Assign drill week</h1>
-        <p style={{ fontSize: '14px', color: '#6B6B72', marginBottom: '32px' }}>Create this week&apos;s drills for your players to complete between sessions</p>
+        <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '32px' }}>Create this week&apos;s drills for your players to complete between sessions</p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -117,7 +117,7 @@ function NewDrillWeekForm() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '13px', fontWeight: 600, color: '#00FF9F' }}>Drill {index + 1}</span>
                   {drills.length > 1 && (
-                    <button type="button" onClick={() => removeDrill(index)} style={{ fontSize: '12px', color: '#6B6B72', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+                    <button type="button" onClick={() => removeDrill(index)} style={{ fontSize: '12px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
@@ -133,7 +133,7 @@ function NewDrillWeekForm() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', color: '#a0a0a8' }}>Description <span style={{ color: '#6B6B72' }}>(optional)</span></label>
+                  <label style={{ fontSize: '12px', color: '#a0a0a8' }}>Description <span style={{ color: '#9A9A9F' }}>(optional)</span></label>
                   <input style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }} type="text" placeholder="Brief instructions for the player" value={drill.description} onChange={e => updateDrill(index, 'description', e.target.value)} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -143,7 +143,7 @@ function NewDrillWeekForm() {
               </div>
             ))}
             {drills.length < 7 && (
-              <button type="button" onClick={addDrill} style={{ background: 'transparent', border: '1px dashed #2A2A2D', borderRadius: '12px', padding: '14px', fontSize: '14px', color: '#6B6B72', cursor: 'pointer', textAlign: 'center' }}>
+              <button type="button" onClick={addDrill} style={{ background: 'transparent', border: '1px dashed #2A2A2D', borderRadius: '12px', padding: '14px', fontSize: '14px', color: '#9A9A9F', cursor: 'pointer', textAlign: 'center' }}>
                 + Add another drill
               </button>
             )}

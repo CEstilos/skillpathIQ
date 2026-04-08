@@ -71,7 +71,7 @@ function PlayerView() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: '#6B6B72', fontSize: '14px' }}>Loading...</p>
+      <p style={{ color: '#9A9A9F', fontSize: '14px' }}>Loading...</p>
     </div>
   )
 
@@ -97,14 +97,14 @@ function PlayerView() {
           <div style={{ fontFamily: 'monospace', fontSize: '24px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', marginBottom: '4px' }}>
             Hey {player.full_name.split(' ')[0]} 👋
           </div>
-          <div style={{ fontSize: '13px', color: '#6B6B72' }}>{drillWeek ? drillWeek.title : 'No drills assigned yet'}</div>
+          <div style={{ fontSize: '13px', color: '#9A9A9F' }}>{drillWeek ? drillWeek.title : 'No drills assigned yet'}</div>
         </div>
 
         {drillWeek && (
           <>
             <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span style={{ fontSize: '13px', color: '#6B6B72' }}>This week&apos;s progress</span>
+                <span style={{ fontSize: '13px', color: '#9A9A9F' }}>This week&apos;s progress</span>
                 <span style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 700, color: '#ffffff' }}>{doneCount} / {totalCount}</span>
               </div>
               <div style={{ height: '8px', background: '#2A2A2D', borderRadius: '99px', overflow: 'hidden' }}>
@@ -123,7 +123,7 @@ function PlayerView() {
                 const isDone = completions.some(c => c.drill_id === drill.id)
                 return (
                   <div key={drill.id} onClick={() => toggleDrill(drill.id)} style={{ background: isDone ? 'rgba(0,255,159,0.05)' : '#1A1A1C', border: `1px solid ${isDone ? '#00FF9F' : '#2A2A2D'}`, borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', transition: 'all 0.15s' }}>
-                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: isDone ? 'none' : '2px solid #6B6B72', background: isDone ? '#00FF9F' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: isDone ? 'none' : '2px solid #9A9A9F', background: isDone ? '#00FF9F' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
                       {isDone && (
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                           <polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -131,9 +131,9 @@ function PlayerView() {
                       )}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '15px', fontWeight: 500, color: isDone ? '#6B6B72' : '#ffffff', textDecoration: isDone ? 'line-through' : 'none', transition: 'all 0.15s' }}>{drill.title}</div>
-                      {drill.reps && <div style={{ fontSize: '12px', color: '#6B6B72', marginTop: '3px' }}>{drill.reps}</div>}
-                      {drill.description && <div style={{ fontSize: '12px', color: '#6B6B72', marginTop: '3px' }}>{drill.description}</div>}
+                      <div style={{ fontSize: '15px', fontWeight: 500, color: isDone ? '#9A9A9F' : '#ffffff', textDecoration: isDone ? 'line-through' : 'none', transition: 'all 0.15s' }}>{drill.title}</div>
+                      {drill.reps && <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '3px' }}>{drill.reps}</div>}
+                      {drill.description && <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '3px' }}>{drill.description}</div>}
                     </div>
                   </div>
                 )
@@ -144,7 +144,7 @@ function PlayerView() {
 
         {!drillWeek && (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <p style={{ fontSize: '14px', color: '#6B6B72' }}>Your coach hasn&apos;t assigned any drills yet. Check back soon!</p>
+            <p style={{ fontSize: '14px', color: '#9A9A9F' }}>Your coach hasn&apos;t assigned any drills yet. Check back soon!</p>
           </div>
         )}
       </div>

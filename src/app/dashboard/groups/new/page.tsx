@@ -38,11 +38,11 @@ export default function NewGroupPage() {
         <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
           SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
-        <Link href="/dashboard" style={{ fontSize: '13px', color: '#6B6B72', textDecoration: 'none' }}>← Back to dashboard</Link>
+        <Link href="/dashboard" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>← Back to dashboard</Link>
       </nav>
       <div style={{ maxWidth: '480px', margin: '48px auto', padding: '0 16px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>Create a group</h1>
-        <p style={{ fontSize: '14px', color: '#6B6B72', marginBottom: '32px' }}>A group is a set of players you train together</p>
+        <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '32px' }}>A group is a set of players you train together</p>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Group name</label>

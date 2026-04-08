@@ -57,19 +57,19 @@ function NewPlayerForm() {
         <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
           SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
-        <Link href="/dashboard" style={{ fontSize: '13px', color: '#6B6B72', textDecoration: 'none' }}>← Back</Link>
+        <Link href="/dashboard" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>← Back</Link>
       </nav>
       <div style={{ maxWidth: '480px', margin: '48px auto', padding: '0 16px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>Add a player</h1>
-        <p style={{ fontSize: '14px', color: '#6B6B72', marginBottom: '32px' }}>Group is optional — individual players work just as well</p>
+        <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '32px' }}>Group is optional — individual players work just as well</p>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '16px 20px', marginBottom: '28px' }}>
           <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
             {fullName ? getInitials(fullName) : '??'}
           </div>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: 500, color: fullName ? '#ffffff' : '#6B6B72' }}>{fullName || 'Player name'}</div>
-            <div style={{ fontSize: '12px', color: '#6B6B72', marginTop: '2px' }}>{groupId ? groups.find(g => g.id === groupId)?.name : 'Individual'}</div>
+            <div style={{ fontSize: '15px', fontWeight: 500, color: fullName ? '#ffffff' : '#9A9A9F' }}>{fullName || 'Player name'}</div>
+            <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{groupId ? groups.find(g => g.id === groupId)?.name : 'Individual'}</div>
           </div>
         </div>
 
@@ -80,12 +80,12 @@ function NewPlayerForm() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Parent email <span style={{ color: '#6B6B72', fontWeight: 400 }}>(optional)</span></label>
+            <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Parent email <span style={{ color: '#9A9A9F', fontWeight: 400 }}>(optional)</span></label>
             <input style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }} type="email" placeholder="parent@example.com" value={parentEmail} onChange={e => setParentEmail(e.target.value)} />
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Group <span style={{ color: '#6B6B72', fontWeight: 400 }}>(optional)</span></label>
+            <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Group <span style={{ color: '#9A9A9F', fontWeight: 400 }}>(optional)</span></label>
             <select style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }} value={groupId} onChange={e => setGroupId(e.target.value)}>
               <option value="">Individual (no group)</option>
               {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}

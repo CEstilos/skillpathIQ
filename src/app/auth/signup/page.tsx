@@ -38,7 +38,7 @@ export default function SignupPage() {
           SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
         <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>Create your account</h1>
-        <p style={{ fontSize: '14px', color: '#6B6B72', marginBottom: '28px' }}>Start tracking your players progress</p>
+        <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '28px' }}>Start tracking your players progress</p>
         <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '13px', color: '#a0a0a8' }}>Full name</label>
@@ -57,7 +57,7 @@ export default function SignupPage() {
             {loading ? 'Creating account...' : 'Create account'}
           </button>
         </form>
-        <p style={{ fontSize: '13px', color: '#6B6B72', textAlign: 'center', marginTop: '20px' }}>
+        <p style={{ fontSize: '13px', color: '#9A9A9F', textAlign: 'center', marginTop: '20px' }}>
           Already have an account? <Link href="/auth/login" style={{ color: '#00FF9F', textDecoration: 'none' }}>Sign in</Link>
         </p>
       </div>

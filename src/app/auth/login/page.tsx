@@ -33,7 +33,7 @@ export default function LoginPage() {
           SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
         <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>Welcome back</h1>
-        <p style={{ fontSize: '14px', color: '#6B6B72', marginBottom: '28px' }}>Sign in to your trainer account</p>
+        <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '28px' }}>Sign in to your trainer account</p>
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '13px', color: '#a0a0a8' }}>Email</label>
@@ -48,7 +48,7 @@ export default function LoginPage() {
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
-        <p style={{ fontSize: '13px', color: '#6B6B72', textAlign: 'center', marginTop: '20px' }}>
+        <p style={{ fontSize: '13px', color: '#9A9A9F', textAlign: 'center', marginTop: '20px' }}>
           Don&apos;t have an account? <Link href="/auth/signup" style={{ color: '#00FF9F', textDecoration: 'none' }}>Sign up free</Link>
         </p>
       </div>

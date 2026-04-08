@@ -53,7 +53,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
       case 'active': return { bg: 'rgba(0,255,159,0.12)', color: '#00FF9F', label: 'Active' }
       case 'at-risk': return { bg: 'rgba(245,166,35,0.15)', color: '#F5A623', label: 'At risk' }
       case 'lapsed': return { bg: 'rgba(224,49,49,0.15)', color: '#E03131', label: 'Lapsed' }
-      default: return { bg: 'rgba(107,107,114,0.15)', color: '#6B6B72', label: 'New' }
+      default: return { bg: 'rgba(107,107,114,0.15)', color: '#9A9A9F', label: 'New' }
     }
   }
 
@@ -122,9 +122,9 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
           SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <button onClick={() => router.push('/dashboard')} style={{ fontSize: '13px', color: '#6B6B72', background: 'none', border: 'none', cursor: 'pointer' }}>Dashboard</button>
+          <button onClick={() => router.push('/dashboard')} style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>Dashboard</button>
           <button style={{ fontSize: '13px', color: '#ffffff', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Clients</button>
-          <span style={{ fontSize: '14px', color: '#6B6B72' }}>{profile?.full_name}</span>
+          <span style={{ fontSize: '14px', color: '#9A9A9F' }}>{profile?.full_name}</span>
         </div>
       </nav>
 
@@ -133,7 +133,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
         {/* PAGE HEADER */}
         <div style={{ marginBottom: '28px' }}>
           <h1 style={{ fontFamily: 'monospace', fontSize: '32px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0 }}>Clients</h1>
-          <p style={{ fontSize: '14px', color: '#6B6B72', marginTop: '6px' }}>Every player you have trained and their current status</p>
+          <p style={{ fontSize: '14px', color: '#9A9A9F', marginTop: '6px' }}>Every player you have trained and their current status</p>
         </div>
 
         {/* STAT ROW */}
@@ -145,7 +145,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
             { label: 'Lapsed', value: counts.lapsed, color: '#E03131' },
           ].map(s => (
             <div key={s.label} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 600, color: '#6B6B72', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>{s.label}</div>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>{s.label}</div>
               <div style={{ fontFamily: 'monospace', fontSize: '36px', fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</div>
             </div>
           ))}
@@ -155,7 +155,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', gap: '16px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {filterOptions.map(f => (
-              <button key={f.key} onClick={() => setFilter(f.key)} style={{ padding: '7px 16px', borderRadius: '8px', border: `1px solid ${filter === f.key ? f.color : '#2A2A2D'}`, background: filter === f.key ? f.color + '18' : 'transparent', color: filter === f.key ? f.color : '#6B6B72', fontSize: '13px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}>
+              <button key={f.key} onClick={() => setFilter(f.key)} style={{ padding: '7px 16px', borderRadius: '8px', border: `1px solid ${filter === f.key ? f.color : '#2A2A2D'}`, background: filter === f.key ? f.color + '18' : 'transparent', color: filter === f.key ? f.color : '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}>
                 {f.label}
               </button>
             ))}
@@ -167,13 +167,13 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
         <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1.5fr', gap: '16px', padding: '12px 20px', borderBottom: '1px solid #2A2A2D' }}>
             {['Player', 'Group', 'Last session', 'Days ago', 'Status'].map(h => (
-              <div key={h} style={{ fontSize: '11px', fontWeight: 600, color: '#6B6B72', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</div>
+              <div key={h} style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</div>
             ))}
           </div>
 
           {filtered.length === 0 ? (
             <div style={{ padding: '48px 20px', textAlign: 'center' }}>
-              <p style={{ fontSize: '14px', color: '#6B6B72' }}>
+              <p style={{ fontSize: '14px', color: '#9A9A9F' }}>
                 {players.length === 0 ? 'No clients yet — add players to get started.' : 'No clients match your current filter.'}
               </p>
             </div>
@@ -191,7 +191,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
                     </div>
                     <div>
                       <div style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff' }}>{player.full_name}</div>
-                      <div style={{ fontSize: '12px', color: '#6B6B72', marginTop: '2px' }}>{player.parent_email || 'No parent email'}</div>
+                      <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{player.parent_email || 'No parent email'}</div>
                     </div>
                   </div>
 
@@ -200,7 +200,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
                     {player.group ? (
                       <span style={{ background: '#2A2A2D', padding: '3px 8px', borderRadius: '6px', fontSize: '12px', color: '#a0a0a8' }}>{player.group.name}</span>
                     ) : (
-                      <span style={{ fontSize: '12px', color: '#6B6B72' }}>Individual</span>
+                      <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Individual</span>
                     )}
                   </div>
 
@@ -208,7 +208,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
                   <div>
                     <div style={{ fontSize: '13px', color: '#a0a0a8' }}>{formatDate(player.lastSession?.session_date || null)}</div>
                     {player.lastSession?.notes && (
-                      <div style={{ fontSize: '11px', color: '#6B6B72', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>{player.lastSession.notes}</div>
+                      <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>{player.lastSession.notes}</div>
                     )}
                   </div>
 
@@ -223,11 +223,11 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
                       {statusStyle.label}
                     </span>
                     {(player.status === 'lapsed' || player.status === 'at-risk') && (
-                      <button onClick={() => copyReengageMessage(player)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '99px', border: `1px solid ${reengagedId === player.id ? '#00FF9F' : '#2A2A2D'}`, background: 'transparent', color: reengagedId === player.id ? '#00FF9F' : '#6B6B72', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
+                      <button onClick={() => copyReengageMessage(player)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '99px', border: `1px solid ${reengagedId === player.id ? '#00FF9F' : '#2A2A2D'}`, background: 'transparent', color: reengagedId === player.id ? '#00FF9F' : '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
                         {reengagedId === player.id ? '✓ Copied!' : 'Re-engage'}
                       </button>
                     )}
-                    <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '99px', border: '1px solid #2A2A2D', background: 'transparent', color: '#6B6B72', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '99px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       + Session
                     </button>
                   </div>
@@ -244,7 +244,7 @@ export default function ClientsPageClient({ profile, players, groups, sessions }
               <div style={{ fontSize: '14px', fontWeight: 600, color: '#E03131', marginBottom: '4px' }}>
                 {counts.lapsed} client{counts.lapsed !== 1 ? 's' : ''} haven&apos;t trained in over 30 days
               </div>
-              <div style={{ fontSize: '13px', color: '#6B6B72' }}>Reach out now to bring them back before they churn</div>
+              <div style={{ fontSize: '13px', color: '#9A9A9F' }}>Reach out now to bring them back before they churn</div>
             </div>
             <button onClick={() => setFilter('lapsed')} style={{ background: '#E03131', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               View lapsed

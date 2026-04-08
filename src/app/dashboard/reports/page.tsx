@@ -90,7 +90,7 @@ function ReportsView() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: '#6B6B72' }}>Loading...</p>
+      <p style={{ color: '#9A9A9F' }}>Loading...</p>
     </div>
   )
 
@@ -100,18 +100,18 @@ function ReportsView() {
         <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
           SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
-        <Link href="/dashboard" style={{ fontSize: '13px', color: '#6B6B72', textDecoration: 'none' }}>← Back to dashboard</Link>
+        <Link href="/dashboard" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>← Back to dashboard</Link>
       </nav>
 
       <div style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 16px' }}>
         <div style={{ marginBottom: '28px' }}>
           <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', marginBottom: '6px' }}>Parent reports</h1>
-          <p style={{ fontSize: '14px', color: '#6B6B72' }}>{group?.name} · Week of {formatDate(drillWeek?.week_start || '')}</p>
+          <p style={{ fontSize: '14px', color: '#9A9A9F' }}>{group?.name} · Week of {formatDate(drillWeek?.week_start || '')}</p>
         </div>
 
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
           {players.map(p => (
-            <button key={p.id} onClick={() => setSelectedPlayer(p.id)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #2A2A2D', background: selectedPlayer === p.id ? '#00FF9F' : 'transparent', color: selectedPlayer === p.id ? '#ffffff' : '#6B6B72', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
+            <button key={p.id} onClick={() => setSelectedPlayer(p.id)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #2A2A2D', background: selectedPlayer === p.id ? '#00FF9F' : 'transparent', color: selectedPlayer === p.id ? '#ffffff' : '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
               {p.full_name}
             </button>
           ))}
@@ -123,7 +123,7 @@ function ReportsView() {
               <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
                 SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
               </div>
-              <div style={{ fontSize: '12px', color: '#6B6B72' }}>Weekly player report</div>
+              <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Weekly player report</div>
             </div>
 
             <div style={{ padding: '32px' }}>

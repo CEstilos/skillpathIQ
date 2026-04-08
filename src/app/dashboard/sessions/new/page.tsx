@@ -83,12 +83,12 @@ function NewSessionForm() {
         <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
           SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
         </div>
-        <Link href="/dashboard" style={{ fontSize: '13px', color: '#6B6B72', textDecoration: 'none' }}>← Back</Link>
+        <Link href="/dashboard" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>← Back</Link>
       </nav>
 
       <div style={{ maxWidth: '560px', margin: '48px auto', padding: '0 16px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>Log a session</h1>
-        <p style={{ fontSize: '14px', color: '#6B6B72', marginBottom: '32px' }}>Record who you trained and when</p>
+        <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '32px' }}>Record who you trained and when</p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
@@ -102,13 +102,13 @@ function NewSessionForm() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Who did you train? <span style={{ color: '#00FF9F' }}>*</span></label>
-              <span style={{ fontSize: '12px', color: '#6B6B72' }}>{selectedPlayers.length} selected</span>
+              <span style={{ fontSize: '12px', color: '#9A9A9F' }}>{selectedPlayers.length} selected</span>
             </div>
 
             {/* GROUP QUICK SELECT */}
             {groups.length > 0 && (
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '4px' }}>
-                <span style={{ fontSize: '12px', color: '#6B6B72', alignSelf: 'center' }}>Quick select:</span>
+                <span style={{ fontSize: '12px', color: '#9A9A9F', alignSelf: 'center' }}>Quick select:</span>
                 {groups.map(g => (
                   <button key={g.id} type="button" onClick={() => selectGroup(g.id)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#00FF9F', cursor: 'pointer' }}>
                     {g.name}
@@ -120,7 +120,7 @@ function NewSessionForm() {
             {/* FILTER TABS */}
             <div style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
               {[{ key: 'all', label: 'All' }, { key: 'individual', label: 'Individual' }, ...groups.map(g => ({ key: g.id, label: g.name }))].map(f => (
-                <button key={f.key} type="button" onClick={() => setFilterGroup(f.key)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: filterGroup === f.key ? '#2A2A2D' : 'transparent', color: filterGroup === f.key ? '#ffffff' : '#6B6B72', cursor: 'pointer' }}>
+                <button key={f.key} type="button" onClick={() => setFilterGroup(f.key)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: filterGroup === f.key ? '#2A2A2D' : 'transparent', color: filterGroup === f.key ? '#ffffff' : '#9A9A9F', cursor: 'pointer' }}>
                   {f.label}
                 </button>
               ))}
@@ -133,7 +133,7 @@ function NewSessionForm() {
                 const isLast = i === filteredPlayers.length - 1
                 return (
                   <div key={player.id} onClick={() => togglePlayer(player.id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', cursor: 'pointer', background: isSelected ? 'rgba(244,88,26,0.08)' : 'transparent', transition: 'background 0.1s' }}>
-                    <div style={{ width: '20px', height: '20px', borderRadius: '4px', border: isSelected ? 'none' : '1.5px solid #6B6B72', background: isSelected ? '#00FF9F' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+                    <div style={{ width: '20px', height: '20px', borderRadius: '4px', border: isSelected ? 'none' : '1.5px solid #9A9A9F', background: isSelected ? '#00FF9F' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
                       {isSelected && (
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                           <polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -148,16 +148,16 @@ function NewSessionForm() {
                 )
               })}
               {filteredPlayers.length === 0 && (
-                <div style={{ padding: '24px', textAlign: 'center', fontSize: '13px', color: '#6B6B72' }}>No players found</div>
+                <div style={{ padding: '24px', textAlign: 'center', fontSize: '13px', color: '#9A9A9F' }}>No players found</div>
               )}
             </div>
           </div>
 
           {/* NOTES */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Session notes <span style={{ color: '#6B6B72', fontWeight: 400 }}>(optional)</span></label>
+            <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Session notes <span style={{ color: '#9A9A9F', fontWeight: 400 }}>(optional)</span></label>
             <textarea style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', minHeight: '80px', resize: 'vertical', fontFamily: 'sans-serif' }} placeholder="e.g. Ball handling, crossovers, free throws..." value={notes} onChange={e => setNotes(e.target.value)} />
-            <span style={{ fontSize: '12px', color: '#6B6B72' }}>What did you work on?</span>
+            <span style={{ fontSize: '12px', color: '#9A9A9F' }}>What did you work on?</span>
           </div>
 
           {error && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{error}</p>}
