@@ -374,13 +374,13 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
-                      + Log session
-                    </button>
-                    <button onClick={() => copyPlayerLink(player.id)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: `1px solid ${isCopied ? '#00FF9F' : '#2A2A2D'}`, background: 'transparent', color: isCopied ? '#00FF9F' : '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
-                      {isCopied ? '✓ Copied!' : 'Copy drill link'}
-                    </button>
-                  </div>
+  <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
+    + Log session
+  </button>
+  <button onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
+    Assign drills
+  </button>
+</div>
                 </div>
               )
             })
