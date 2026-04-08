@@ -139,9 +139,12 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
 
       {/* NAV */}
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100, width: '100%', maxWidth: '100vw' }}>
-      <span style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-  SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
-</span>
+      <img
+  src="/logo.png"
+  alt="SkillPathIQ"
+  onClick={() => router.push('/dashboard')}
+  style={{ height: '128px', width: 'auto', cursor: 'pointer', flexShrink: 0 }}
+/>
 
         {/* DESKTOP NAV */}
         <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
