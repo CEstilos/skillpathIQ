@@ -28,7 +28,7 @@ export default function SignupPage() {
       setLoading(false)
       return
     }
-    router.push('/dashboard')
+    router.push('/onboarding')
   }
 
   return (

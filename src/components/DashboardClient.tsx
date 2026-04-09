@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
-interface Profile { id: string; full_name: string; email: string }
+interface Profile { id: string; full_name: string; email: string; primary_sport?: string }
 interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; trainer_id: string; created_at: string }
 interface Group { id: string; name: string; sport: string; session_day: string; session_time: string }
 interface Session { id: string; player_id: string; session_date: string; notes: string | null }
@@ -73,24 +73,26 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'
   }
   function getSportEmoji() {
-    if (!groups.length) return '🏀'
+    const emojiMap: Record<string, string> = {
+      basketball: '🏀',
+      football: '🏈',
+      golf: '⛳',
+      baseball: '⚾',
+      softball: '🥎',
+      soccer: '⚽',
+      tennis: '🎾',
+      volleyball: '🏐',
+      other: '🏆',
+    }
+    if (!groups.length) {
+      return emojiMap[profile?.primary_sport || 'basketball'] || '🏀'
+    }
     const sportCounts: Record<string, number> = {}
     groups.forEach(g => {
       const s = g.sport || 'basketball'
       sportCounts[s] = (sportCounts[s] || 0) + 1
     })
     const topSport = Object.entries(sportCounts).sort((a, b) => b[1] - a[1])[0][0]
-    const emojiMap: Record<string, string> = {
-      basketball: '🏀',
-      golf: '⛳',
-      baseball: '⚾',
-      softball: '🥎',
-      soccer: '⚽',
-      football: '🏈',
-      tennis: '🎾',
-      volleyball: '🏐',
-      other: '🏆',
-    }
     return emojiMap[topSport] || '🏆'
   }
   function formatDaysAgo(days: number | null) {
