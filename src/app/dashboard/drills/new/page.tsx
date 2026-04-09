@@ -5,7 +5,19 @@ import { createClient } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-const CATEGORIES = ['Ball handling', 'Shooting', 'Passing', 'Footwork', 'Defense', 'Conditioning']
+const CATEGORIES_BY_SPORT: Record<string, string[]> = {
+  basketball: ['Ball handling', 'Shooting', 'Passing', 'Footwork', 'Defense', 'Conditioning'],
+  golf: ['Full swing', 'Short game', 'Putting', 'Chipping', 'Bunker play', 'Course management', 'Fitness'],
+  baseball: ['Hitting', 'Pitching', 'Fielding', 'Catching', 'Baserunning', 'Strength & conditioning'],
+  softball: ['Hitting', 'Pitching', 'Fielding', 'Catching', 'Baserunning', 'Strength & conditioning'],
+  soccer: ['Dribbling', 'Passing', 'Shooting', 'Defending', 'Fitness', 'Tactics'],
+  football: ['Routes', 'Blocking', 'Tackling', 'Conditioning', 'Footwork', 'Film study'],
+  tennis: ['Serve', 'Forehand', 'Backhand', 'Volleys', 'Movement', 'Mental game'],
+  volleyball: ['Serving', 'Setting', 'Spiking', 'Blocking', 'Defense', 'Conditioning'],
+  other: ['Skill work', 'Conditioning', 'Technique', 'Game situations', 'Mental game', 'Fitness'],
+}
+
+const DEFAULT_CATEGORIES = ['Skill work', 'Conditioning', 'Technique', 'Game situations', 'Mental game', 'Fitness']
 
 interface Drill {
   title: string
@@ -15,7 +27,7 @@ interface Drill {
 }
 
 interface Player { id: string; full_name: string; group_id: string | null }
-interface Group { id: string; name: string }
+interface Group { id: string; name: string; sport: string }
 
 function NewDrillWeekForm() {
   const supabase = createClient()
@@ -40,10 +52,12 @@ function NewDrillWeekForm() {
     return monday.toISOString().split('T')[0]
   })
   const [drills, setDrills] = useState<Drill[]>([
-    { title: '', description: '', reps: '', category: 'Ball handling' },
+    { title: '', description: '', reps: '', category: '' },
   ])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sport, setSport] = useState('basketball')
+const categories = CATEGORIES_BY_SPORT[sport] || DEFAULT_CATEGORIES
 
   useEffect(() => {
     async function loadData() {
@@ -53,6 +67,10 @@ function NewDrillWeekForm() {
       const { data: groupsData } = await supabase.from('groups').select('*').eq('trainer_id', user.id)
       setPlayers(playersData || [])
       setGroups(groupsData || [])
+      if (preselectedGroup && groupsData) {
+        const group = groupsData.find((g: Group) => g.id === preselectedGroup)
+        if (group?.sport) setSport(group.sport)
+      }
     }
     loadData()
   }, [])
@@ -261,7 +279,7 @@ function NewDrillWeekForm() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
                     <label style={{ fontSize: '12px', color: '#9A9A9F' }}>Category</label>
                     <select style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }} value={drill.category} onChange={e => updateDrill(index, 'category', e.target.value)}>
-                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                 </div>

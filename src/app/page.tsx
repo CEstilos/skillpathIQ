@@ -52,7 +52,7 @@ export default async function LandingPage() {
         </h1>
 
         <p className="fade-up-3" style={{ fontSize: '20px', color: '#6B6B72', lineHeight: 1.6, maxWidth: '640px', margin: '0 auto 40px' }}>
-          SkillPathIQ helps independent basketball trainers manage players, log sessions, track revenue, and never lose a client to silence again.
+          SkillPathIQ helps independent sports trainers manage players, log sessions, track revenue, and never lose a client to silence again.
         </p>
 
         <div className="hero-buttons fade-up-3" style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -121,7 +121,7 @@ export default async function LandingPage() {
             Everything a trainer needs. Nothing they don&apos;t.
           </h2>
           <p style={{ fontSize: '16px', color: '#6B6B72', maxWidth: '500px', margin: '0 auto' }}>
-            Built specifically for independent basketball trainers running small groups and 1-on-1 sessions.
+            Built specifically for independent sports trainers running small groups and 1-on-1 sessions.
           </p>
         </div>
         <div className="feature-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>

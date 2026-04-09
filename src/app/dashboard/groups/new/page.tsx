@@ -54,13 +54,15 @@ export default function NewGroupPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Sport</label>
             <select style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }} value={sport} onChange={e => setSport(e.target.value)}>
-              <option value="basketball">Basketball</option>
-              <option value="soccer">Soccer</option>
-              <option value="football">Football</option>
-              <option value="baseball">Baseball</option>
-              <option value="tennis">Tennis</option>
-              <option value="volleyball">Volleyball</option>
-              <option value="other">Other</option>
+            <option value="basketball">Basketball</option>
+<option value="golf">Golf</option>
+<option value="baseball">Baseball</option>
+<option value="softball">Softball</option>
+<option value="soccer">Soccer</option>
+<option value="football">Football</option>
+<option value="tennis">Tennis</option>
+<option value="volleyball">Volleyball</option>
+<option value="other">Other</option>
             </select>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
