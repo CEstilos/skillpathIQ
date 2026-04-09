@@ -1,6 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
 
 interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; created_at: string; custom_rate: number | null }
 interface Session { id: string; player_id: string; session_date: string; session_type: string; notes: string | null }
@@ -20,7 +22,26 @@ interface Props {
 
 export default function PlayerProfileClient({ player, sessions, drillWeeks, drills, completions, group }: Props) {
   const router = useRouter()
+  const [linkShared, setLinkShared] = useState(false)
 
+  function handleShareLink() {
+    const url = `${window.location.origin}/player?id=${player.id}`
+    if (navigator.share) {
+      navigator.share({
+        title: `${player.full_name}'s drill work`,
+        text: `Hey! Here's your SkillPathIQ drill link — tap it to see your assigned drills and check them off as you complete them.`,
+        url,
+      }).catch(() => {
+        navigator.clipboard.writeText(url)
+        setLinkShared(true)
+        setTimeout(() => setLinkShared(false), 2000)
+      })
+    } else {
+      navigator.clipboard.writeText(url)
+      setLinkShared(true)
+      setTimeout(() => setLinkShared(false), 2000)
+    }
+  }
   function getInitials(name: string) {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'
   }
@@ -121,14 +142,19 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, padding: '5px 12px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color }}>{statusStyle.label}</span>
-              <button
-                onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)}
-                style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-                + Log session
-              </button>
-            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+  <span style={{ fontSize: '12px', fontWeight: 600, padding: '5px 12px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color }}>{statusStyle.label}</span>
+  <button
+    onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)}
+    style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+    + Log session
+  </button>
+  <button
+    onClick={handleShareLink}
+    style={{ background: 'transparent', color: linkShared ? '#00FF9F' : '#9A9A9F', border: `1px solid ${linkShared ? '#00FF9F' : '#2A2A2D'}`, borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
+    {linkShared ? '✓ Link copied!' : 'Share drill link'}
+  </button>
+</div>
           </div>
         </div>
 
