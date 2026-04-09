@@ -32,7 +32,7 @@ export default async function LandingPage() {
 
       {/* NAV */}
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '64px', borderBottom: '1px solid #f0f0f0', background: '#ffffff', position: 'sticky', top: 0, zIndex: 100 }}>
-      <img src="/logo-dark.png" alt="SkillPathIQ" style={{ height: '72px', width: 'auto' }} />
+      <img src="/logo-dark.png" alt="SkillPathIQ" style={{ height: '250px', width: 'auto' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <a href="#features" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>Features</a>
           <a href="#how-it-works" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>How it works</a>
@@ -192,9 +192,7 @@ export default async function LandingPage() {
       {/* FOOTER */}
       <div style={{ background: '#0E0E0F', borderTop: '1px solid #2A2A2D', padding: '32px 24px' }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-          <span style={{ fontFamily: 'monospace', fontSize: '14px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-            SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
-          </span>
+        <img src="/logo.png" alt="SkillPathIQ" style={{ height: '40px', width: 'auto' }} />
           <div style={{ display: 'flex', gap: '24px' }}>
             <Link href="/auth/signup" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>Sign up</Link>
             <Link href="/auth/login" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>Sign in</Link>
