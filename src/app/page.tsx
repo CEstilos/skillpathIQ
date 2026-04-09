@@ -32,9 +32,7 @@ export default async function LandingPage() {
 
       {/* NAV */}
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '64px', borderBottom: '1px solid #f0f0f0', background: '#ffffff', position: 'sticky', top: 0, zIndex: 100 }}>
-        <span style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 700, color: '#0E0E0F', letterSpacing: '2px' }}>
-          SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
-        </span>
+      <img src="/logo-dark.png" alt="SkillPathIQ" style={{ height: '72px', width: 'auto' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <a href="#features" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>Features</a>
           <a href="#how-it-works" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>How it works</a>
