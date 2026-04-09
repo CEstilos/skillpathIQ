@@ -72,7 +72,27 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   function getInitials(name: string) {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'
   }
-
+  function getSportEmoji() {
+    if (!groups.length) return '🏀'
+    const sportCounts: Record<string, number> = {}
+    groups.forEach(g => {
+      const s = g.sport || 'basketball'
+      sportCounts[s] = (sportCounts[s] || 0) + 1
+    })
+    const topSport = Object.entries(sportCounts).sort((a, b) => b[1] - a[1])[0][0]
+    const emojiMap: Record<string, string> = {
+      basketball: '🏀',
+      golf: '⛳',
+      baseball: '⚾',
+      softball: '🥎',
+      soccer: '⚽',
+      football: '🏈',
+      tennis: '🎾',
+      volleyball: '🏐',
+      other: '🏆',
+    }
+    return emojiMap[topSport] || '🏆'
+  }
   function formatDaysAgo(days: number | null) {
     if (days === null) return 'No sessions yet'
     if (days === 0) return 'Today'
@@ -191,7 +211,10 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
         {/* PAGE HEADER */}
         <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
           <div>
-            <h1 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '28px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0 }}>Training Hub</h1>
+          <h1 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '28px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+  <span style={{ fontSize: '26px' }}>{getSportEmoji()}</span>
+  Training Hub
+</h1>
             <p style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '4px' }}>
               {players.length === 0 ? 'Add your first player' : `${players.length} player${players.length !== 1 ? 's' : ''} · ${groups.length} group${groups.length !== 1 ? 's' : ''}`}
             </p>
