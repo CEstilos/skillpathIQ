@@ -68,78 +68,78 @@ export default async function LandingPage() {
         <p style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '16px' }}>No credit card required · Free for founding trainers</p>
       </div>
 
-      {/* APP PREVIEW */}
+      {/* APP PREVIEW */{/* APP PREVIEW */}
       <div style={{ background: '#0E0E0F', padding: '48px 24px' }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto', background: '#1A1A1C', borderRadius: '16px', border: '1px solid #2A2A2D', overflow: 'hidden', transform: 'scale(0.9)', transformOrigin: 'top center', filter: 'blur(3px)', opacity: 0.6, pointerEvents: 'none', userSelect: 'none' }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontFamily: 'monospace', fontSize: '14px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>SkillPath<span style={{ color: '#00FF9F' }}>IQ</span></span>
-            <div style={{ display: 'flex', gap: '20px' }}>
-              <span style={{ fontSize: '13px', color: '#ffffff', fontWeight: 600, borderBottom: '2px solid #00FF9F', paddingBottom: '2px' }}>Training Hub</span>
-              <span style={{ fontSize: '13px', color: '#9A9A9F' }}>My Numbers</span>
-              <span style={{ fontSize: '13px', color: '#9A9A9F' }}>Settings</span>
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <p style={{ textAlign: 'center', fontSize: '13px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '32px' }}>Everything in one place</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+
+          {/* TRAINING HUB PREVIEW */}
+          <div style={{ background: '#1A1A1C', borderRadius: '12px', border: '1px solid #2A2A2D', overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Training Hub</span>
+              <span style={{ fontSize: '10px', color: '#00FF9F', fontWeight: 600 }}>🏀 Live</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', padding: '12px' }}>
+              {[
+                { label: 'Active', value: '8', color: '#00FF9F' },
+                { label: 'At risk', value: '3', color: '#F5A623' },
+              ].map(s => (
+                <div key={s.label} style={{ background: '#0E0E0F', borderRadius: '8px', padding: '10px' }}>
+                  <div style={{ fontSize: '9px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>{s.label}</div>
+                  <div style={{ fontFamily: 'monospace', fontSize: '22px', fontWeight: 700, color: s.color }}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {[
+                { initials: 'MJ', name: 'Marcus J.', status: 'Active', color: '#00FF9F', bg: 'rgba(0,255,159,0.12)' },
+                { initials: 'AL', name: 'Aiden L.', status: 'Active', color: '#00FF9F', bg: 'rgba(0,255,159,0.12)' },
+                { initials: 'KR', name: 'Kayla R.', status: 'At risk', color: '#F5A623', bg: 'rgba(245,166,35,0.15)' },
+              ].map(p => (
+                <div key={p.initials} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0E0E0F', borderRadius: '8px', padding: '8px 10px' }}>
+                  <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, color: '#00FF9F', flexShrink: 0 }}>{p.initials}</div>
+                  <div style={{ flex: 1, fontSize: '11px', fontWeight: 500, color: '#ffffff' }}>{p.name}</div>
+                  <span style={{ fontSize: '9px', fontWeight: 600, padding: '2px 7px', borderRadius: '99px', background: p.bg, color: p.color }}>{p.status}</span>
+                </div>
+              ))}
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', padding: '20px' }}>
-            {[
-              { label: 'Total', value: '12', color: '#ffffff' },
-              { label: 'Active', value: '8', color: '#00FF9F' },
-              { label: 'At risk', value: '3', color: '#F5A623' },
-              { label: 'Lapsed', value: '1', color: '#E03131' },
-            ].map(s => (
-              <div key={s.label} style={{ background: '#0E0E0F', borderRadius: '10px', padding: '14px' }}>
-                <div style={{ fontSize: '10px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>{s.label}</div>
-                <div style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 700, color: s.color }}>{s.value}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ padding: '0 20px 20px' }}>
-            {[
-              { name: 'Marcus Johnson', group: 'Monday Group', last: 'Today', status: 'Active', statusColor: '#00FF9F', statusBg: 'rgba(0,255,159,0.12)' },
-              { name: 'Aiden Lee', group: 'Individual', last: '3 days ago', status: 'Active', statusColor: '#00FF9F', statusBg: 'rgba(0,255,159,0.12)' },
-              { name: 'Kayla Rivera', group: 'Monday Group', last: '22 days ago', status: 'At risk', statusColor: '#F5A623', statusBg: 'rgba(245,166,35,0.15)' },
-              { name: 'Tyler Shaw', group: 'Individual', last: '38 days ago', status: 'Lapsed', statusColor: '#E03131', statusBg: 'rgba(224,49,49,0.15)' },
-            ].map((p, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: '#0E0E0F', borderRadius: '10px', marginBottom: '8px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: '#00FF9F', flexShrink: 0 }}>
-                  {p.name.split(' ').map((n: string) => n[0]).join('')}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{p.name}</div>
-                  <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>{p.group}</div>
-                </div>
-                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>{p.last}</div>
-                <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '99px', background: p.statusBg, color: p.statusColor }}>{p.status}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      {/* FEATURES */}
-      <div id="features" style={{ maxWidth: '1000px', margin: '0 auto', padding: '80px 24px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '56px' }}>
-          <h2 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '36px', fontWeight: 700, color: '#0E0E0F', marginBottom: '12px' }}>
-            Everything a trainer needs. Nothing they don&apos;t.
-          </h2>
-          <p style={{ fontSize: '16px', color: '#6B6B72', maxWidth: '500px', margin: '0 auto' }}>
-            Built specifically for independent sports trainers running small groups and 1-on-1 sessions.
-          </p>
-        </div>
-        <div className="feature-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
-          {[
-            { icon: '📋', title: 'Session logging', desc: 'Log every session in seconds. Track individual and group sessions separately with notes on what you worked on. Your full training history in one place.' },
-            { icon: '📡', title: 'Client retention', desc: 'See every client you\'ve trained, when you last worked with them, and who\'s going quiet. One tap copies a re-engagement message to send to the parent before you lose them.' },
-            { icon: '💰', title: 'Revenue tracking', desc: 'Set your individual and group session rates. SkillPathIQ automatically estimates your monthly and yearly revenue based on your logged sessions — no spreadsheet needed.' },
-          ].map(f => (
-            <div key={f.title} style={{ background: 'rgba(0,255,159,0.06)', border: '1px solid rgba(0,255,159,0.2)', borderRadius: '16px', padding: '28px' }}>
-              <div style={{ fontSize: '28px', marginBottom: '16px' }}>{f.icon}</div>
-              <h3 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '18px', fontWeight: 700, color: '#0E0E0F', marginBottom: '10px' }}>{f.title}</h3>
-              <p style={{ fontSize: '14px', color: '#6B6B72', lineHeight: 1.6 }}>{f.desc}</p>
+          {/* MY NUMBERS PREVIEW */}
+          <div style={{ background: '#1A1A1C', borderRadius: '12px', border: '1px solid #2A2A2D', overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.08em' }}>My Numbers</span>
+              <span style={{ fontSize: '10px', color: '#00FF9F', fontWeight: 600 }}>This month</span>
             </div>
-          ))}
+            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {[
+                { label: 'New players', value: '4', change: '+2 vs last month', color: '#ffffff' },
+                { label: 'Active players', value: '8', change: '+1 vs prev 30d', color: '#00FF9F' },
+                { label: 'Est. revenue', value: '$840', change: '+12% vs last month', color: '#ffffff' },
+              ].map(s => (
+                <div key={s.label} style={{ background: '#0E0E0F', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: '9px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '3px' }}>{s.label}</div>
+                    <div style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: s.color }}>{s.value}</div>
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#00FF9F', fontWeight: 600, textAlign: 'right' }}>{s.change}</div>
+                </div>
+              ))}
+              <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '10px 12px' }}>
+                <div style={{ fontSize: '9px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Sessions — last 6 months</div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '32px' }}>
+                  {[2, 4, 3, 6, 5, 8].map((h, i) => (
+                    <div key={i} style={{ flex: 1, background: i === 5 ? '#00FF9F' : 'rgba(0,255,159,0.3)', borderRadius: '2px 2px 0 0', height: `${(h / 8) * 100}%` }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
-
+    </div>
       {/* HOW IT WORKS */}
       <div id="how-it-works" style={{ background: '#f8f8f8', padding: '80px 24px' }}>
         <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
