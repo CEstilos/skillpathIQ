@@ -29,6 +29,17 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('welcome_dismissed') === 'true'
+    }
+    return false
+  })
+  
+  function dismissBanner() {
+    localStorage.setItem('welcome_dismissed', 'true')
+    setBannerDismissed(true)
+  }
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -215,7 +226,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           <div>
           <h1 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '28px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
   <span style={{ fontSize: '26px' }}>{getSportEmoji()}</span>
-  Training Hub
+  {profile?.full_name ? `${profile.full_name.split(' ')[0]}'s Training Hub` : 'Training Hub'}
 </h1>
             <p style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '4px' }}>
               {players.length === 0 ? 'Add your first player' : `${players.length} player${players.length !== 1 ? 's' : ''} · ${groups.length} group${groups.length !== 1 ? 's' : ''}`}
@@ -245,7 +256,30 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
             </div>
           ))}
         </div>
-
+{/* WELCOME BANNER */}
+{!bannerDismissed && players.length === 0 && (
+  <div style={{ background: 'rgba(0,255,159,0.06)', border: '1px solid rgba(0,255,159,0.2)', borderRadius: '16px', padding: '24px', marginBottom: '20px', position: 'relative' }}>
+    <button onClick={dismissBanner} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: '#9A9A9F', cursor: 'pointer', fontSize: '18px', lineHeight: 1 }}>×</button>
+    <div style={{ fontSize: '15px', fontWeight: 700, color: '#00FF9F', marginBottom: '4px', fontFamily: '"Exo 2", sans-serif' }}>Welcome to SkillPathIQ 👋</div>
+    <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '20px' }}>Get started in three simple steps</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {[
+        { step: '01', title: 'Add your first player', desc: 'Tap + Add player to add a player to your roster', action: () => router.push('/dashboard/players/new') },
+        { step: '02', title: 'Log your first session', desc: 'After training, log the date and what you worked on', action: () => router.push('/dashboard/sessions/new') },
+        { step: '03', title: 'Share a player link', desc: 'Send players their personal drill checklist link', action: null },
+      ].map(s => (
+        <div key={s.step} onClick={s.action ? s.action : undefined} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#1A1A1C', borderRadius: '10px', padding: '14px 16px', cursor: s.action ? 'pointer' : 'default' }}>
+          <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '20px', fontWeight: 800, color: '#00FF9F', flexShrink: 0, width: '32px' }}>{s.step}</div>
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{s.title}</div>
+            <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{s.desc}</div>
+          </div>
+          {s.action && <div style={{ marginLeft: 'auto', color: '#00FF9F', fontSize: '16px' }}>→</div>}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
         {/* FILTER TABS */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
           <button onClick={() => setActiveFilter('all')} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: activeFilter === 'all' ? '#00FF9F' : 'transparent', color: activeFilter === 'all' ? '#0E0E0F' : '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>

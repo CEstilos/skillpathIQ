@@ -36,6 +36,7 @@ export default async function LandingPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <a href="#features" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>Features</a>
           <a href="#how-it-works" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>How it works</a>
+          <Link href="/pricing" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>Pricing</Link>
           <Link href="/auth/login" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>Sign in</Link>
           <Link href="/auth/signup" className="nav-cta" style={{ background: '#00FF9F', color: '#0E0E0F', padding: '8px 18px', borderRadius: '8px', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>Get early access</Link>
         </div>
@@ -194,8 +195,11 @@ export default async function LandingPage() {
         <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
         <img src="/logo.png" alt="SkillPathIQ" style={{ height: '40px', width: 'auto' }} />
           <div style={{ display: 'flex', gap: '24px' }}>
-            <Link href="/auth/signup" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>Sign up</Link>
-            <Link href="/auth/login" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>Sign in</Link>
+          <Link href="/auth/signup" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>Sign up</Link>
+<Link href="/auth/login" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>Sign in</Link>
+<Link href="/pricing" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>Pricing</Link>
+<Link href="/terms" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>Terms</Link>
+<a href="mailto:support@skillpathiq.com" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>Contact</a>
           </div>
           <p style={{ fontSize: '13px', color: '#6B6B72' }}>© {new Date().getFullYear()} SkillPathIQ. All rights reserved.</p>
         </div>
