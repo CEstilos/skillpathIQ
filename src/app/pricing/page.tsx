@@ -11,14 +11,12 @@ export default function PricingPage() {
       {/* NAV */}
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '64px', borderBottom: '1px solid #f0f0f0', background: '#ffffff', position: 'sticky', top: 0, zIndex: 100 }}>
         <Link href="/" style={{ textDecoration: 'none' }}>
-          <span style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 700, color: '#0E0E0F', letterSpacing: '2px' }}>
-            SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
-          </span>
+          <img src="/logo-dark.png" alt="SkillPathIQ" style={{ height: '50px', width: 'auto' }} />
         </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <Link href="/" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>Home</Link>
           <Link href="/auth/login" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>Sign in</Link>
-          <Link href="/auth/signup" style={{ background: '#00FF9F', color: '#0E0E0F', padding: '8px 18px', borderRadius: '8px', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>Get early access</Link>
+          <Link href="/auth/signup" style={{ background: '#00FF9F', color: '#0E0E0F', padding: '8px 18px', borderRadius: '8px', fontSize: '14px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>Get early access</Link>
         </div>
       </nav>
 
@@ -96,9 +94,7 @@ export default function PricingPage() {
       {/* FOOTER */}
       <div style={{ background: '#0E0E0F', borderTop: '1px solid #2A2A2D', padding: '32px 24px', marginTop: '80px' }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-          <span style={{ fontFamily: 'monospace', fontSize: '14px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>
-            SkillPath<span style={{ color: '#00FF9F' }}>IQ</span>
-          </span>
+        <img src="/logo.png" alt="SkillPathIQ" style={{ height: '40px', width: 'auto' }} />
           <div style={{ display: 'flex', gap: '24px' }}>
             <Link href="/" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>Home</Link>
             <Link href="/auth/signup" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>Sign up</Link>

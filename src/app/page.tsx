@@ -140,6 +140,30 @@ export default async function LandingPage() {
         </div>
       </div>
     </div>
+    {/* FEATURES */}
+    <div id="features" style={{ maxWidth: '1000px', margin: '0 auto', padding: '80px 24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+          <h2 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '36px', fontWeight: 700, color: '#0E0E0F', marginBottom: '12px' }}>
+            Everything a trainer needs. Nothing they don&apos;t.
+          </h2>
+          <p style={{ fontSize: '16px', color: '#6B6B72', maxWidth: '500px', margin: '0 auto' }}>
+            Built for independent basketball, football, golf, and baseball trainers running small groups and 1-on-1 sessions.
+          </p>
+        </div>
+        <div className="feature-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
+          {[
+            { icon: '📋', title: 'Session logging', desc: 'Log every session in seconds. Track individual and group sessions separately with notes on what you worked on. Your full training history in one place.' },
+            { icon: '📡', title: 'Client retention', desc: 'See every client you\'ve trained, when you last worked with them, and who\'s going quiet. One tap copies a re-engagement message to send to the parent before you lose them.' },
+            { icon: '💰', title: 'Revenue tracking', desc: 'Set your individual and group session rates. SkillPathIQ automatically estimates your monthly and yearly revenue based on your logged sessions — no spreadsheet needed.' },
+          ].map(f => (
+            <div key={f.title} style={{ background: 'rgba(0,255,159,0.06)', border: '1px solid rgba(0,255,159,0.2)', borderRadius: '16px', padding: '28px' }}>
+              <div style={{ fontSize: '28px', marginBottom: '16px' }}>{f.icon}</div>
+              <h3 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '18px', fontWeight: 700, color: '#0E0E0F', marginBottom: '10px' }}>{f.title}</h3>
+              <p style={{ fontSize: '14px', color: '#6B6B72', lineHeight: 1.6 }}>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
       {/* HOW IT WORKS */}
       <div id="how-it-works" style={{ background: '#f8f8f8', padding: '80px 24px' }}>
         <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
