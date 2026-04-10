@@ -27,13 +27,15 @@ export default async function LandingPage() {
           .hero-buttons { flex-direction: column !important; }
           .hero-buttons a { width: 100% !important; text-align: center !important; }
           .footer-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+          .nav-links a { font-size: 12px !important; }
+  .nav-links { gap: 10px !important; }
         }
       `}</style>
 
       {/* NAV */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '64px', borderBottom: '1px solid #f0f0f0', background: '#ffffff', position: 'sticky', top: 0, zIndex: 100 }}>
+      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '64px', borderBottom: '1px solid #f0f0f0', background: '#ffffff', position: 'sticky', top: 0, zIndex: 100, width: '100%', boxSizing: 'border-box' }}>
       <img src="/logo-dark.png" alt="SkillPathIQ" style={{ height: '250px', width: 'auto' }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+      <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
           <a href="#features" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>Features</a>
           <a href="#how-it-works" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>How it works</a>
           <Link href="/pricing" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>Pricing</Link>
