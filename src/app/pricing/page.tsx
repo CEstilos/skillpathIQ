@@ -94,7 +94,7 @@ export default function PricingPage() {
       {/* FOOTER */}
       <div style={{ background: '#0E0E0F', borderTop: '1px solid #2A2A2D', padding: '32px 24px', marginTop: '80px' }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-        <img src="/logo.png" alt="SkillPathIQ" style={{ height: '40px', width: 'auto' }} />
+        <img src="/logo.png" alt="SkillPathIQ" style={{ height: '250px', width: 'auto' }} />
           <div style={{ display: 'flex', gap: '24px' }}>
             <Link href="/" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>Home</Link>
             <Link href="/auth/signup" style={{ fontSize: '13px', color: '#9A9A9F', textDecoration: 'none' }}>Sign up</Link>
