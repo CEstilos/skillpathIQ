@@ -68,7 +68,7 @@ export default async function LandingPage() {
         <p style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '16px' }}>No credit card required · Free for founding trainers</p>
       </div>
 
-      {/* APP PREVIEW */{/* APP PREVIEW */}
+      {/* APP PREVIEW */}
       <div style={{ background: '#0E0E0F', padding: '48px 24px' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         <p style={{ textAlign: 'center', fontSize: '13px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '32px' }}>Everything in one place</p>
