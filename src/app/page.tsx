@@ -70,7 +70,7 @@ export default async function LandingPage() {
 
       {/* APP PREVIEW */}
       <div style={{ background: '#0E0E0F', padding: '48px 24px' }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto', background: '#1A1A1C', borderRadius: '16px', border: '1px solid #2A2A2D', overflow: 'hidden' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', background: '#1A1A1C', borderRadius: '16px', border: '1px solid #2A2A2D', overflow: 'hidden', transform: 'scale(0.9)', transformOrigin: 'top center', filter: 'blur(3px)', opacity: 0.6, pointerEvents: 'none', userSelect: 'none' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontFamily: 'monospace', fontSize: '14px', fontWeight: 700, color: '#ffffff', letterSpacing: '2px' }}>SkillPath<span style={{ color: '#00FF9F' }}>IQ</span></span>
             <div style={{ display: 'flex', gap: '20px' }}>
