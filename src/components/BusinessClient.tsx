@@ -47,10 +47,11 @@ export default function BusinessClient({ profile, players, sessions }: Props) {
   }
 
   function getSessionRevenue(s: Session) {
-    if (s.rate_override !== null) return s.rate_override
-    if (s.session_type === 'group') return profile?.group_rate || 0
+    if (s.rate_override !== null && s.rate_override !== undefined) return Number(s.rate_override) || 0
+    if (s.session_type === 'group') return Number(profile?.group_rate) || 0
     const player = players.find(p => p.id === s.player_id)
-    return player?.custom_rate || profile?.individual_rate || 0
+    const rate = player?.custom_rate ?? profile?.individual_rate ?? 0
+    return Number(rate) || 0
   }
 
   function getRevenue(from: Date, to: Date) {
@@ -75,7 +76,8 @@ export default function BusinessClient({ profile, players, sessions }: Props) {
   }
 
   function formatCurrency(val: number) {
-    return val.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const safe = isNaN(val) || !isFinite(val) ? 0 : val
+    return safe.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
   }
 
   function changeColor(val: number) {
