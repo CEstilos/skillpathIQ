@@ -99,7 +99,7 @@ export default function LogSessionPage() {
       notes,
       drills_covered: drillsCovered,
     })
-
+    
     if (players.length > 0) {
       await supabase.from('session_attendance').upsert(
         players.map(p => ({
@@ -109,6 +109,20 @@ export default function LogSessionPage() {
           attended: attendance.includes(p.id),
         }))
       )
+    
+      // Write to sessions table for each attending player so player profiles update
+      const attendingPlayers = players.filter(p => attendance.includes(p.id))
+      if (attendingPlayers.length > 0) {
+        await supabase.from('sessions').insert(
+          attendingPlayers.map(p => ({
+            trainer_id: user.id,
+            player_id: p.id,
+            session_date: session?.session_date || new Date().toISOString().split('T')[0],
+            notes: notes || drillsCovered || null,
+            session_type: 'group',
+          }))
+        )
+      }
     }
 
     if (assignDrills && drillWeekTitle.trim() && session?.group_id) {
