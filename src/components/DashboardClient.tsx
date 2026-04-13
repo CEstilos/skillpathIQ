@@ -198,8 +198,8 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
         {/* DESKTOP NAV */}
         <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <button style={{ fontSize: '15px', color: '#ffffff', background: 'none', border: 'none', borderBottom: '2px solid #00FF9F', paddingBottom: '4px', cursor: 'pointer', fontWeight: 600 }}>Training Hub</button>
+<button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>My Players</button>
 <button onClick={() => router.push('/dashboard/business')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>My Numbers</button>
-<button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Clients</button>
 <button onClick={() => router.push('/dashboard/settings')} style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Settings</button>
           <span style={{ fontSize: '13px', color: '#9A9A9F' }}>{profile?.full_name}</span>
           <button onClick={handleSignOut} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
@@ -223,9 +223,9 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           </button>
           <button onClick={() => { router.push('/dashboard/business'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>
           <button onClick={() => { router.push('/dashboard/clients'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>
-  Clients
+  My Players
 </button>
-  Business
+  My Numbers
 </button>
 <button onClick={() => { router.push('/dashboard/settings'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>
   Settings
@@ -381,19 +381,24 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
 
 
         {/* STAT ROW */}
-        <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px', marginBottom: '20px' }}>
-          {[
-            { label: 'Total', value: players.length, color: '#ffffff' },
-            { label: 'Active', value: activeCount, color: '#00FF9F' },
-            { label: 'At risk', value: atRiskCount, color: '#F5A623' },
-            { label: 'Lapsed', value: lapsedCount, color: '#E03131' },
-          ].map(s => (
-            <div key={s.label} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px' }}>
-              <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>{s.label}</div>
-              <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '28px', fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</div>
-            </div>
-          ))}
-        </div>
+<div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px', marginBottom: '20px' }}>
+  {[
+    { label: 'Sessions today', value: todaySessions.length, color: todaySessions.length > 0 ? '#00FF9F' : '#ffffff' },
+    { label: 'Sessions this week', value: upcomingSessions.filter(s => {
+        const d = new Date(s.session_date + 'T00:00:00')
+        const now = new Date()
+        const endOfWeek = new Date(now)
+        endOfWeek.setDate(now.getDate() + (6 - now.getDay()))
+        return d <= endOfWeek
+      }).length + todaySessions.length, color: '#ffffff' },
+    { label: 'Total scheduled', value: todaySessions.length + upcomingSessions.length, color: '#ffffff' },
+  ].map(s => (
+    <div key={s.label} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px' }}>
+      <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>{s.label}</div>
+      <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '28px', fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</div>
+    </div>
+  ))}
+</div>
 {/* WELCOME BANNER */}
 {!bannerDismissed && players.length === 0 && (
   <div style={{ background: 'rgba(0,255,159,0.06)', border: '1px solid rgba(0,255,159,0.2)', borderRadius: '16px', padding: '24px', marginBottom: '20px', position: 'relative' }}>

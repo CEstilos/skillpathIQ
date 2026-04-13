@@ -142,9 +142,9 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100, width: '100%' }}>
         <img src="/logo.png" alt="SkillPathIQ" onClick={() => router.push('/dashboard')} style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }} />
         <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={() => router.push('/dashboard')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Training Hub</button>
-          <button style={{ fontSize: '15px', color: '#ffffff', background: 'none', border: 'none', borderBottom: '2px solid #00FF9F', paddingBottom: '4px', cursor: 'pointer', fontWeight: 600 }}>Clients</button>
-          <button onClick={() => router.push('/dashboard/business')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>My Numbers</button>
+        <button onClick={() => router.push('/dashboard')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Training Hub</button>
+<button style={{ fontSize: '15px', color: '#ffffff', background: 'none', border: 'none', borderBottom: '2px solid #00FF9F', paddingBottom: '4px', cursor: 'pointer', fontWeight: 600 }}>My Players</button>
+<button onClick={() => router.push('/dashboard/business')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>My Numbers</button>
         </div>
         <button className="nav-menu-btn" onClick={() => setMenuOpen(!menuOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexDirection: 'column', gap: '5px', alignItems: 'center', justifyContent: 'center', display: 'none' }}>
           <div style={{ width: '20px', height: '2px', background: '#ffffff', borderRadius: '2px' }} />
