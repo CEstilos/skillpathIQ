@@ -36,6 +36,11 @@ export default async function DashboardPage() {
 
   const today = new Date().toISOString().split('T')[0]
 
+  const { data: sessionPlayers } = await supabase
+  .from('session_players')
+  .select('session_id, player_id')
+  .eq('trainer_id', user.id)
+
   const { data: todaySessions } = await supabase
     .from('sessions').select('*, groups(name, sport)')
     .eq('trainer_id', user.id)
@@ -62,6 +67,7 @@ export default async function DashboardPage() {
       completions={completions || []}
       todaySessions={todaySessions || []}
       upcomingSessions={upcomingSessions || []}
+      allSessionPlayers={sessionPlayers || []}
     />
   )
 }

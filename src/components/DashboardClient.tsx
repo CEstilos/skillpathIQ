@@ -12,6 +12,7 @@ interface ScheduledSession { id: string; title: string; session_date: string; se
 interface DrillWeek { id: string; group_id: string | null; player_id: string | null; title: string; week_start: string }
 interface Drill { id: string; drill_week_id: string; title: string }
 interface Completion { id: string; player_id: string; drill_id: string }
+interface SessionPlayer { session_id: string; player_id: string }
 
 interface Props {
   profile: Profile | null
@@ -23,9 +24,10 @@ interface Props {
   completions: Completion[]
   todaySessions: ScheduledSession[]
   upcomingSessions: ScheduledSession[]
+  allSessionPlayers: SessionPlayer[]
 }
 
-export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions }: Props) {
+export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions, allSessionPlayers }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<string>('all')
@@ -263,9 +265,12 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     </div>
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {todaySessions.map(session => {
-        const sessionPlayers = session.group_id
-          ? players.filter(p => p.group_id === session.group_id)
-          : []
+       const sessionPlayers = session.group_id
+       ? players.filter(p => p.group_id === session.group_id)
+       : allSessionPlayers
+         .filter(sp => sp.session_id === session.id)
+         .map(sp => players.find(p => p.id === sp.player_id))
+         .filter(Boolean) as Player[]
         return (
           <div key={session.id} style={{ background: 'rgba(0,255,159,0.05)', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' as const }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -328,8 +333,28 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff' }}>{session.title}</div>
             <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
-              {session.groups?.name && <span>{session.groups.name} · </span>}
-              {session.session_time ? formatTime(session.session_time) : 'No time set'}
+            {session.groups?.name ? (
+  <span>{session.groups.name} · </span>
+) : (
+  <span>
+    {allSessionPlayers
+      .filter(sp => sp.session_id === session.id)
+      .map(sp => players.find(p => p.id === sp.player_id))
+      .filter(Boolean)
+      .map((p, i, arr) => (
+        <span key={p!.id}>
+          <span
+            onClick={() => router.push(`/dashboard/players/${p!.id}`)}
+            style={{ color: '#00FF9F', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(0,255,159,0.4)' }}>
+            {p!.full_name}
+          </span>
+          {i < arr.length - 1 ? ', ' : ''}
+        </span>
+      ))}
+    {' · '}
+  </span>
+)}
+{session.session_time ? formatTime(session.session_time) : 'No time set'}
               {session.type === 'recurring' && (
                 <span style={{ marginLeft: '8px', fontSize: '11px', background: 'rgba(0,255,159,0.12)', color: '#00FF9F', padding: '2px 6px', borderRadius: '4px' }}>Recurring</span>
               )}
