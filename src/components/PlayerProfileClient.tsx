@@ -145,7 +145,7 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
   <span style={{ fontSize: '12px', fontWeight: 600, padding: '5px 12px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color }}>{statusStyle.label}</span>
   <button
-    onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)}
+    onClick={() => router.push(`/dashboard/players/${player.id}/log`)}
     style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
     + Log session
   </button>
@@ -244,7 +244,7 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
             {sessions.length === 0 ? (
               <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
                 <p style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '12px' }}>No sessions logged yet</p>
-                <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                   Log first session
                 </button>
               </div>
