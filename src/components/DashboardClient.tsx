@@ -296,7 +296,15 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
             </div>
             <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
               <button
-                onClick={() => router.push(`/dashboard/sessions/${session.id}/log`)}
+                onClick={() => {
+                  if (sessionPlayers.length === 1) {
+                    router.push(`/dashboard/players/${sessionPlayers[0].id}/log`)
+                  } else if (sessionPlayers.length > 1) {
+                    router.push(`/dashboard/players/${sessionPlayers[0].id}/log`)
+                  } else {
+                    router.push(`/dashboard/sessions/${session.id}/log`)
+                  }
+                }}
                 style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer' }}>
                 Log session
               </button>
@@ -559,7 +567,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px' }}>
-  <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
+  <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
     + Log session
   </button>
   <button onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
