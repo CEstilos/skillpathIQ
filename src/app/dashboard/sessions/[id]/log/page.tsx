@@ -235,7 +235,7 @@ export default function LogSessionPage() {
             </div>
             <div style={{ padding: '12px 16px' }}>
               <textarea
-                style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '12px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', minHeight: '90px', resize: 'vertical', fontFamily: 'sans-serif', color: '#ffffff' } as React.CSSProperties}
+                style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '12px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', minHeight: '90px', resize: 'vertical', fontFamily: 'sans-serif' }}
                 placeholder="e.g. Two-ball dribbling, crossover series, finishing at the rim..."
                 value={drillsCovered}
                 onChange={e => setDrillsCovered(e.target.value)}
