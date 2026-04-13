@@ -234,6 +234,26 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
       )}
 
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px', width: '100%' }}>
+{/* PAGE HEADER */}
+<div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
+  <div>
+    <h1 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '28px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <span style={{ fontSize: '26px' }}>{getSportEmoji()}</span>
+      {profile?.full_name ? `${profile.full_name.split(' ')[0]}'s Training Hub` : 'Training Hub'}
+    </h1>
+    <p style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '4px' }}>
+      {players.length === 0 ? 'Add your first player' : `${players.length} player${players.length !== 1 ? 's' : ''} · ${groups.length} group${groups.length !== 1 ? 's' : ''}`}
+    </p>
+  </div>
+  <div className="header-buttons" style={{ display: 'flex', gap: '8px' }}>
+    <button onClick={() => router.push('/dashboard/sessions/new')} style={{ background: 'transparent', color: '#ffffff', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+      + Schedule session
+    </button>
+    <button onClick={() => router.push('/dashboard/players/new')} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+      + Add player
+    </button>
+  </div>
+</div>
 {/* TODAY'S SESSIONS */}
 {todaySessions.length > 0 && (
   <div style={{ marginBottom: '20px' }}>
@@ -253,7 +273,20 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
               <div style={{ fontSize: '13px', color: '#9A9A9F' }}>
                 {session.groups?.name && <span>{session.groups.name} · </span>}
                 {session.session_time && <span>{formatTime(session.session_time)} · </span>}
-                <span>{sessionPlayers.length > 0 ? `${sessionPlayers.length} player${sessionPlayers.length !== 1 ? 's' : ''}` : 'Individual session'}</span>
+                {sessionPlayers.length > 0 ? (
+  <span>
+    {sessionPlayers.map((p, i) => (
+      <span key={p.id}>
+        <span
+          onClick={() => router.push(`/dashboard/players/${p.id}`)}
+          style={{ color: '#00FF9F', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(0,255,159,0.4)' }}>
+          {p.full_name}
+        </span>
+        {i < sessionPlayers.length - 1 ? ', ' : ''}
+      </span>
+    ))}
+  </span>
+) : <span>Individual session</span>}
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
@@ -308,26 +341,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     </div>
   </div>
 )}
-        {/* PAGE HEADER */}
-        <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <div>
-          <h1 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '28px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-  <span style={{ fontSize: '26px' }}>{getSportEmoji()}</span>
-  {profile?.full_name ? `${profile.full_name.split(' ')[0]}'s Training Hub` : 'Training Hub'}
-</h1>
-            <p style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '4px' }}>
-              {players.length === 0 ? 'Add your first player' : `${players.length} player${players.length !== 1 ? 's' : ''} · ${groups.length} group${groups.length !== 1 ? 's' : ''}`}
-            </p>
-          </div>
-          <div className="header-buttons" style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => router.push('/dashboard/sessions/new')} style={{ background: 'transparent', color: '#ffffff', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              + Log session
-            </button>
-            <button onClick={() => router.push('/dashboard/players/new')} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              + Add player
-            </button>
-          </div>
-        </div>
+
 
         {/* STAT ROW */}
         <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px', marginBottom: '20px' }}>
