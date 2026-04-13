@@ -8,6 +8,7 @@ interface Profile { id: string; full_name: string; email: string; primary_sport?
 interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; trainer_id: string; created_at: string }
 interface Group { id: string; name: string; sport: string; session_day: string; session_time: string }
 interface Session { id: string; player_id: string; session_date: string; notes: string | null }
+interface ScheduledSession { id: string; title: string; session_date: string; session_time: string; type: string; group_id: string | null; groups?: { name: string; sport: string } }
 interface DrillWeek { id: string; group_id: string | null; player_id: string | null; title: string; week_start: string }
 interface Drill { id: string; drill_week_id: string; title: string }
 interface Completion { id: string; player_id: string; drill_id: string }
@@ -20,9 +21,11 @@ interface Props {
   drillWeeks: DrillWeek[]
   drills: Drill[]
   completions: Completion[]
+  todaySessions: ScheduledSession[]
+  upcomingSessions: ScheduledSession[]
 }
 
-export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions }: Props) {
+export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<string>('all')
@@ -114,7 +117,18 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     if (days < 30) return `${Math.floor(days / 7)}w ago`
     return `${Math.floor(days / 30)}mo ago`
   }
-
+  function formatTime(time: string) {
+    if (!time) return ''
+    const [h, m] = time.split(':')
+    const hour = parseInt(h)
+    const ampm = hour >= 12 ? 'pm' : 'am'
+    const display = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour
+    return `${display}:${m} ${ampm}`
+  }
+  
+  function formatUpcomingDate(dateStr: string) {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  }
   function getCurrentDrillWeek(player: Player) {
     if (player.group_id) return drillWeeks.find(w => w.group_id === player.group_id) || null
     return drillWeeks.find(w => w.player_id === player.id) || null
@@ -220,7 +234,80 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
       )}
 
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px', width: '100%' }}>
+{/* TODAY'S SESSIONS */}
+{todaySessions.length > 0 && (
+  <div style={{ marginBottom: '20px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F' }} />
+      <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Today&apos;s sessions</span>
+    </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {todaySessions.map(session => {
+        const sessionPlayers = session.group_id
+          ? players.filter(p => p.group_id === session.group_id)
+          : []
+        return (
+          <div key={session.id} style={{ background: 'rgba(0,255,159,0.05)', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' as const }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', marginBottom: '4px' }}>{session.title}</div>
+              <div style={{ fontSize: '13px', color: '#9A9A9F' }}>
+                {session.groups?.name && <span>{session.groups.name} · </span>}
+                {session.session_time && <span>{formatTime(session.session_time)} · </span>}
+                <span>{sessionPlayers.length > 0 ? `${sessionPlayers.length} player${sessionPlayers.length !== 1 ? 's' : ''}` : 'Individual session'}</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+              <button
+                onClick={() => router.push(`/dashboard/sessions/${session.id}/log`)}
+                style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer' }}>
+                Log session
+              </button>
+              {session.group_id && (
+                <button
+                  onClick={() => router.push(`/dashboard/drills/new?group=${session.group_id}`)}
+                  style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
+                  Assign drills
+                </button>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  </div>
+)}
 
+{/* UPCOMING SESSIONS */}
+{upcomingSessions.length > 0 && (
+  <div style={{ marginBottom: '20px' }}>
+    <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Upcoming</div>
+    <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
+      {upcomingSessions.map((session, i) => (
+        <div key={session.id} style={{ padding: '14px 20px', borderBottom: i < upcomingSessions.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ width: '44px', textAlign: 'center', flexShrink: 0 }}>
+            <div style={{ fontSize: '10px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {new Date(session.session_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' })}
+            </div>
+            <div style={{ fontSize: '22px', fontFamily: 'monospace', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>
+              {new Date(session.session_date + 'T00:00:00').getDate()}
+            </div>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff' }}>{session.title}</div>
+            <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+              {session.groups?.name && <span>{session.groups.name} · </span>}
+              {session.session_time ? formatTime(session.session_time) : 'No time set'}
+              {session.type === 'recurring' && (
+                <span style={{ marginLeft: '8px', fontSize: '11px', background: 'rgba(0,255,159,0.12)', color: '#00FF9F', padding: '2px 6px', borderRadius: '4px' }}>Recurring</span>
+              )}
+            </div>
+          </div>
+          <div style={{ fontSize: '12px', color: '#9A9A9F', flexShrink: 0 }}>{formatUpcomingDate(session.session_date)}</div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
         {/* PAGE HEADER */}
         <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
           <div>
