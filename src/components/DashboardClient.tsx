@@ -456,8 +456,8 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color, whiteSpace: 'nowrap' }}>{statusStyle.label}</span>
 </div>
 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-  <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>+ Session</button>
-  <button onClick={() => copyPlayerLink(player.id)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: `1px solid ${isCopied ? '#00FF9F' : '#2A2A2D'}`, background: 'transparent', color: isCopied ? '#00FF9F' : '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>{isCopied ? '✓ Copied!' : 'Player link'}</button>
+  <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>Schedule Session</button>
+  <button onClick={() => copyPlayerLink(player.id)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: `1px solid ${isCopied ? '#00FF9F' : '#2A2A2D'}`, background: 'transparent', color: isCopied ? '#00FF9F' : '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>{isCopied ? '✓ Copied!' : 'Send Player Profile'}</button>
   <button onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>Assign drills</button>
 </div>
                 </div>
