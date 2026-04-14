@@ -1,11 +1,10 @@
 import type { Metadata } from 'next'
+import PostHogProvider from '@/components/PostHogProvider'
+import PostHogPageView from '@/components/PostHogPageView'
 
 export const metadata: Metadata = {
   title: 'SkillPathIQ',
-  description: 'The training platform for independent sports trainers',
-  icons: {
-    icon: '/favicon.ico',
-  },
+  description: 'Player accountability for sports trainers',
 }
 
 export default function RootLayout({
@@ -14,10 +13,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" style={{ background: '#0E0E0F' }}>
-      <body style={{ margin: 0, padding: 0, background: '#0E0E0F', overflowX: 'hidden' }}>
-        <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700&display=swap" rel="stylesheet" />
-        {children}
+    <html lang="en">
+      <body>
+        <PostHogProvider>
+          <PostHogPageView />
+          {children}
+        </PostHogProvider>
       </body>
     </html>
   )
