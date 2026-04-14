@@ -19,6 +19,9 @@ interface Props {
 export default function ClientsPageClient({ profile, players, sessions, groups }: Props) {
   const router = useRouter()
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null)
+  const [aiMessages, setAiMessages] = useState<Record<string, string>>({})
+  const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({})
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const now = new Date()
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
@@ -85,7 +88,7 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
     return groups.find(g => g.id === groupId) || null
   }
 
-  function getReengageMessage(player: Player) {
+  function getFallbackMessage(player: Player) {
     const last = getLastSession(player.id)
     const days = last ? getDaysSince(last.session_date) : null
     const firstName = player.full_name.split(' ')[0]
@@ -94,8 +97,67 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
     return `Hey! It's been a while since we've worked with ${firstName}. I have some availability coming up — would love to get back to work and keep the momentum going!`
   }
 
-  function copyReengage(player: Player) {
-    navigator.clipboard.writeText(getReengageMessage(player))
+  async function generateAiMessage(player: Player) {
+    setAiLoading(prev => ({ ...prev, [player.id]: true }))
+
+    const last = getLastSession(player.id)
+    const days = last ? getDaysSince(last.session_date) : null
+    const weeks = getWeeksLapsed(player.id)
+    const sessionCount = getSessionCount(player.id)
+    const group = getGroup(player.group_id)
+    const firstName = player.full_name.split(' ')[0]
+    const status = getStatus(player.id)
+    const trainerName = profile?.full_name?.split(' ')[0] || 'Coach'
+
+    const prompt = `You are a youth sports trainer writing a personal text message to re-engage a client's parent.
+
+Trainer name: ${trainerName}
+Player name: ${firstName}
+Player status: ${status === 'at-risk' ? 'at risk (no session in 30-60 days)' : 'lapsed (no session in 60+ days)'}
+Days since last session: ${days !== null ? days : 'never trained'}
+Total sessions together: ${sessionCount}
+Training type: ${group ? `group training (${group.name})` : 'individual training'}
+Sport: ${group?.sport || 'basketball'}
+
+Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer to the parent to re-engage them. 
+- Sound like a real person, not a business
+- Reference the specific situation naturally
+- End with a soft call to action to book a session
+- Do NOT use emojis
+- Do NOT use generic phrases like "hope you're doing well"
+- Do NOT mention money or rates
+- Return ONLY the message text, nothing else`
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      })
+
+      const data = await response.json()
+      const message = data.content?.find((b: any) => b.type === 'text')?.text?.trim()
+
+      if (message) {
+        setAiMessages(prev => ({ ...prev, [player.id]: message }))
+      } else {
+        setAiMessages(prev => ({ ...prev, [player.id]: getFallbackMessage(player) }))
+      }
+    } catch (err) {
+      setAiMessages(prev => ({ ...prev, [player.id]: getFallbackMessage(player) }))
+    } finally {
+      setAiLoading(prev => ({ ...prev, [player.id]: false }))
+    }
+  }
+
+  function copyMessage(playerId: string, message: string) {
+    navigator.clipboard.writeText(message)
+    setCopiedId(playerId)
+    setTimeout(() => setCopiedId(null), 2000)
   }
 
   const activePlayers = players.filter(p => getStatus(p.id) === 'active')
@@ -115,27 +177,87 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
     return new Date(aLast.session_date).getTime() - new Date(bLast.session_date).getTime()
   })
 
+  function PlayerMessageBox({ player, accentColor }: { player: Player, accentColor: string }) {
+    const message = aiMessages[player.id]
+    const loading = aiLoading[player.id]
+    const isCopied = copiedId === player.id
+
+    return (
+      <div style={{ padding: '0 20px 16px', borderTop: '1px solid #2A2A2D' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '14px 0 10px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Re-engagement message
+          </div>
+          <button
+            onClick={() => generateAiMessage(player)}
+            disabled={loading}
+            style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: `1px solid ${accentColor}`, background: 'transparent', color: accentColor, cursor: loading ? 'default' : 'pointer', fontWeight: 600, opacity: loading ? 0.6 : 1 }}>
+            {loading ? 'Generating...' : message ? '↺ Regenerate' : '✦ Generate with AI'}
+          </button>
+        </div>
+
+        {!message && !loading && (
+          <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: '10px', fontStyle: 'italic' }}>
+            Click "Generate with AI" to create a personalized message based on {player.full_name.split(' ')[0]}'s history
+          </div>
+        )}
+
+        {loading && (
+          <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: accentColor, animation: 'pulse 1s infinite' }} />
+              Writing a personalized message...
+            </div>
+          </div>
+        )}
+
+        {message && !loading && (
+          <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', color: '#ffffff', lineHeight: 1.6, marginBottom: '10px', border: `1px solid ${accentColor}30` }}>
+            {message}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {message && (
+            <button
+              onClick={() => copyMessage(player.id, message)}
+              style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: isCopied ? '#00FF9F' : accentColor, color: isCopied ? '#0E0E0F' : accentColor === '#F5A623' ? '#0E0E0F' : '#ffffff', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
+              {isCopied ? '✓ Copied!' : 'Copy message'}
+            </button>
+          )}
+          <button
+            onClick={() => router.push(`/dashboard/players/${player.id}/log`)}
+            style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer' }}>
+            Log session
+          </button>
+          <button
+            onClick={() => router.push(`/dashboard/players/${player.id}`)}
+            style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
+            View profile
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { overflow-x: hidden; max-width: 100vw; background: #0E0E0F; }
-        @media (max-width: 640px) {
-          .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
+        @media (max-width: 640px) { .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
       `}</style>
 
       <NavBar trainerName={profile?.full_name} />
 
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px', width: '100%' }}>
 
-        {/* HEADER */}
         <div style={{ marginBottom: '24px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '4px' }}>My Players</h1>
           <p style={{ fontSize: '14px', color: '#9A9A9F' }}>{players.length} total clients · Focus on reengagement to protect your revenue</p>
         </div>
 
-        {/* KPI ROW */}
         <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '28px' }}>
           <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '18px' }}>
             <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Active clients</div>
@@ -159,7 +281,6 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
           </div>
         </div>
 
-        {/* URGENT ACTION BANNER */}
         {urgentPlayers.length > 0 && (
           <div style={{ background: 'rgba(224,49,49,0.06)', border: '1px solid rgba(224,49,49,0.25)', borderRadius: '12px', padding: '16px 20px', marginBottom: '28px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' as const }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -170,18 +291,9 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
                 Reaching out today could recover {formatCurrency(totalAtRiskRevenue + totalLapsedRevenue)} in potential revenue
               </div>
             </div>
-            <button
-              onClick={() => {
-                const msg = urgentPlayers.slice(0, 3).map(p => `${p.full_name}: ${getReengageMessage(p)}`).join('\n\n')
-                navigator.clipboard.writeText(msg)
-              }}
-              style={{ background: '#E03131', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
-              Copy all reengagement messages
-            </button>
           </div>
         )}
 
-        {/* AT RISK SECTION */}
         {atRiskPlayers.length > 0 && (
           <div style={{ marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -214,28 +326,13 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
                         <div style={{ fontSize: '14px', fontWeight: 700, color: '#F5A623' }}>{formatCurrency(rate)}/session</div>
                         <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>at risk</div>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                        <button onClick={() => copyReengage(player)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#F5A623', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
-                          Copy message
-                        </button>
-                        <button onClick={() => setExpandedPlayer(isExpanded ? null : player.id)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
-                          {isExpanded ? '▲' : '▼'}
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => setExpandedPlayer(isExpanded ? null : player.id)}
+                        style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
+                        {isExpanded ? '▲ Hide' : '▼ Message'}
+                      </button>
                     </div>
-                    {isExpanded && (
-                      <div style={{ padding: '0 20px 16px', borderTop: '1px solid #2A2A2D' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '14px 0 8px' }}>Suggested reengagement message</div>
-                        <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', color: '#ffffff', lineHeight: 1.6, marginBottom: '10px' }}>
-                          {getReengageMessage(player)}
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button onClick={() => copyReengage(player)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#F5A623', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer' }}>Copy message</button>
-                          <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer' }}>Log session</button>
-                          <button onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>View profile</button>
-                        </div>
-                      </div>
-                    )}
+                    {isExpanded && <PlayerMessageBox player={player} accentColor="#F5A623" />}
                   </div>
                 )
               })}
@@ -243,7 +340,6 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
           </div>
         )}
 
-        {/* LAPSED SECTION */}
         {lapsedPlayers.length > 0 && (
           <div style={{ marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -278,38 +374,13 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
                         <div style={{ fontSize: '14px', fontWeight: 700, color: '#E03131' }}>{formatCurrency(lostRevenue)}</div>
                         <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>est. lost revenue</div>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                        <button onClick={() => copyReengage(player)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#E03131', color: '#ffffff', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>Copy message</button>
-                        <button onClick={() => setExpandedPlayer(isExpanded ? null : player.id)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
-                          {isExpanded ? '▲' : '▼'}
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => setExpandedPlayer(isExpanded ? null : player.id)}
+                        style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
+                        {isExpanded ? '▲ Hide' : '▼ Message'}
+                      </button>
                     </div>
-                    {isExpanded && (
-                      <div style={{ padding: '0 20px 16px', borderTop: '1px solid #2A2A2D' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', margin: '14px 0' }}>
-                          {[
-                            { label: 'Sessions total', value: getSessionCount(player.id).toString() },
-                            { label: 'Rate/session', value: formatCurrency(rate) },
-                            { label: 'Est. lost', value: formatCurrency(lostRevenue) },
-                          ].map(s => (
-                            <div key={s.label} style={{ background: '#0E0E0F', borderRadius: '8px', padding: '10px 12px' }}>
-                              <div style={{ fontSize: '10px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>{s.label}</div>
-                              <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>{s.value}</div>
-                            </div>
-                          ))}
-                        </div>
-                        <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Suggested reengagement message</div>
-                        <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', color: '#ffffff', lineHeight: 1.6, marginBottom: '10px' }}>
-                          {getReengageMessage(player)}
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button onClick={() => copyReengage(player)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#E03131', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}>Copy message</button>
-                          <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer' }}>Log session</button>
-                          <button onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>View profile</button>
-                        </div>
-                      </div>
-                    )}
+                    {isExpanded && <PlayerMessageBox player={player} accentColor="#E03131" />}
                   </div>
                 )
               })}
@@ -317,7 +388,6 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
           </div>
         )}
 
-        {/* ACTIVE SECTION */}
         {activePlayers.length > 0 && (
           <div style={{ marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -355,7 +425,6 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
           </div>
         )}
 
-        {/* NEW PLAYERS */}
         {newPlayers.length > 0 && (
           <div style={{ marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
