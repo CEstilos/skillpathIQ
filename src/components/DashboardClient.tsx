@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import NavBar from '@/components/NavBar'
 
 interface Profile { id: string; full_name: string; email: string; primary_sport?: string }
 interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; trainer_id: string; created_at: string }
@@ -32,7 +33,6 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<string>('all')
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [bannerDismissed, setBannerDismissed] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -46,10 +46,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     setBannerDismissed(true)
   }
 
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/auth/login')
-  }
+
 
   function getGroup(groupId: string | null) {
     if (!groupId) return null
@@ -187,57 +184,8 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
 `}</style>
 
       {/* NAV */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100, width: '100%', maxWidth: '100vw' }}>
-      <img
-  src="/logo.png"
-  alt="SkillPathIQ"
-  onClick={() => router.push('/dashboard')}
-  style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }}
-/>
-
-        {/* DESKTOP NAV */}
-        <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <button style={{ fontSize: '15px', color: '#ffffff', background: 'none', border: 'none', borderBottom: '2px solid #00FF9F', paddingBottom: '4px', cursor: 'pointer', fontWeight: 600 }}>Training Hub</button>
-<button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>My Players</button>
-<button onClick={() => router.push('/dashboard/business')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>My Numbers</button>
-<button onClick={() => router.push('/dashboard/settings')} style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Settings</button>
-          <span style={{ fontSize: '13px', color: '#9A9A9F' }}>{profile?.full_name}</span>
-          <button onClick={handleSignOut} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
-            Log out
-          </button>
-        </div>
-
-        {/* MOBILE HAMBURGER */}
-        <button className="nav-menu-btn" onClick={() => setMenuOpen(!menuOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexDirection: 'column', gap: '5px', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: '20px', height: '2px', background: '#ffffff', borderRadius: '2px' }} />
-          <div style={{ width: '20px', height: '2px', background: '#ffffff', borderRadius: '2px' }} />
-          <div style={{ width: '20px', height: '2px', background: '#ffffff', borderRadius: '2px' }} />
-        </button>
-      </nav>
-
-      {/* MOBILE MENU DROPDOWN */}
-      {menuOpen && (
-        <div className="mobile-menu" style={{ background: '#1A1A1C', borderBottom: '1px solid #2A2A2D', padding: '8px 0', width: '100%' }}>
-          <button onClick={() => { setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#ffffff', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
-            Dashboard
-          </button>
-          <button onClick={() => { router.push('/dashboard/business'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>
-          <button onClick={() => { router.push('/dashboard/clients'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>
-  My Players
-</button>
-  My Numbers
-</button>
-<button onClick={() => { router.push('/dashboard/settings'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>
-  Settings
-</button>
-          <div style={{ padding: '12px 20px', fontSize: '13px', color: '#9A9A9F', borderTop: '1px solid #2A2A2D', marginTop: '4px' }}>
-            {profile?.full_name}
-          </div>
-          <button onClick={handleSignOut} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#E03131', fontSize: '14px', cursor: 'pointer' }}>
-            Log out
-          </button>
-        </div>
-      )}
+      <NavBar trainerName={profile?.full_name} />
+      
 
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px', width: '100%' }}>
 {/* PAGE HEADER */}

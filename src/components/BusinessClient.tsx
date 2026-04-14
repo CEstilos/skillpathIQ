@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
+import NavBar from '@/components/NavBar'
 
 interface Profile { id: string; full_name: string; individual_rate: number | null; group_rate: number | null }
 interface Player { id: string; full_name: string; created_at: string; custom_rate: number | null }
@@ -15,12 +16,6 @@ interface Props {
 
 export default function BusinessClient({ profile, players, sessions }: Props) {
   const router = useRouter()
-  const supabase = createClient()
-
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/auth/login')
-  }
 
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -92,7 +87,6 @@ export default function BusinessClient({ profile, players, sessions }: Props) {
     return '—'
   }
 
-  // Monthly data for last 6 months
   function getMonthlyData(type: 'players' | 'sessions' | 'revenue') {
     const months = []
     for (let i = 5; i >= 0; i--) {
@@ -122,37 +116,6 @@ export default function BusinessClient({ profile, players, sessions }: Props) {
     )
   }
 
-  const hasRates = (profile?.individual_rate || 0) > 0 || (profile?.group_rate || 0) > 0
-
-  const newThisMonth = getNewPlayersInRange(startOfMonth, now)
-  const newLastMonth = getNewPlayersInRange(startOfLastMonth, endOfLastMonth)
-  const activeLast30 = getUniquePlayerCount(thirtyDaysAgo, now)
-  const activePrev30 = getUniquePlayerCount(sixtyDaysAgo, thirtyDaysAgo)
-  const atRisk = getAtRiskCount()
-  const totalPlayers = players.length
-
-  const sessionsThisMonth = getSessionCount(startOfMonth, now)
-  const sessionsLastMonth = getSessionCount(startOfLastMonth, endOfLastMonth)
-  const sessionsThisYear = getSessionCount(startOfYear, now)
-  const weeklyData = (() => {
-    const weeks = []
-    for (let i = 11; i >= 0; i--) {
-      const wStart = new Date(now.getTime() - (i + 1) * 7 * 24 * 60 * 60 * 1000)
-      const wEnd = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000)
-      weeks.push(getSessionCount(wStart, wEnd))
-    }
-    return weeks
-  })()
-  const avgSessionsPerWeek = weeklyData.length > 0 ? (weeklyData.reduce((a, b) => a + b, 0) / weeklyData.length).toFixed(1) : '0'
-
-  const revenueThisMonth = getRevenue(startOfMonth, now)
-  const revenueLastMonth = getRevenue(startOfLastMonth, endOfLastMonth)
-  const revenueThisYear = getRevenue(startOfYear, now)
-
-  const playerMonthly = getMonthlyData('players')
-  const sessionMonthly = getMonthlyData('sessions')
-  const revenueMonthly = getMonthlyData('revenue')
-
   function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
     return (
       <div style={{ marginBottom: '14px' }}>
@@ -180,34 +143,52 @@ export default function BusinessClient({ profile, players, sessions }: Props) {
     )
   }
 
+  const hasRates = (profile?.individual_rate || 0) > 0 || (profile?.group_rate || 0) > 0
+
+  const newThisMonth = getNewPlayersInRange(startOfMonth, now)
+  const newLastMonth = getNewPlayersInRange(startOfLastMonth, endOfLastMonth)
+  const activeLast30 = getUniquePlayerCount(thirtyDaysAgo, now)
+  const activePrev30 = getUniquePlayerCount(sixtyDaysAgo, thirtyDaysAgo)
+  const atRisk = getAtRiskCount()
+  const totalPlayers = players.length
+  const sessionsThisMonth = getSessionCount(startOfMonth, now)
+  const sessionsLastMonth = getSessionCount(startOfLastMonth, endOfLastMonth)
+  const sessionsThisYear = getSessionCount(startOfYear, now)
+  const weeklyData = (() => {
+    const weeks = []
+    for (let i = 11; i >= 0; i--) {
+      const wStart = new Date(now.getTime() - (i + 1) * 7 * 24 * 60 * 60 * 1000)
+      const wEnd = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000)
+      weeks.push(getSessionCount(wStart, wEnd))
+    }
+    return weeks
+  })()
+  const avgSessionsPerWeek = weeklyData.length > 0 ? (weeklyData.reduce((a, b) => a + b, 0) / weeklyData.length).toFixed(1) : '0'
+  const revenueThisMonth = getRevenue(startOfMonth, now)
+  const revenueLastMonth = getRevenue(startOfLastMonth, endOfLastMonth)
+  const revenueThisYear = getRevenue(startOfYear, now)
+  const playerMonthly = getMonthlyData('players')
+  const sessionMonthly = getMonthlyData('sessions')
+  const revenueMonthly = getMonthlyData('revenue')
+
   return (
-    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
       <style>{`
-         * { box-sizing: border-box; }
-         html, body { overflow-x: hidden; max-width: 100vw; background: #0E0E0F; margin: 0; padding: 0; }
-         @media (max-width: 640px) {
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { overflow-x: hidden; max-width: 100vw; background: #0E0E0F; }
+        @media (max-width: 640px) {
           .biz-row { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           .biz-revenue-row { grid-template-columns: 1fr !important; }
           .biz-header { flex-direction: column !important; gap: 12px !important; }
         }
       `}</style>
 
-      {/* NAV */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100, width: '100%' }}>
-        <img src="/logo.png" alt="SkillPathIQ" onClick={() => router.push('/dashboard')} style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={() => router.push('/dashboard')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Training Hub</button>
-          <button style={{ fontSize: '15px', color: '#ffffff', background: 'none', border: 'none', borderBottom: '2px solid #00FF9F', paddingBottom: '4px', cursor: 'pointer', fontWeight: 600 }}>My Numbers</button>
-          <button onClick={() => router.push('/dashboard/settings')} style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Settings</button>
-          <span style={{ fontSize: '13px', color: '#9A9A9F' }}>{profile?.full_name}</span>
-          <button onClick={handleSignOut} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Log out</button>
-        </div>
-      </nav>
+      <NavBar trainerName={profile?.full_name} />
 
-      <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '24px 16px' }}>
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px', width: '100%' }}>
 
         {/* HEADER */}
-        <div className="biz-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px' }}>
+        <div className="biz-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div>
             <h1 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '28px', fontWeight: 700, color: '#ffffff', letterSpacing: '1px', margin: 0 }}>My Numbers</h1>
             <p style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '4px' }}>{now.toLocaleString('default', { month: 'long', year: 'numeric' })} · {now.getFullYear()} overview</p>
@@ -269,7 +250,7 @@ export default function BusinessClient({ profile, players, sessions }: Props) {
         </div>
 
         {/* RATES SUMMARY */}
-        <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '20px' }}>
+        <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '20px', marginBottom: '32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your rates</div>
             <button onClick={() => router.push('/dashboard/settings')} style={{ fontSize: '12px', color: '#00FF9F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Edit →</button>

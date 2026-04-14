@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import NavBar from '@/components/NavBar'
 
 interface Profile { id: string; full_name: string; individual_rate: number | null; group_rate: number | null }
 interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; created_at: string; custom_rate: number | null }
@@ -17,7 +18,6 @@ interface Props {
 
 export default function ClientsPageClient({ profile, players, sessions, groups }: Props) {
   const router = useRouter()
-  const [menuOpen, setMenuOpen] = useState(false)
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null)
 
   const now = new Date()
@@ -52,14 +52,6 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
     return sessions.filter(s => s.player_id === playerId).length
   }
 
-  function getMonthlyValue(player: Player) {
-    const rate = getPlayerRate(player)
-    const sessionsThisMonth = sessions.filter(s => {
-      return s.player_id === player.id && new Date(s.session_date) >= new Date(now.getFullYear(), now.getMonth(), 1)
-    }).length
-    return rate * sessionsThisMonth
-  }
-
   function getWeeksLapsed(playerId: string) {
     const last = getLastSession(playerId)
     if (!last) return null
@@ -69,8 +61,7 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
   function getEstimatedLostRevenue(player: Player) {
     const rate = getPlayerRate(player)
     const weeks = getWeeksLapsed(player.id) || 0
-    const avgSessionsPerWeek = 1
-    return rate * avgSessionsPerWeek * Math.max(0, weeks - 4)
+    return rate * Math.max(0, weeks - 4)
   }
 
   function formatCurrency(val: number) {
@@ -103,6 +94,10 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
     return `Hey! It's been a while since we've worked with ${firstName}. I have some availability coming up — would love to get back to work and keep the momentum going!`
   }
 
+  function copyReengage(player: Player) {
+    navigator.clipboard.writeText(getReengageMessage(player))
+  }
+
   const activePlayers = players.filter(p => getStatus(p.id) === 'active')
   const atRiskPlayers = players.filter(p => getStatus(p.id) === 'at-risk')
   const lapsedPlayers = players.filter(p => getStatus(p.id) === 'lapsed')
@@ -120,52 +115,23 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
     return new Date(aLast.session_date).getTime() - new Date(bLast.session_date).getTime()
   })
 
-  function copyReengage(player: Player) {
-    navigator.clipboard.writeText(getReengageMessage(player))
-  }
-
   return (
-    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden' }}>
-
+    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { overflow-x: hidden; max-width: 100vw; }
+        html, body { overflow-x: hidden; max-width: 100vw; background: #0E0E0F; }
         @media (max-width: 640px) {
-          .nav-links { display: none !important; }
-          .nav-menu-btn { display: flex !important; }
-          .crm-grid { grid-template-columns: 1fr !important; }
           .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
 
-      {/* NAV */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100, width: '100%' }}>
-        <img src="/logo.png" alt="SkillPathIQ" onClick={() => router.push('/dashboard')} style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }} />
-        <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <button onClick={() => router.push('/dashboard')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>Training Hub</button>
-<button style={{ fontSize: '15px', color: '#ffffff', background: 'none', border: 'none', borderBottom: '2px solid #00FF9F', paddingBottom: '4px', cursor: 'pointer', fontWeight: 600 }}>My Players</button>
-<button onClick={() => router.push('/dashboard/business')} style={{ fontSize: '15px', color: '#9A9A9F', background: 'none', border: 'none', borderBottom: '2px solid transparent', paddingBottom: '4px', cursor: 'pointer' }}>My Numbers</button>
-        </div>
-        <button className="nav-menu-btn" onClick={() => setMenuOpen(!menuOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexDirection: 'column', gap: '5px', alignItems: 'center', justifyContent: 'center', display: 'none' }}>
-          <div style={{ width: '20px', height: '2px', background: '#ffffff', borderRadius: '2px' }} />
-          <div style={{ width: '20px', height: '2px', background: '#ffffff', borderRadius: '2px' }} />
-          <div style={{ width: '20px', height: '2px', background: '#ffffff', borderRadius: '2px' }} />
-        </button>
-      </nav>
+      <NavBar trainerName={profile?.full_name} />
 
-      {menuOpen && (
-        <div style={{ background: '#1A1A1C', borderBottom: '1px solid #2A2A2D', padding: '8px 0' }}>
-          <button onClick={() => { router.push('/dashboard'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>Training Hub</button>
-          <button onClick={() => setMenuOpen(false)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#ffffff', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>Clients</button>
-          <button onClick={() => { router.push('/dashboard/business'); setMenuOpen(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>My Numbers</button>
-        </div>
-      )}
-
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '24px 16px' }}>
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px', width: '100%' }}>
 
         {/* HEADER */}
         <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '4px' }}>Client Management</h1>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '4px' }}>My Players</h1>
           <p style={{ fontSize: '14px', color: '#9A9A9F' }}>{players.length} total clients · Focus on reengagement to protect your revenue</p>
         </div>
 
@@ -237,9 +203,7 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
                         {getInitials(player.full_name)}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          onClick={() => router.push(`/dashboard/players/${player.id}`)}
-                          style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>
+                        <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>
                           {player.full_name}
                         </div>
                         <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
@@ -251,14 +215,10 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
                         <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>at risk</div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                        <button
-                          onClick={() => { copyReengage(player) }}
-                          style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#F5A623', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
+                        <button onClick={() => copyReengage(player)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#F5A623', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
                           Copy message
                         </button>
-                        <button
-                          onClick={() => setExpandedPlayer(isExpanded ? null : player.id)}
-                          style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
+                        <button onClick={() => setExpandedPlayer(isExpanded ? null : player.id)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
                           {isExpanded ? '▲' : '▼'}
                         </button>
                       </div>
@@ -270,21 +230,9 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
                           {getReengageMessage(player)}
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            onClick={() => copyReengage(player)}
-                            style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#F5A623', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer' }}>
-                            Copy message
-                          </button>
-                          <button
-                            onClick={() => router.push(`/dashboard/players/${player.id}/log`)}
-                            style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer' }}>
-                            Log session
-                          </button>
-                          <button
-                            onClick={() => router.push(`/dashboard/players/${player.id}`)}
-                            style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
-                            View profile
-                          </button>
+                          <button onClick={() => copyReengage(player)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#F5A623', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer' }}>Copy message</button>
+                          <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer' }}>Log session</button>
+                          <button onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>View profile</button>
                         </div>
                       </div>
                     )}
@@ -319,9 +267,7 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
                         {getInitials(player.full_name)}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          onClick={() => router.push(`/dashboard/players/${player.id}`)}
-                          style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>
+                        <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>
                           {player.full_name}
                         </div>
                         <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
@@ -333,14 +279,8 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
                         <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>est. lost revenue</div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                        <button
-                          onClick={() => copyReengage(player)}
-                          style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#E03131', color: '#ffffff', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
-                          Copy message
-                        </button>
-                        <button
-                          onClick={() => setExpandedPlayer(isExpanded ? null : player.id)}
-                          style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
+                        <button onClick={() => copyReengage(player)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#E03131', color: '#ffffff', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>Copy message</button>
+                        <button onClick={() => setExpandedPlayer(isExpanded ? null : player.id)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
                           {isExpanded ? '▲' : '▼'}
                         </button>
                       </div>
@@ -364,15 +304,9 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
                           {getReengageMessage(player)}
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <button onClick={() => copyReengage(player)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#E03131', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}>
-                            Copy message
-                          </button>
-                          <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer' }}>
-                            Log session
-                          </button>
-                          <button onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
-                            View profile
-                          </button>
+                          <button onClick={() => copyReengage(player)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#E03131', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}>Copy message</button>
+                          <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer' }}>Log session</button>
+                          <button onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>View profile</button>
                         </div>
                       </div>
                     )}
@@ -403,9 +337,7 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
                       {getInitials(player.full_name)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        onClick={() => router.push(`/dashboard/players/${player.id}`)}
-                        style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>
+                      <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>
                         {player.full_name}
                       </div>
                       <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
@@ -413,9 +345,7 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
                       </div>
                     </div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>{formatCurrency(rate)}/session</div>
-                    <button
-                      onClick={() => router.push(`/dashboard/players/${player.id}/log`)}
-                      style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', flexShrink: 0 }}>
+                    <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', flexShrink: 0 }}>
                       + Log session
                     </button>
                   </div>
@@ -441,18 +371,14 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
                       {getInitials(player.full_name)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        onClick={() => router.push(`/dashboard/players/${player.id}`)}
-                        style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>
+                      <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>
                         {player.full_name}
                       </div>
                       <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
                         {group ? group.name : 'Individual'} · Added {new Date(player.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </div>
                     </div>
-                    <button
-                      onClick={() => router.push(`/dashboard/players/${player.id}/log`)}
-                      style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                    <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
                       Log first session
                     </button>
                   </div>
@@ -472,6 +398,7 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
             </button>
           </div>
         )}
+
       </div>
     </div>
   )
