@@ -371,6 +371,11 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     </div>
   </div>
 )}
+
+{/* PLAYER LIST HEADING */}
+<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', marginTop: '8px' }}>
+  <h2 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '20px', fontWeight: 700, color: '#ffffff', margin: 0 }}>Player List</h2>
+</div>
         {/* FILTER TABS */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
           <button onClick={() => setActiveFilter('all')} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: activeFilter === 'all' ? '#00FF9F' : 'transparent', color: activeFilter === 'all' ? '#0E0E0F' : '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>
