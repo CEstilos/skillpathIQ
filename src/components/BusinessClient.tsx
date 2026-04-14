@@ -183,9 +183,9 @@ export default function BusinessClient({ profile, players, sessions }: Props) {
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif' }}>
       <style>{`
-        * { box-sizing: border-box; }
-        html, body { overflow-x: hidden; max-width: 100vw; }
-        @media (max-width: 640px) {
+         * { box-sizing: border-box; }
+         html, body { overflow-x: hidden; max-width: 100vw; background: #0E0E0F; margin: 0; padding: 0; }
+         @media (max-width: 640px) {
           .biz-row { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           .biz-revenue-row { grid-template-columns: 1fr !important; }
           .biz-header { flex-direction: column !important; gap: 12px !important; }
