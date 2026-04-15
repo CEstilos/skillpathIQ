@@ -9,7 +9,7 @@ interface Profile { id: string; full_name: string; email: string; primary_sport?
 interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; trainer_id: string; created_at: string }
 interface Group { id: string; name: string; sport: string; session_day: string; session_time: string }
 interface Session { id: string; player_id: string; session_date: string; notes: string | null }
-interface ScheduledSession { id: string; title: string; session_date: string; session_time: string; type: string; group_id: string | null; groups?: { name: string; sport: string } }
+interface ScheduledSession { id: string; title: string; session_date: string; session_time: string; type: string; group_id: string | null; status?: string; rescheduled_date?: string | null; groups?: { name: string; sport: string } }
 interface DrillWeek { id: string; group_id: string | null; player_id: string | null; title: string; week_start: string }
 interface Drill { id: string; drill_week_id: string; title: string }
 interface Completion { id: string; player_id: string; drill_id: string }
@@ -40,6 +40,12 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     }
     return false
   })
+
+  const [sessionStatuses, setSessionStatuses] = useState<Record<string, string>>({})
+const [rescheduleOpen, setRescheduleOpen] = useState<string | null>(null)
+const [rescheduleDate, setRescheduleDate] = useState('')
+const [rescheduleTime, setRescheduleTime] = useState('')
+const [actionLoading, setActionLoading] = useState<string | null>(null)
   
   function dismissBanner() {
     localStorage.setItem('welcome_dismissed', 'true')
@@ -159,7 +165,92 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const activeCount = players.filter(p => getStatus(p.id) === 'active').length
   const atRiskCount = players.filter(p => getStatus(p.id) === 'at-risk').length
   const lapsedCount = players.filter(p => getStatus(p.id) === 'lapsed').length
-
+  
+  
+  async function cancelSession(sessionId: string) {
+    setActionLoading(sessionId + '_cancel')
+    const supabaseClient = createClient()
+    await supabaseClient.from('sessions')
+      .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+      .eq('id', sessionId)
+    setSessionStatuses(prev => ({ ...prev, [sessionId]: 'cancelled' }))
+    setActionLoading(null)
+  }
+  
+  async function rescheduleSession(sessionId: string) {
+    if (!rescheduleDate) return
+    setActionLoading(sessionId + '_reschedule')
+    const supabaseClient = createClient()
+    await supabaseClient.from('sessions')
+      .update({ status: 'rescheduled', rescheduled_date: rescheduleDate, session_time: rescheduleTime || undefined })
+      .eq('id', sessionId)
+    setSessionStatuses(prev => ({ ...prev, [sessionId]: 'rescheduled' }))
+    setRescheduleOpen(null)
+    setActionLoading(null)
+  }
+  
+  function getSessionStatus(session: ScheduledSession) {
+    return sessionStatuses[session.id] || session.status || 'scheduled'
+  }
+  
+  function SessionActionButtons({ session }: { session: ScheduledSession }) {
+    const status = getSessionStatus(session)
+    const isOpen = rescheduleOpen === session.id
+    const btnStyle = { fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', cursor: 'pointer', whiteSpace: 'nowrap' as const }
+  
+    if (status === 'cancelled') return (
+      <span style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: 'rgba(224,49,49,0.1)', color: '#E03131', border: '1px solid rgba(224,49,49,0.3)', fontWeight: 600 }}>
+        Cancelled
+      </span>
+    )
+  
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' as const, justifyContent: 'flex-end' }}>
+         
+          <button
+            onClick={() => { setRescheduleOpen(isOpen ? null : session.id); setRescheduleDate(session.rescheduled_date || session.session_date); setRescheduleTime(session.session_time || '') }}
+            style={{ ...btnStyle, color: '#F5A623' }}>
+            ↷ Reschedule
+          </button>
+          <button
+            onClick={() => cancelSession(session.id)}
+            disabled={actionLoading === session.id + '_cancel'}
+            style={{ ...btnStyle, color: '#E03131' }}>
+            {actionLoading === session.id + '_cancel' ? '...' : '✕ Cancel'}
+          </button>
+        </div>
+  
+        {isOpen && (
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' as const }}>
+            <input
+              type="date"
+              value={rescheduleDate}
+              onChange={e => setRescheduleDate(e.target.value)}
+              style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '6px', padding: '5px 8px', fontSize: '12px', color: '#ffffff', outline: 'none' }}
+            />
+            <input
+              type="time"
+              value={rescheduleTime}
+              onChange={e => setRescheduleTime(e.target.value)}
+              style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '6px', padding: '5px 8px', fontSize: '12px', color: '#ffffff', outline: 'none' }}
+            />
+            <button
+              onClick={() => rescheduleSession(session.id)}
+              disabled={!rescheduleDate}
+              style={{ fontSize: '11px', padding: '5px 10px', borderRadius: '6px', border: 'none', background: '#F5A623', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>
+              Save
+            </button>
+            <button
+              onClick={() => setRescheduleOpen(null)}
+              style={{ fontSize: '11px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
 
@@ -246,28 +337,31 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
 ) : <span>Individual session</span>}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-              <button
-                onClick={() => {
-                  if (sessionPlayers.length === 1) {
-                    router.push(`/dashboard/players/${sessionPlayers[0].id}/log`)
-                  } else if (sessionPlayers.length > 1) {
-                    router.push(`/dashboard/players/${sessionPlayers[0].id}/log`)
-                  } else {
-                    router.push(`/dashboard/sessions/${session.id}/log`)
-                  }
-                }}
-                style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer' }}>
-                Log session
-              </button>
-              {session.group_id && (
-                <button
-                  onClick={() => router.push(`/dashboard/drills/new?group=${session.group_id}`)}
-                  style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
-                  Assign drills
-                </button>
-              )}
-            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end', flexShrink: 0 }}>
+  <div style={{ display: 'flex', gap: '8px' }}>
+    <button
+      onClick={() => {
+        if (sessionPlayers.length === 1) {
+          router.push(`/dashboard/players/${sessionPlayers[0].id}/log`)
+        } else if (sessionPlayers.length > 1) {
+          router.push(`/dashboard/players/${sessionPlayers[0].id}/log`)
+        } else {
+          router.push(`/dashboard/sessions/${session.id}/log`)
+        }
+      }}
+      style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer' }}>
+      Log session
+    </button>
+    {session.group_id && (
+      <button
+        onClick={() => router.push(`/dashboard/drills/new?group=${session.group_id}`)}
+        style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
+        Assign drills
+      </button>
+    )}
+  </div>
+  <SessionActionButtons session={session} />
+</div>
           </div>
         )
       })}
@@ -320,7 +414,10 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
               )}
             </div>
           </div>
-          <div style={{ fontSize: '12px', color: '#9A9A9F', flexShrink: 0 }}>{formatUpcomingDate(session.session_date)}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end', flexShrink: 0 }}>
+  <div style={{ fontSize: '12px', color: '#9A9A9F' }}>{formatUpcomingDate(session.session_date)}</div>
+  <SessionActionButtons session={session} />
+</div>
         </div>
       ))}
     </div>
@@ -371,10 +468,42 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     </div>
   </div>
 )}
+{/* MY GROUPS */}
+{groups.length > 0 && (
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ fontSize: '20px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>My groups</div>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' as const }}>
+              {groups.map(group => (
+                <div key={group.id} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '12px', minWidth: '180px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(0,255,159,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                    {group.sport === 'basketball' ? '🏀' : group.sport === 'soccer' ? '⚽' : group.sport === 'football' ? '🏈' : group.sport === 'baseball' ? '⚾' : group.sport === 'tennis' ? '🎾' : group.sport === 'volleyball' ? '🏐' : group.sport === 'golf' ? '⛳' : '🏆'}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '2px' }}>{group.name}</div>
+                    <div style={{ fontSize: '12px', color: '#9A9A9F' }}>
+                      {players.filter(p => p.group_id === group.id).length} player{players.filter(p => p.group_id === group.id).length !== 1 ? 's' : ''} · {group.session_day || 'No day set'}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveFilter(group.id)}
+                    style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
+                    View
+                  </button>
+                </div>
+              ))}
+              <div
+                onClick={() => router.push('/dashboard/groups/new')}
+                style={{ background: 'transparent', border: '1px dashed #2A2A2D', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '140px', cursor: 'pointer', color: '#9A9A9F', fontSize: '13px', gap: '6px' }}>
+                + New group
+              </div>
+            </div>
+          </div>
+        )}
 
+     
 {/* PLAYER LIST HEADING */}
 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', marginTop: '8px' }}>
-  <h2 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '20px', fontWeight: 700, color: '#ffffff', margin: 0 }}>Player List</h2>
+  <h2 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '20px', fontWeight: 700, color: '#ffffff',textTransform: 'uppercase', margin: 0 }}>My Players</h2>
 </div>
         {/* FILTER TABS */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
