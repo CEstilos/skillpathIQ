@@ -114,11 +114,11 @@ Return ONLY valid JSON in this exact format, no markdown:
 {"welcomeMessage": "...", "quickStartTip": "..."}`
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 1000,
           messages: [{ role: 'user', content: prompt }],
         }),

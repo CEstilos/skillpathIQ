@@ -79,6 +79,7 @@ export default function QuickLogPage() {
   }
 
   async function handleAiAssist() {
+    console.log('AI assist clicked', selectedSkills)
     if (selectedSkills.length === 0 && !notes.trim()) return
     setAiLoading(true)
 
@@ -115,18 +116,21 @@ Return ONLY valid JSON, no markdown:
   ]
 }`
 
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      })
-      const data = await response.json()
-      const raw = data.content?.find((b: { type: string; text: string }) => b.type === 'text')?.text?.trim()
+try {
+  console.log('Fetching /api/ai...')
+  const response = await fetch('/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  })
+  console.log('Response status:', response.status)
+  const data = await response.json()
+  console.log('Response data:', data)
+  const raw = data.content?.find((b: { type: string; text: string }) => b.type === 'text')?.text?.trim()
       const clean = raw?.replace(/```json|```/g, '').trim()
       const parsed = JSON.parse(clean)
 
