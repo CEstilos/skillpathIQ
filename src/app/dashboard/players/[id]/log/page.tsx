@@ -3,10 +3,18 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
+import NavBar from '@/components/NavBar'
 
-interface Player { id: string; full_name: string; group_id: string | null }
+interface Player { id: string; full_name: string; group_id: string | null; birth_year: number | null; skill_level: string | null }
+interface Profile { full_name: string }
 
 const CATEGORIES = ['Ball handling', 'Shooting', 'Passing', 'Footwork', 'Defense', 'Conditioning']
+
+const SKILL_TAGS = [
+  'Ball handling', 'Crossover', 'Finishing', 'Left hand', 'Right hand',
+  'Pull-up jumper', 'Free throws', 'Three pointers', 'Mid-range',
+  'Passing', 'Defense', 'Footwork', 'Conditioning', 'IQ / reads',
+]
 
 export default function QuickLogPage() {
   const supabase = createClient()
@@ -15,19 +23,20 @@ export default function QuickLogPage() {
   const playerId = params.id as string
 
   const [player, setPlayer] = useState<Player | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [sessionDate, setSessionDate] = useState(() => new Date().toISOString().split('T')[0])
   const [sessionType, setSessionType] = useState('individual')
-  const [drillsCovered, setDrillsCovered] = useState('')
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const [notes, setNotes] = useState('')
-  const [feedback, setFeedback] = useState('')
+  const [parentSummary, setParentSummary] = useState('')
   const [assignDrills, setAssignDrills] = useState(false)
   const [drillWeekTitle, setDrillWeekTitle] = useState('')
-  const [newDrills, setNewDrills] = useState([
-    { title: '', reps: '', category: 'Ball handling' }
-  ])
+  const [newDrills, setNewDrills] = useState([{ title: '', reps: '', category: 'Ball handling' }])
   const [loading, setLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiGenerated, setAiGenerated] = useState(false)
+  const [copiedSummary, setCopiedSummary] = useState(false)
 
   useEffect(() => { loadData() }, [playerId])
 
@@ -37,11 +46,20 @@ export default function QuickLogPage() {
     const { data: playerData } = await supabase
       .from('players').select('*').eq('id', playerId).single()
     setPlayer(playerData)
+    const { data: profileData } = await supabase
+      .from('profiles').select('full_name').eq('id', user.id).single()
+    setProfile(profileData)
     setDataLoading(false)
   }
 
   function getInitials(name: string) {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'
+  }
+
+  function toggleSkill(skill: string) {
+    setSelectedSkills(prev =>
+      prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
+    )
   }
 
   function addDrill() {
@@ -60,6 +78,74 @@ export default function QuickLogPage() {
     setNewDrills(updated)
   }
 
+  async function handleAiAssist() {
+    if (selectedSkills.length === 0 && !notes.trim()) return
+    setAiLoading(true)
+
+    const trainerName = profile?.full_name?.split(' ')[0] || 'Coach'
+    const skillsList = selectedSkills.join(', ') || 'general skills'
+    const age = player?.birth_year ? new Date().getFullYear() - player.birth_year : null
+
+    const prompt = `You are helping a youth sports trainer quickly log a session and assign homework drills.
+
+Trainer: ${trainerName}
+Player: ${player?.full_name}
+Age: ${age ? `${age} years old` : 'Unknown'}
+Skill level: ${player?.skill_level || 'intermediate'}
+Session type: ${sessionType}
+Skills covered: ${skillsList}
+Trainer notes: ${notes || 'None provided'}
+
+Generate THREE things:
+
+1. A SHORT parent summary (2-3 sentences) — warm and personal, written from the trainer to the parent. Mention what was worked on, something positive, and what to focus on at home. Do NOT use generic phrases.
+
+2. A drill week title (4-6 words max) based on what was covered.
+
+3. Exactly 3 homework drills the player can do at home with no gym equipment. Each drill should directly reinforce what was covered. Make them age and skill appropriate for a ${age ? `${age} year old` : 'youth'} ${player?.skill_level || 'intermediate'} level player.
+
+Return ONLY valid JSON, no markdown:
+{
+  "parentSummary": "...",
+  "drillWeekTitle": "...",
+  "drills": [
+    { "title": "...", "description": "...", "reps": "...", "category": "..." },
+    { "title": "...", "description": "...", "reps": "...", "category": "..." },
+    { "title": "...", "description": "...", "reps": "...", "category": "..." }
+  ]
+}`
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      })
+      const data = await response.json()
+      const raw = data.content?.find((b: { type: string; text: string }) => b.type === 'text')?.text?.trim()
+      const clean = raw?.replace(/```json|```/g, '').trim()
+      const parsed = JSON.parse(clean)
+
+      setParentSummary(parsed.parentSummary)
+      setDrillWeekTitle(parsed.drillWeekTitle)
+      setNewDrills(parsed.drills.map((d: { title: string; reps: string; category: string }) => ({
+        title: d.title,
+        reps: d.reps,
+        category: d.category || 'Ball handling',
+      })))
+      setAssignDrills(true)
+      setAiGenerated(true)
+    } catch {
+      setAssignDrills(true)
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -73,16 +159,12 @@ export default function QuickLogPage() {
       session_date: sessionDate,
       session_type: sessionType,
       title: `Session — ${player?.full_name}`,
-      drills_covered: drillsCovered,
+      drills_covered: selectedSkills.join(', '),
       notes,
-      feedback,
+      feedback: parentSummary,
     })
 
-    if (error) {
-      console.error(error)
-      setLoading(false)
-      return
-    }
+    if (error) { console.error(error); setLoading(false); return }
 
     if (assignDrills && drillWeekTitle.trim()) {
       const today = new Date()
@@ -129,55 +211,38 @@ export default function QuickLogPage() {
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden' }}>
+    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
+      <style>{`* { box-sizing: border-box; margin: 0; padding: 0; } html, body { background: #0E0E0F; overflow-x: hidden; } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
 
-      <style>{`* { box-sizing: border-box; margin: 0; padding: 0; } @media (max-width: 640px) { .nav-links { display: none !important; } .nav-menu-btn { display: flex !important; } }`}</style>
-
-      {/* NAV */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100 }}>
-        <img src="/logo.png" alt="SkillPathIQ" onClick={() => router.push('/dashboard')} style={{ height: '65px', width: 'auto', cursor: 'pointer' }} />
-        <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={() => router.push(`/dashboard/players/${playerId}`)} style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>← Back to profile</button>
-        </div>
-        <button className="nav-menu-btn" onClick={() => setMenuOpen(!menuOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexDirection: 'column', gap: '5px', alignItems: 'center', justifyContent: 'center', display: 'none' }}>
-          <div style={{ width: '20px', height: '2px', background: '#ffffff', borderRadius: '2px' }} />
-          <div style={{ width: '20px', height: '2px', background: '#ffffff', borderRadius: '2px' }} />
-          <div style={{ width: '20px', height: '2px', background: '#ffffff', borderRadius: '2px' }} />
-        </button>
-      </nav>
-
-      {menuOpen && (
-        <div style={{ background: '#1A1A1C', borderBottom: '1px solid #2A2A2D', padding: '8px 0' }}>
-          <button onClick={() => router.push(`/dashboard/players/${playerId}`)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 20px', background: 'none', border: 'none', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>← Back to profile</button>
-        </div>
-      )}
+      <NavBar trainerName={profile?.full_name} />
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '24px 16px' }}>
 
-        {/* HEADER */}
         <div style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F' }} />
             <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Log session</span>
           </div>
           <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '4px' }}>{player?.full_name}</h1>
-          <p style={{ fontSize: '14px', color: '#9A9A9F' }}>Record what happened in today&apos;s session</p>
+          <p style={{ fontSize: '14px', color: '#9A9A9F' }}>Record what happened and let AI handle the rest</p>
         </div>
 
-        {/* PLAYER CARD */}
         <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
             {getInitials(player?.full_name || '')}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{player?.full_name}</div>
-            <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{player?.group_id ? 'Group player' : 'Individual'}</div>
+            <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+              {player?.group_id ? 'Group player' : 'Individual'}
+              {player?.birth_year && ` · Age ${new Date().getFullYear() - player.birth_year}`}
+              {player?.skill_level && ` · ${player.skill_level.charAt(0).toUpperCase() + player.skill_level.slice(1)}`}
+            </div>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-          {/* DATE + TYPE ROW */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
               <div style={{ padding: '12px 14px', borderBottom: '1px solid #2A2A2D' }}>
@@ -201,60 +266,120 @@ export default function QuickLogPage() {
             </div>
           </div>
 
-          {/* WHAT WAS WORKED ON */}
           <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #2A2A2D' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>What was worked on</span>
-              <p style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>Drills, skills, or concepts covered in this session</p>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Skills covered</span>
+              <p style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>Tap everything you worked on today</p>
             </div>
-            <div style={{ padding: '12px 16px' }}>
-              <textarea
-                style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '12px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', minHeight: '90px', resize: 'vertical', fontFamily: 'sans-serif' }}
-                placeholder="e.g. Two-ball dribbling, crossover into pull-up, finishing through contact..."
-                value={drillsCovered}
-                onChange={e => setDrillsCovered(e.target.value)}
-              />
+            <div style={{ padding: '12px 16px', display: 'flex', flexWrap: 'wrap' as const, gap: '8px' }}>
+              {SKILL_TAGS.map(skill => (
+                <button
+                  key={skill}
+                  type="button"
+                  onClick={() => toggleSkill(skill)}
+                  style={{
+                    padding: '6px 12px', borderRadius: '99px', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+                    border: `1px solid ${selectedSkills.includes(skill) ? 'rgba(0,255,159,0.4)' : '#2A2A2D'}`,
+                    background: selectedSkills.includes(skill) ? 'rgba(0,255,159,0.1)' : 'transparent',
+                    color: selectedSkills.includes(skill) ? '#00FF9F' : '#9A9A9F',
+                    transition: 'all 0.1s',
+                  }}>
+                  {skill}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* SESSION NOTES */}
           <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #2A2A2D' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Session notes</span>
-              <p style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>What went well, what needs work, standout moments</p>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Quick notes</span>
+              <p style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>Optional — anything specific AI should know</p>
             </div>
             <div style={{ padding: '12px 16px' }}>
               <textarea
-                style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '12px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', minHeight: '90px', resize: 'vertical', fontFamily: 'sans-serif' }}
-                placeholder="Marcus showed great improvement on his left hand. Needs to work on shot off the dribble..."
+                style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '12px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', minHeight: '80px', resize: 'vertical', fontFamily: 'sans-serif' }}
+                placeholder="e.g. Marcus struggled with left hand at first but finished strong..."
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
               />
             </div>
           </div>
 
-          {/* FEEDBACK FOR PLAYER */}
-          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 16px', borderBottom: '1px solid #2A2A2D' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Feedback for player</span>
-              <p style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>Direct message to the player — shows on their drill checklist page</p>
-            </div>
-            <div style={{ padding: '12px 16px' }}>
-              <textarea
-                style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '12px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', minHeight: '80px', resize: 'vertical', fontFamily: 'sans-serif' }}
-                placeholder="Great work today! Focus on keeping your eyes up when dribbling this week..."
-                value={feedback}
-                onChange={e => setFeedback(e.target.value)}
-              />
-            </div>
-          </div>
+          {(selectedSkills.length > 0 || notes.trim()) && !aiGenerated && (
+            <button
+              type="button"
+              onClick={handleAiAssist}
+              disabled={aiLoading}
+              style={{
+                background: aiLoading ? '#1A1A1C' : 'rgba(0,255,159,0.1)',
+                border: '1px solid rgba(0,255,159,0.3)',
+                borderRadius: '12px',
+                padding: '16px',
+                cursor: aiLoading ? 'default' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                width: '100%',
+              }}>
+              {aiLoading ? (
+                <>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {[0, 1, 2].map(i => (
+                      <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#00FF9F', animation: `pulse 0.8s ease-in-out ${i * 0.15}s infinite` }} />
+                    ))}
+                  </div>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: '#00FF9F' }}>AI is writing your recap...</span>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: '16px' }}>✦</span>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: '#00FF9F' }}>Generate parent summary + homework drills with AI</span>
+                </>
+              )}
+            </button>
+          )}
 
-          {/* ASSIGN DRILL WORK */}
+          {aiGenerated && (
+            <>
+              <div style={{ background: 'rgba(0,255,159,0.05)', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', overflow: 'hidden' }}>
+                <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(0,255,159,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>✦ Parent summary</span>
+                    <p style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>AI-generated — edit before sending</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { navigator.clipboard.writeText(parentSummary); setCopiedSummary(true); setTimeout(() => setCopiedSummary(false), 2000) }}
+                    style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: 'none', background: copiedSummary ? '#00FF9F' : '#2A2A2D', color: copiedSummary ? '#0E0E0F' : '#ffffff', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                    {copiedSummary ? '✓ Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <div style={{ padding: '12px 16px' }}>
+                  <textarea
+                    style={{ background: 'transparent', border: 'none', padding: '0', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', minHeight: '80px', resize: 'vertical', fontFamily: 'sans-serif', lineHeight: 1.6 }}
+                    value={parentSummary}
+                    onChange={e => setParentSummary(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => { setAiGenerated(false); setParentSummary(''); setDrillWeekTitle(''); setNewDrills([{ title: '', reps: '', category: 'Ball handling' }]); setAssignDrills(false) }}
+                style={{ fontSize: '12px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const, padding: '0' }}>
+                ↺ Regenerate with AI
+              </button>
+            </>
+          )}
+
           <div style={{ background: '#1A1A1C', border: `1px solid ${assignDrills ? 'rgba(0,255,159,0.3)' : '#2A2A2D'}`, borderRadius: '12px', overflow: 'hidden', transition: 'border-color 0.15s' }}>
             <div onClick={() => setAssignDrills(!assignDrills)} style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
               <div>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: assignDrills ? '#00FF9F' : '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Assign drill work</span>
-                <p style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>Send homework drills for the player to complete before next session</p>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: assignDrills ? '#00FF9F' : '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Assign drill work {aiGenerated && <span style={{ fontSize: '10px', background: 'rgba(0,255,159,0.15)', color: '#00FF9F', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>AI filled</span>}
+                </span>
+                <p style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>Homework drills for the player to complete before next session</p>
               </div>
               <div style={{ width: '44px', height: '24px', borderRadius: '99px', background: assignDrills ? '#00FF9F' : '#2A2A2D', position: 'relative', flexShrink: 0, transition: 'background 0.15s' }}>
                 <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: assignDrills ? '#0E0E0F' : '#9A9A9F', position: 'absolute', top: '3px', left: assignDrills ? '23px' : '3px', transition: 'left 0.15s' }} />
@@ -268,12 +393,11 @@ export default function QuickLogPage() {
                   <input
                     style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
                     type="text"
-                    placeholder="e.g. Ball handling focus, Left hand development"
+                    placeholder="e.g. Ball handling focus"
                     value={drillWeekTitle}
                     onChange={e => setDrillWeekTitle(e.target.value)}
                   />
                 </div>
-
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {newDrills.map((drill, index) => (
                     <div key={index} style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px' }}>

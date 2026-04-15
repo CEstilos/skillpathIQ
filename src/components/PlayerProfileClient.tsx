@@ -2,9 +2,10 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { createClient } from '@/lib/supabase'
+import NavBar from '@/components/NavBar'
 
-
-interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; created_at: string; custom_rate: number | null }
+interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; created_at: string; custom_rate: number | null; birth_year: number | null; skill_level: string | null }
 interface Session { id: string; player_id: string; session_date: string; session_type: string; notes: string | null }
 interface DrillWeek { id: string; title: string; week_start: string; player_id: string | null; group_id: string | null }
 interface Drill { id: string; title: string; reps: string; description: string; drill_week_id: string; sort_order: number }
@@ -20,9 +21,17 @@ interface Props {
   group: Group | null
 }
 
+const SKILL_LEVELS = ['beginner', 'intermediate', 'advanced', 'elite']
+
 export default function PlayerProfileClient({ player, sessions, drillWeeks, drills, completions, group }: Props) {
   const router = useRouter()
+  const supabase = createClient()
   const [linkShared, setLinkShared] = useState(false)
+  const [editingInfo, setEditingInfo] = useState(false)
+  const [birthYear, setBirthYear] = useState(player.birth_year?.toString() || '')
+  const [skillLevel, setSkillLevel] = useState(player.skill_level || 'intermediate')
+  const [savingInfo, setSavingInfo] = useState(false)
+  const [savedInfo, setSavedInfo] = useState(false)
 
   function handleShareLink() {
     const url = `${window.location.origin}/player?id=${player.id}`
@@ -42,6 +51,24 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
       setTimeout(() => setLinkShared(false), 2000)
     }
   }
+
+  async function handleSaveInfo() {
+    setSavingInfo(true)
+    await supabase.from('players').update({
+      birth_year: birthYear ? parseInt(birthYear) : null,
+      skill_level: skillLevel,
+    }).eq('id', player.id)
+    setSavingInfo(false)
+    setSavedInfo(true)
+    setEditingInfo(false)
+    setTimeout(() => setSavedInfo(false), 2000)
+  }
+
+  function getAge() {
+    if (!player.birth_year) return null
+    return new Date().getFullYear() - player.birth_year
+  }
+
   function getInitials(name: string) {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'
   }
@@ -98,64 +125,139 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
   const status = getStatus()
   const statusStyle = getStatusStyle(status)
   const lastSession = sessions[0] || null
-  const currentWeek = drillWeeks[0] || null
   const memberSince = formatDate(player.created_at)
+  const age = getAge()
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif' }}>
-
+    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
       <style>{`
-        * { box-sizing: border-box; }
-        html, body { overflow-x: hidden; max-width: 100vw; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { overflow-x: hidden; max-width: 100vw; background: #0E0E0F; }
         @media (max-width: 640px) {
           .profile-grid { grid-template-columns: 1fr !important; }
           .stat-row { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
 
-      {/* NAV */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid #2A2A2D', background: '#0E0E0F', position: 'sticky', top: 0, zIndex: 100, width: '100%' }}>
-      <img
-  src="/logo.png"
-  alt="SkillPathIQ"
-  onClick={() => router.push('/dashboard')}
-  style={{ height: '65px', width: 'auto', cursor: 'pointer', flexShrink: 0 }}
-/>
-        <button onClick={() => router.push('/dashboard')} style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer' }}>← Training Hub</button>
-      </nav>
+      <NavBar />
 
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px 16px' }}>
 
+        {/* SUCCESS */}
+        {savedInfo && (
+          <div style={{ background: 'rgba(0,255,159,0.1)', border: '1px solid rgba(0,255,159,0.3)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '14px', color: '#00FF9F', fontWeight: 500 }}>
+            ✓ Player info saved
+          </div>
+        )}
+
         {/* PLAYER HEADER */}
         <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '24px', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 700, color: '#00FF9F', flexShrink: 0 }}>
                 {getInitials(player.full_name)}
               </div>
               <div>
                 <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', margin: 0 }}>{player.full_name}</h1>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' as const }}>
                   {group && <span style={{ fontSize: '12px', background: '#2A2A2D', color: '#9A9A9F', padding: '2px 8px', borderRadius: '6px' }}>{group.name}</span>}
                   {!group && <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Individual</span>}
+                  {age && <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Age {age}</span>}
+                  {player.skill_level && <span style={{ fontSize: '12px', background: '#2A2A2D', color: '#9A9A9F', padding: '2px 8px', borderRadius: '6px', textTransform: 'capitalize' as const }}>{player.skill_level}</span>}
                   {player.parent_email && <span style={{ fontSize: '12px', color: '#9A9A9F' }}>{player.parent_email}</span>}
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-  <span style={{ fontSize: '12px', fontWeight: 600, padding: '5px 12px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color }}>{statusStyle.label}</span>
-  <button
-    onClick={() => router.push(`/dashboard/players/${player.id}/log`)}
-    style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-    + Log session
-  </button>
-  <button
-    onClick={handleShareLink}
-    style={{ background: 'transparent', color: linkShared ? '#00FF9F' : '#9A9A9F', border: `1px solid ${linkShared ? '#00FF9F' : '#2A2A2D'}`, borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
-    {linkShared ? '✓ Link copied!' : 'Share drill link'}
-  </button>
-</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' as const }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, padding: '5px 12px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color }}>{statusStyle.label}</span>
+              <button
+                onClick={() => router.push(`/dashboard/players/${player.id}/log`)}
+                style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                + Log session
+              </button>
+              <button
+                onClick={handleShareLink}
+                style={{ background: 'transparent', color: linkShared ? '#00FF9F' : '#9A9A9F', border: `1px solid ${linkShared ? '#00FF9F' : '#2A2A2D'}`, borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
+                {linkShared ? '✓ Link copied!' : 'Share drill link'}
+              </button>
+            </div>
           </div>
+        </div>
+
+        {/* PLAYER INFO — birth year + skill level */}
+        <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '18px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: editingInfo ? '16px' : '0' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Player info</div>
+            <button
+              onClick={() => setEditingInfo(!editingInfo)}
+              style={{ fontSize: '12px', color: '#00FF9F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>
+              {editingInfo ? 'Cancel' : 'Edit'}
+            </button>
+          </div>
+
+          {!editingInfo && (
+            <div style={{ display: 'flex', gap: '24px', marginTop: '12px', flexWrap: 'wrap' as const }}>
+              <div>
+                <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Age</div>
+                <div style={{ fontSize: '14px', color: '#ffffff', fontWeight: 500 }}>{age ? `${age} years old` : 'Not set'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Skill level</div>
+                <div style={{ fontSize: '14px', color: '#ffffff', fontWeight: 500, textTransform: 'capitalize' as const }}>{player.skill_level || 'Not set'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Member since</div>
+                <div style={{ fontSize: '14px', color: '#ffffff', fontWeight: 500 }}>{memberSince}</div>
+              </div>
+            </div>
+          )}
+
+          {editingInfo && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' as const }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '140px' }}>
+                  <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Birth year</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 2012"
+                    value={birthYear}
+                    onChange={e => setBirthYear(e.target.value)}
+                    min="1990"
+                    max={new Date().getFullYear()}
+                    style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
+                  />
+                  {birthYear && parseInt(birthYear) > 1990 && (
+                    <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Age: {new Date().getFullYear() - parseInt(birthYear)}</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '140px' }}>
+                  <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Skill level</label>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
+                    {SKILL_LEVELS.map(level => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => setSkillLevel(level)}
+                        style={{
+                          padding: '7px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize' as const,
+                          border: `1px solid ${skillLevel === level ? 'rgba(0,255,159,0.4)' : '#2A2A2D'}`,
+                          background: skillLevel === level ? 'rgba(0,255,159,0.1)' : 'transparent',
+                          color: skillLevel === level ? '#00FF9F' : '#9A9A9F',
+                        }}>
+                        {level}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleSaveInfo}
+                disabled={savingInfo}
+                style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start' as const }}>
+                {savingInfo ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* STAT ROW */}
@@ -173,9 +275,9 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
             {lastSession && <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>{formatDate(lastSession.session_date)}</div>}
           </div>
           <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '18px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Member since</div>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff', lineHeight: 1.2 }}>{memberSince}</div>
-            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>{drillWeeks.length} drill week{drillWeeks.length !== 1 ? 's' : ''} assigned</div>
+            <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Drill weeks</div>
+            <div style={{ fontFamily: 'monospace', fontSize: '32px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{drillWeeks.length}</div>
+            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>Assigned</div>
           </div>
         </div>
 
@@ -184,7 +286,6 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
           {/* DRILL WORK */}
           <div>
             <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Drill work</div>
-
             {drillWeeks.length === 0 ? (
               <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
                 <p style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '12px' }}>No drill work assigned yet</p>
@@ -205,13 +306,13 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
                         <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{week.title}</div>
                         <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>Week of {formatDate(week.week_start)}</div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
+                      <div style={{ textAlign: 'right' as const }}>
                         <div style={{ fontSize: '18px', fontFamily: 'monospace', fontWeight: 700, color: pct === 100 ? '#00FF9F' : '#ffffff' }}>{pct}%</div>
                         <div style={{ fontSize: '11px', color: '#9A9A9F' }}>{weekCompletions.length}/{weekDrills.length} done</div>
                       </div>
                     </div>
                     <div style={{ height: '4px', background: '#2A2A2D', borderRadius: '99px', overflow: 'hidden', marginBottom: '12px' }}>
-                      <div style={{ height: '100%', width: pct + '%', background: pct === 100 ? '#00FF9F' : '#00FF9F', borderRadius: '99px', opacity: pct === 100 ? 1 : 0.5 }} />
+                      <div style={{ height: '100%', width: pct + '%', background: '#00FF9F', borderRadius: '99px', opacity: pct === 100 ? 1 : 0.5 }} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {weekDrills.map(drill => {
@@ -226,7 +327,7 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
                               )}
                             </div>
                             <span style={{ fontSize: '12px', color: done ? '#9A9A9F' : '#ffffff', textDecoration: done ? 'line-through' : 'none' }}>{drill.title}</span>
-                            {drill.reps && <span style={{ fontSize: '11px', color: '#9A9A9F', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{drill.reps}</span>}
+                            {drill.reps && <span style={{ fontSize: '11px', color: '#9A9A9F', marginLeft: 'auto', whiteSpace: 'nowrap' as const }}>{drill.reps}</span>}
                           </div>
                         )
                       })}
@@ -240,7 +341,6 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
           {/* SESSION HISTORY */}
           <div>
             <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Session history</div>
-
             {sessions.length === 0 ? (
               <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
                 <p style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '12px' }}>No sessions logged yet</p>
@@ -257,7 +357,7 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: session.notes ? '4px' : '0' }}>
                         <div style={{ fontSize: '13px', fontWeight: 500, color: '#ffffff' }}>{formatDate(session.session_date)}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '99px', background: session.session_type === 'group' ? 'rgba(245,166,35,0.15)' : 'rgba(0,255,159,0.12)', color: session.session_type === 'group' ? '#F5A623' : '#00FF9F', fontWeight: 600, textTransform: 'capitalize' }}>
+                          <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '99px', background: session.session_type === 'group' ? 'rgba(245,166,35,0.15)' : 'rgba(0,255,159,0.12)', color: session.session_type === 'group' ? '#F5A623' : '#00FF9F', fontWeight: 600, textTransform: 'capitalize' as const }}>
                             {session.session_type}
                           </span>
                           <span style={{ fontSize: '11px', color: '#9A9A9F' }}>{formatDaysAgo(getDaysSince(session.session_date))}</span>
@@ -270,7 +370,7 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
                   )
                 })}
                 {sessions.length > 10 && (
-                  <div style={{ padding: '10px 16px', textAlign: 'center', borderTop: '1px solid #2A2A2D' }}>
+                  <div style={{ padding: '10px 16px', textAlign: 'center' as const, borderTop: '1px solid #2A2A2D' }}>
                     <span style={{ fontSize: '12px', color: '#9A9A9F' }}>{sessions.length - 10} more sessions</span>
                   </div>
                 )}
