@@ -196,7 +196,7 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
   function SessionActionButtons({ session }: { session: ScheduledSession }) {
     const status = getSessionStatus(session)
     const isOpen = rescheduleOpen === session.id
-    const btnStyle = { fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', cursor: 'pointer', whiteSpace: 'nowrap' as const }
+    const btnStyle = { fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', cursor: 'pointer', whiteSpace: 'nowrap' as const, color: '#9A9A9F', display: 'block', width: '100%', textAlign: 'right' as const }
   
     if (status === 'cancelled') return (
       <span style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: 'rgba(224,49,49,0.1)', color: '#E03131', border: '1px solid rgba(224,49,49,0.3)', fontWeight: 600 }}>
@@ -205,24 +205,21 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
     )
   
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-        <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' as const, justifyContent: 'flex-end' }}>
-         
-          <button
-            onClick={() => { setRescheduleOpen(isOpen ? null : session.id); setRescheduleDate(session.rescheduled_date || session.session_date); setRescheduleTime(session.session_time || '') }}
-            style={{ ...btnStyle, color: '#F5A623' }}>
-            ↷ Reschedule
-          </button>
-          <button
-            onClick={() => cancelSession(session.id)}
-            disabled={actionLoading === session.id + '_cancel'}
-            style={{ ...btnStyle, color: '#E03131' }}>
-            {actionLoading === session.id + '_cancel' ? '...' : '✕ Cancel'}
-          </button>
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+        <button
+          onClick={() => { setRescheduleOpen(isOpen ? null : session.id); setRescheduleDate(session.rescheduled_date || session.session_date); setRescheduleTime(session.session_time || '') }}
+          style={btnStyle}>
+          ↷ Reschedule
+        </button>
+        <button
+          onClick={() => cancelSession(session.id)}
+          disabled={actionLoading === session.id + '_cancel'}
+          style={btnStyle}>
+          {actionLoading === session.id + '_cancel' ? '...' : '✕ Cancel'}
+        </button>
   
         {isOpen && (
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' as const }}>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' as const, marginTop: '4px', justifyContent: 'flex-end' }}>
             <input
               type="date"
               value={rescheduleDate}
@@ -299,6 +296,20 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
     </button>
   </div>
 </div>
+
+       {/* SESSION SUMMARY ROW */}
+       <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' as const }}>
+  {todaySessions.length > 0 && (
+    <span><span style={{ color: '#00FF9F', fontWeight: 600 }}>{todaySessions.length}</span> session{todaySessions.length !== 1 ? 's' : ''} today</span>
+  )}
+  {upcomingSessions.length > 0 && (
+    <span><span style={{ color: '#ffffff', fontWeight: 600 }}>{upcomingSessions.length}</span> upcoming</span>
+  )}
+  {todaySessions.length === 0 && upcomingSessions.length === 0 && (
+    <span>No sessions scheduled</span>
+  )}
+</div>
+
 {/* TODAY'S SESSIONS */}
 {todaySessions.length > 0 && (
   <div style={{ marginBottom: '20px' }}>
@@ -425,25 +436,7 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
 )}
 
 
-        {/* STAT ROW */}
-<div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px', marginBottom: '20px' }}>
-  {[
-    { label: 'Sessions today', value: todaySessions.length, color: todaySessions.length > 0 ? '#00FF9F' : '#ffffff' },
-    { label: 'Sessions this week', value: upcomingSessions.filter(s => {
-        const d = new Date(s.session_date + 'T00:00:00')
-        const now = new Date()
-        const endOfWeek = new Date(now)
-        endOfWeek.setDate(now.getDate() + (6 - now.getDay()))
-        return d <= endOfWeek
-      }).length + todaySessions.length, color: '#ffffff' },
-    { label: 'Total scheduled', value: todaySessions.length + upcomingSessions.length, color: '#ffffff' },
-  ].map(s => (
-    <div key={s.label} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px' }}>
-      <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>{s.label}</div>
-      <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '28px', fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</div>
-    </div>
-  ))}
-</div>
+
 {/* WELCOME BANNER */}
 {!bannerDismissed && players.length === 0 && (
   <div style={{ background: 'rgba(0,255,159,0.06)', border: '1px solid rgba(0,255,159,0.2)', borderRadius: '16px', padding: '24px', marginBottom: '20px', position: 'relative' }}>
