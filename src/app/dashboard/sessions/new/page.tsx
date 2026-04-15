@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 interface Group { id: string; name: string; sport: string }
 interface Player { id: string; full_name: string; group_id: string }
@@ -10,6 +10,8 @@ interface Player { id: string; full_name: string; group_id: string }
 function NewSessionForm() {
   const supabase = createClient()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const preselectedPlayer = searchParams.get('player')
 
   const [groups, setGroups] = useState<Group[]>([])
   const [players, setPlayers] = useState<Player[]>([])
@@ -35,6 +37,10 @@ function NewSessionForm() {
     const { data: playersData } = await supabase.from('players').select('*').eq('trainer_id', user.id)
     setPlayers(playersData || [])
     if (groupsData?.[0]) setSelectedGroup(groupsData[0].id)
+    if (preselectedPlayer) {
+      setSessionFor('individual')
+      setSelectedPlayers([preselectedPlayer])
+    }
   }
 
   function togglePlayer(playerId: string) {

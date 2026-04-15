@@ -330,7 +330,7 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', marginBottom: '4px' }}>{session.title}</div>
               <div style={{ fontSize: '13px', color: '#9A9A9F' }}>
-                {session.groups?.name && <span>{session.groups.name} · </span>}
+              {session.groups?.name && <span onClick={() => { const g = groups.find(gr => gr.id === session.group_id); if (g) router.push(`/dashboard/groups/${g.id}`) }} style={{ cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{session.groups.name} · </span>}
                 {session.session_time && <span>{formatTime(session.session_time)} · </span>}
                 {sessionPlayers.length > 0 ? (
   <span>
@@ -399,7 +399,7 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
             <div style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff' }}>{session.title}</div>
             <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
             {session.groups?.name ? (
-  <span>{session.groups.name} · </span>
+  <span onClick={() => router.push(`/dashboard/groups/${session.group_id}`)} style={{ cursor: 'pointer', color: '#00FF9F', textDecoration: 'underline', textDecorationColor: 'rgba(0,255,159,0.4)' }}>{session.groups.name} · </span>
 ) : (
   <span>
     {allSessionPlayers
@@ -477,18 +477,11 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
                       {players.filter(p => p.group_id === group.id).length} player{players.filter(p => p.group_id === group.id).length !== 1 ? 's' : ''} · {group.session_day || 'No day set'}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-  <button
-    onClick={() => setActiveFilter(group.id)}
-    style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
-    View
-  </button>
-  <button
-    onClick={() => router.push(`/dashboard/groups/${group.id}`)}
-    style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#00FF9F', cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
-    Edit
-  </button>
-</div>
+                  <button
+  onClick={() => router.push(`/dashboard/groups/${group.id}`)}
+  style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#00FF9F', cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
+  View / Edit
+</button>
                 </div>
               ))}
               <div
