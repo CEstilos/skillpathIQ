@@ -484,11 +484,18 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
                       {players.filter(p => p.group_id === group.id).length} player{players.filter(p => p.group_id === group.id).length !== 1 ? 's' : ''} · {group.session_day || 'No day set'}
                     </div>
                   </div>
-                  <button
-                    onClick={() => setActiveFilter(group.id)}
-                    style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
-                    View
-                  </button>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+  <button
+    onClick={() => setActiveFilter(group.id)}
+    style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
+    View
+  </button>
+  <button
+    onClick={() => router.push(`/dashboard/groups/${group.id}`)}
+    style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#00FF9F', cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
+    Edit
+  </button>
+</div>
                 </div>
               ))}
               <div

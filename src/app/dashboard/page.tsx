@@ -37,24 +37,23 @@ export default async function DashboardPage() {
   const today = new Date().toISOString().split('T')[0]
 
   const { data: sessionPlayers } = await supabase
-  .from('session_players')
-  .select('session_id, player_id')
-  .eq('trainer_id', user.id)
+    .from('session_players')
+    .select('session_id, player_id')
 
   const { data: todaySessions } = await supabase
     .from('sessions').select('*, groups(name, sport)')
     .eq('trainer_id', user.id)
     .eq('session_date', today)
-    .not('session_time', 'is', null)
+    .neq('status', 'cancelled')
     .order('session_time', { ascending: true })
 
   const { data: upcomingSessions } = await supabase
     .from('sessions').select('*, groups(name, sport)')
     .eq('trainer_id', user.id)
     .gt('session_date', today)
-    .not('session_time', 'is', null)
+    .neq('status', 'cancelled')
     .order('session_date', { ascending: true })
-    .limit(5)
+    .limit(10)
 
   return (
     <DashboardClient
