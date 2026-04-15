@@ -61,7 +61,7 @@ export default function SessionDetailPage() {
       const { data: sessionPlayersData } = await supabase
         .from('session_players').select('player_id, players(id, full_name, group_id)')
         .eq('session_id', sessionId)
-      const playersData = sessionPlayersData?.map((sp: any) => {
+      const playersData = sessionPlayersData?.map((sp: { player_id: string; players: { id: string; full_name: string; group_id: string } | { id: string; full_name: string; group_id: string }[] }) => {
         const p = sp.players
         return Array.isArray(p) ? p[0] : p
       }).filter(Boolean) || []

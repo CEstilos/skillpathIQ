@@ -140,7 +140,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
       })
 
       const data = await response.json()
-      const message = data.content?.find((b: any) => b.type === 'text')?.text?.trim()
+      const message = data.content?.find((b: { type: string; text: string }) => b.type === 'text')?.text?.trim()
 
       if (message) {
         setAiMessages(prev => ({ ...prev, [player.id]: message }))

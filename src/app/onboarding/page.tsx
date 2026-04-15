@@ -125,7 +125,7 @@ Return ONLY valid JSON in this exact format, no markdown:
       })
 
       const data = await response.json()
-      const raw = data.content?.find((b: any) => b.type === 'text')?.text?.trim()
+      const raw = data.content?.find((b: { type: string; text: string }) => b.type === 'text')?.text?.trim()
       const clean = raw?.replace(/```json|```/g, '').trim()
       const parsed = JSON.parse(clean)
 
