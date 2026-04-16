@@ -12,6 +12,7 @@ const CATEGORIES = ['Ball handling', 'Shooting', 'Passing', 'Footwork', 'Defense
 
 type Step = 'log' | 'player-notes' | 'emails'
 
+
 interface PlayerNote { playerId: string; note: string }
 interface PlayerEmail { playerId: string; playerName: string; parentEmail: string | null; email: string; copied: boolean }
 
@@ -36,6 +37,8 @@ export default function LogSessionPage() {
   const [playerNotes, setPlayerNotes] = useState<PlayerNote[]>([])
   const [playerEmails, setPlayerEmails] = useState<PlayerEmail[]>([])
   const [generatingEmails, setGeneratingEmails] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null)
+const [sentEmails, setSentEmails] = useState<string[]>([])
 
   useEffect(() => { loadData() }, [sessionId])
 
@@ -256,8 +259,34 @@ Return ONLY the email text, nothing else.`
       ))
     }, 2000)
   }
+  async function handleSendEmail(pe: PlayerEmail) {
+    setSendingEmail(pe.playerId)
+    const playerUrl = `${window.location.origin}/player?id=${pe.playerId}`
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: pe.parentEmail,
+          subject: `Session update for ${pe.playerName.split(' ')[0]}`,
+          body: pe.email,
+          playerName: pe.playerName.split(' ')[0],
+          playerUrl,
+        }),
+      })
+      const data = await response.json()
+      if (!data.error) {
+        setSentEmails(prev => [...prev, pe.playerId])
+      }
+    } catch {
+      console.error('Failed to send email')
+    } finally {
+      setSendingEmail(null)
+    }
+  }
 
   if (dataLoading) return (
+
     <div style={{ minHeight: '100vh', background: '#0E0E0F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ color: '#9A9A9F', fontSize: '14px' }}>Loading...</p>
     </div>
@@ -509,11 +538,19 @@ Return ONLY the email text, nothing else.`
                       <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{pe.playerName}</div>
                       <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>To: {pe.parentEmail}</div>
                     </div>
-                    <button
-                      onClick={() => copyEmail(pe.playerId, pe.email)}
-                      style={{ fontSize: '12px', padding: '6px 14px', borderRadius: '8px', border: 'none', background: pe.copied ? '#00FF9F' : '#2A2A2D', color: pe.copied ? '#0E0E0F' : '#ffffff', fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s' }}>
-                      {pe.copied ? '✓ Copied!' : 'Copy'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                      <button
+                        onClick={() => copyEmail(pe.playerId, pe.email)}
+                        style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: pe.copied ? '#00FF9F' : '#9A9A9F', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
+                        {pe.copied ? '✓ Copied' : 'Copy'}
+                      </button>
+                      <button
+                        onClick={() => handleSendEmail(pe)}
+                        disabled={sendingEmail === pe.playerId || sentEmails.includes(pe.playerId)}
+                        style={{ fontSize: '12px', padding: '6px 14px', borderRadius: '8px', border: 'none', background: sentEmails.includes(pe.playerId) ? '#2A2A2D' : '#00FF9F', color: sentEmails.includes(pe.playerId) ? '#9A9A9F' : '#0E0E0F', fontWeight: 700, cursor: sentEmails.includes(pe.playerId) ? 'default' : 'pointer', transition: 'all 0.15s' }}>
+                        {sendingEmail === pe.playerId ? 'Sending...' : sentEmails.includes(pe.playerId) ? '✓ Sent' : 'Send email'}
+                      </button>
+                    </div>
                   </div>
                   <div style={{ padding: '16px', fontSize: '13px', color: '#ffffff', lineHeight: 1.7, whiteSpace: 'pre-wrap' as const }}>
                     {pe.email}
