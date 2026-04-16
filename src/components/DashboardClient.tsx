@@ -352,9 +352,9 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
   <div style={{ display: 'flex', gap: '8px' }}>
     <button
       onClick={() => {
-        if (sessionPlayers.length === 1) {
-          router.push(`/dashboard/players/${sessionPlayers[0].id}/log`)
-        } else if (sessionPlayers.length > 1) {
+        if (session.group_id) {
+          router.push(`/dashboard/sessions/${session.id}/log`)
+        } else if (sessionPlayers.length === 1) {
           router.push(`/dashboard/players/${sessionPlayers[0].id}/log`)
         } else {
           router.push(`/dashboard/sessions/${session.id}/log`)
