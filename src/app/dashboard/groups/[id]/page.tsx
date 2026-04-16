@@ -44,7 +44,12 @@ export default function GroupEditPage() {
   const [addingPlayer, setAddingPlayer] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-
+  const [showEmailComposer, setShowEmailComposer] = useState(false)
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBody, setEmailBody] = useState('')
+  const [emailRecipients, setEmailRecipients] = useState<string[]>([])
+  const [sendingGroupEmail, setSendingGroupEmail] = useState(false)
+  const [emailResults, setEmailResults] = useState<{ playerId: string; playerName: string; success: boolean }[]>([])
   const [name, setName] = useState('')
   const [sport, setSport] = useState('')
   const [sessionDay, setSessionDay] = useState('')
@@ -74,6 +79,7 @@ export default function GroupEditPage() {
       .from('players').select('*').eq('group_id', groupId)
       .order('full_name', { ascending: true })
     setGroupPlayers(playersInGroup || [])
+    setEmailRecipients(playersInGroup?.filter(p => p.parent_email).map(p => p.id) || [])
 
     const { data: allPlayersData } = await supabase
       .from('players').select('*').eq('trainer_id', user.id)
@@ -111,10 +117,6 @@ export default function GroupEditPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    function getInitials(name: string) {
-      return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    }
-
     const { data, error } = await supabase
       .from('players')
       .insert({
@@ -122,7 +124,7 @@ export default function GroupEditPage() {
         group_id: groupId,
         full_name: newPlayerName.trim(),
         parent_email: newPlayerEmail.trim() || null,
-        avatar_initials: getInitials(newPlayerName.trim()),
+        avatar_initials: newPlayerName.trim().split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
       })
       .select()
       .single()
@@ -148,6 +150,41 @@ export default function GroupEditPage() {
     setRemovingId(null)
   }
 
+  async function handleSendGroupEmail() {
+    setSendingGroupEmail(true)
+    setEmailResults([])
+    const results: { playerId: string; playerName: string; success: boolean }[] = []
+    const recipientPlayers = groupPlayers.filter(p => emailRecipients.includes(p.id) && p.parent_email)
+
+    for (const player of recipientPlayers) {
+      try {
+        const playerUrl = `${window.location.origin}/player?id=${player.id}`
+        const response = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: player.parent_email,
+            subject: emailSubject || `Update from your trainer`,
+            body: emailBody,
+            playerName: player.full_name.split(' ')[0],
+            playerUrl,
+          }),
+        })
+        const data = await response.json()
+        results.push({ playerId: player.id, playerName: player.full_name, success: !data.error })
+      } catch {
+        results.push({ playerId: player.id, playerName: player.full_name, success: false })
+      }
+    }
+
+    setEmailResults(results)
+    setSendingGroupEmail(false)
+    if (results.every(r => r.success)) {
+      setEmailBody('')
+      setEmailSubject('')
+    }
+  }
+
   function getInitials(name: string) {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'
   }
@@ -170,30 +207,32 @@ export default function GroupEditPage() {
       <NavBar trainerName={profile?.full_name} />
 
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px', width: '100%' }}>
-        <div style={{ maxWidth: '640px' }}>
 
-          {/* HEADER */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
-            <div>
-              <h1 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '26px', fontWeight: 700, color: '#ffffff', marginBottom: '4px' }}>{name || group?.name}</h1>
-              <p style={{ fontSize: '13px', color: '#9A9A9F' }}>{groupPlayers.length} player{groupPlayers.length !== 1 ? 's' : ''} · {sport}</p>
-            </div>
-            <button
-              onClick={() => router.push('/dashboard')}
-              style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '7px 14px', cursor: 'pointer' }}>
-              ← Back
-            </button>
+        {/* HEADER */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
+          <div>
+            <h1 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '26px', fontWeight: 700, color: '#ffffff', marginBottom: '4px' }}>{name || group?.name}</h1>
+            <p style={{ fontSize: '13px', color: '#9A9A9F' }}>{groupPlayers.length} player{groupPlayers.length !== 1 ? 's' : ''} · {sport}</p>
           </div>
+          <button
+            onClick={() => router.push('/dashboard')}
+            style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '7px 14px', cursor: 'pointer' }}>
+            ← Back
+          </button>
+        </div>
 
-          {/* SUCCESS */}
-          {saved && (
-            <div style={{ background: 'rgba(0,255,159,0.1)', border: '1px solid rgba(0,255,159,0.3)', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px', fontSize: '14px', color: '#00FF9F', fontWeight: 500 }}>
-              ✓ Group saved
-            </div>
-          )}
+        {/* SUCCESS */}
+        {saved && (
+          <div style={{ background: 'rgba(0,255,159,0.1)', border: '1px solid rgba(0,255,159,0.3)', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px', fontSize: '14px', color: '#00FF9F', fontWeight: 500 }}>
+            ✓ Group saved
+          </div>
+        )}
 
-          {/* GROUP DETAILS */}
-          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
+        {/* TWO COLUMN LAYOUT */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px', alignItems: 'start' }}>
+
+          {/* LEFT — GROUP DETAILS */}
+          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px' }}>
             <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Group details</div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -216,27 +255,26 @@ export default function GroupEditPage() {
                 </select>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-                  <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Session day</label>
-                  <select
-                    value={sessionDay}
-                    onChange={e => setSessionDay(e.target.value)}
-                    style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}>
-                    <option value="">No day set</option>
-                    {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-                  <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Session time</label>
-                  <input
-                    type="text"
-                    value={sessionTime}
-                    onChange={e => setSessionTime(e.target.value)}
-                    placeholder="e.g. 4:00pm"
-                    style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
-                  />
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Session day</label>
+                <select
+                  value={sessionDay}
+                  onChange={e => setSessionDay(e.target.value)}
+                  style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}>
+                  <option value="">No day set</option>
+                  {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Session time</label>
+                <input
+                  type="text"
+                  value={sessionTime}
+                  onChange={e => setSessionTime(e.target.value)}
+                  placeholder="e.g. 4:00pm"
+                  style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
+                />
               </div>
             </div>
 
@@ -245,20 +283,20 @@ export default function GroupEditPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              style={{ marginTop: '16px', background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+              style={{ marginTop: '16px', background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', width: '100%' }}>
               {saving ? 'Saving...' : 'Save changes'}
             </button>
           </div>
 
-          {/* PLAYERS IN GROUP */}
-          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {/* RIGHT — PLAYERS */}
+          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #2A2A2D' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
                 Players ({groupPlayers.length})
               </div>
               <button
                 onClick={() => setShowAddPlayer(!showAddPlayer)}
-                style={{ fontSize: '12px', color: '#00FF9F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                style={{ width: '100%', background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '9px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
                 + Add player
               </button>
             </div>
@@ -268,7 +306,6 @@ export default function GroupEditPage() {
               <div style={{ padding: '16px 20px', background: '#0E0E0F', borderBottom: '1px solid #2A2A2D' }}>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '12px' }}>Add to this group</div>
 
-                {/* NEW PLAYER FORM */}
                 <div style={{ background: '#1A1A1C', borderRadius: '10px', padding: '14px', marginBottom: '14px', border: '1px solid #2A2A2D' }}>
                   <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Create new player</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -295,7 +332,6 @@ export default function GroupEditPage() {
                   </div>
                 </div>
 
-                {/* EXISTING PLAYERS */}
                 {availablePlayers.length > 0 && (
                   <div>
                     <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Add existing player</div>
@@ -306,7 +342,7 @@ export default function GroupEditPage() {
                       onChange={e => setSearch(e.target.value)}
                       style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '8px 12px', fontSize: '13px', color: '#ffffff', outline: 'none', width: '100%', marginBottom: '8px' }}
                     />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' as const }}>
                       {availablePlayers.map(player => (
                         <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', background: '#1A1A1C', borderRadius: '8px', border: '1px solid #2A2A2D' }}>
                           <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
@@ -331,7 +367,7 @@ export default function GroupEditPage() {
 
             {/* PLAYER LIST */}
             {groupPlayers.length === 0 ? (
-              <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+              <div style={{ padding: '32px 20px', textAlign: 'center' as const }}>
                 <p style={{ fontSize: '14px', color: '#9A9A9F' }}>No players in this group yet</p>
               </div>
             ) : (
@@ -360,6 +396,108 @@ export default function GroupEditPage() {
           </div>
 
         </div>
+
+        {/* EMAIL COMPOSER */}
+        <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Email parents</div>
+              <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+                {groupPlayers.filter(p => p.parent_email).length} parent email{groupPlayers.filter(p => p.parent_email).length !== 1 ? 's' : ''} on file
+              </div>
+            </div>
+            <button
+              onClick={() => setShowEmailComposer(!showEmailComposer)}
+              style={{ fontSize: '12px', color: '#00FF9F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+              {showEmailComposer ? 'Cancel' : '+ Compose'}
+            </button>
+          </div>
+
+          {showEmailComposer && (
+            <div style={{ padding: '20px' }}>
+              {groupPlayers.filter(p => p.parent_email).length === 0 ? (
+                <p style={{ fontSize: '13px', color: '#9A9A9F' }}>No parent emails on file for this group. Add parent emails to players first.</p>
+              ) : (
+                <>
+                  <div style={{ marginBottom: '14px' }}>
+                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recipients</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }}>
+                      {groupPlayers.filter(p => p.parent_email).map(player => (
+                        <div key={player.id}
+                          style={{ display: 'flex', alignItems: 'center', gap: '6px', background: emailRecipients.includes(player.id) ? 'rgba(0,255,159,0.1)' : '#0E0E0F', border: `1px solid ${emailRecipients.includes(player.id) ? 'rgba(0,255,159,0.3)' : '#2A2A2D'}`, borderRadius: '99px', padding: '4px 10px', cursor: 'pointer', transition: 'all 0.15s' }}
+                          onClick={() => setEmailRecipients(prev => prev.includes(player.id) ? prev.filter(id => id !== player.id) : [...prev, player.id])}>
+                          <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: emailRecipients.includes(player.id) ? '#00FF9F' : '#2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {emailRecipients.includes(player.id) && (
+                              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                                <polyline points="1,4 3,6 7,2" stroke="#0E0E0F" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </div>
+                          <span style={{ fontSize: '12px', color: emailRecipients.includes(player.id) ? '#00FF9F' : '#9A9A9F', fontWeight: 500 }}>{player.full_name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Subject</label>
+                    <input
+                      type="text"
+                      value={emailSubject}
+                      onChange={e => setEmailSubject(e.target.value)}
+                      placeholder={`Update from ${name || group?.name || 'your trainer'}`}
+                      style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Message</label>
+                    <textarea
+                      value={emailBody}
+                      onChange={e => setEmailBody(e.target.value)}
+                      placeholder="Write your update, upcoming schedule, reminders, or any other notes for parents..."
+                      rows={6}
+                      style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', resize: 'vertical' as const, fontFamily: 'sans-serif', lineHeight: 1.6 }}
+                    />
+                  </div>
+
+                  {emailResults.length > 0 && (
+                    <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {emailResults.map(r => (
+                        <div key={r.playerId} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                          <span style={{ color: r.success ? '#00FF9F' : '#E03131' }}>{r.success ? '✓' : '✕'}</span>
+                          <span style={{ color: '#9A9A9F' }}>{r.playerName}</span>
+                          <span style={{ color: r.success ? '#00FF9F' : '#E03131', fontSize: '12px' }}>{r.success ? 'Sent' : 'Failed'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={handleSendGroupEmail}
+                      disabled={sendingGroupEmail || emailRecipients.length === 0 || !emailBody.trim()}
+                      style={{
+                        flex: 1,
+                        background: emailRecipients.length > 0 && emailBody.trim() ? '#00FF9F' : '#2A2A2D',
+                        color: emailRecipients.length > 0 && emailBody.trim() ? '#0E0E0F' : '#9A9A9F',
+                        border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 700,
+                        cursor: emailRecipients.length > 0 && emailBody.trim() ? 'pointer' : 'default',
+                      }}>
+                      {sendingGroupEmail ? 'Sending...' : `Send to ${emailRecipients.length} parent${emailRecipients.length !== 1 ? 's' : ''}`}
+                    </button>
+                    <button
+                      onClick={() => { setEmailBody(''); setEmailSubject(''); setEmailResults([]); setShowEmailComposer(false) }}
+                      style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>
+                      Clear
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   )
