@@ -22,6 +22,7 @@ export default function QuickLogPage() {
   const router = useRouter()
   const params = useParams()
   const searchParams = useSearchParams()
+  const scheduledSessionId = searchParams.get('sessionId') || null
   const playerId = params.id as string
   const alsoPlayerIds = searchParams.get('also')?.split(',').filter(Boolean) || []
 
@@ -232,7 +233,14 @@ Return ONLY valid JSON, no markdown:
         }
       }
     }
+// Mark original scheduled session as logged
+if (scheduledSessionId) {
+  await supabase.from('sessions')
+    .update({ status: 'logged' })
+    .eq('id', scheduledSessionId)
+}
 
+router.push(`/dashboard/players/${playerId}`)
     router.push(`/dashboard/players/${playerId}`)
   }
 

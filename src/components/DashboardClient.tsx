@@ -15,6 +15,8 @@ interface Drill { id: string; drill_week_id: string; title: string }
 interface Completion { id: string; player_id: string; drill_id: string }
 interface SessionPlayer { session_id: string; player_id: string }
 
+interface SessionLog { session_id: string }
+
 interface Props {
   profile: Profile | null
   players: Player[]
@@ -26,9 +28,11 @@ interface Props {
   todaySessions: ScheduledSession[]
   upcomingSessions: ScheduledSession[]
   allSessionPlayers: SessionPlayer[]
+  sessionLogs: SessionLog[]
+  unloggedSessions: ScheduledSession[]
 }
 
-export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions, allSessionPlayers }: Props) {
+export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions, allSessionPlayers, sessionLogs, unloggedSessions }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<string>('all')
@@ -46,7 +50,7 @@ const [rescheduleOpen, setRescheduleOpen] = useState<string | null>(null)
 const [rescheduleDate, setRescheduleDate] = useState('')
 const [rescheduleTime, setRescheduleTime] = useState('')
 const [actionLoading, setActionLoading] = useState<string | null>(null)
-  
+const [showUnlogged, setShowUnlogged] = useState(false)
   function dismissBanner() {
     localStorage.setItem('welcome_dismissed', 'true')
     setBannerDismissed(true)
@@ -248,6 +252,21 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
       </div>
     )
   }
+  function getSessionDisplayState(session: ScheduledSession) {
+    const now = new Date()
+    const isLogged = session.status === 'logged' || sessionLogs.some(l => l.session_id === session.id)
+
+    if (isLogged) return { isPast: true, isLogged: true }
+    if (!session.session_time) return { isPast: false, isLogged: false }
+
+    const [h, m] = session.session_time.split(':').map(Number)
+    const sessionStart = new Date()
+    sessionStart.setHours(h, m, 0, 0)
+    const twoHoursAfter = new Date(sessionStart.getTime() + 2 * 60 * 60 * 1000)
+    const isPast = now > twoHoursAfter
+
+    return { isPast, isLogged: false }
+  }
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
 
@@ -297,16 +316,76 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
   </div>
 </div>
 
-       {/* SESSION SUMMARY ROW */}
-       <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' as const }}>
-  {todaySessions.length > 0 && (
-    <span><span style={{ color: '#00FF9F', fontWeight: 600 }}>{todaySessions.length}</span> session{todaySessions.length !== 1 ? 's' : ''} today</span>
-  )}
-  {upcomingSessions.length > 0 && (
-    <span><span style={{ color: '#ffffff', fontWeight: 600 }}>{upcomingSessions.length}</span> upcoming</span>
-  )}
-  {todaySessions.length === 0 && upcomingSessions.length === 0 && (
-    <span>No sessions scheduled</span>
+      {/* SESSION SUMMARY ROW */}
+<div style={{ marginBottom: showUnlogged ? '0' : '20px' }}>
+  <div style={{ fontSize: '13px', color: '#9A9A9F', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' as const, marginBottom: showUnlogged ? '12px' : '0' }}>
+    {todaySessions.length > 0 && (
+      <span><span style={{ color: '#00FF9F', fontWeight: 600 }}>{todaySessions.length}</span> session{todaySessions.length !== 1 ? 's' : ''} today</span>
+    )}
+    {upcomingSessions.length > 0 && (
+      <span><span style={{ color: '#ffffff', fontWeight: 600 }}>{upcomingSessions.length}</span> upcoming</span>
+    )}
+    {todaySessions.length === 0 && upcomingSessions.length === 0 && (
+      <span>No sessions scheduled</span>
+    )}
+    {unloggedSessions.length > 0 && (
+      <button
+        onClick={() => setShowUnlogged(!showUnlogged)}
+        style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: '0' }}>
+        <span style={{ color: '#E03131', fontWeight: 700, fontSize: '13px' }}>!</span>
+        <span style={{ color: '#E03131', fontWeight: 600 }}>{unloggedSessions.length}</span>
+        <span style={{ color: '#E03131' }}>unlogged</span>
+      </button>
+    )}
+  </div>
+
+  {/* UNLOGGED PANEL */}
+  {showUnlogged && unloggedSessions.length > 0 && (
+    <div style={{ background: '#1A1A1C', border: '1px solid rgba(224,49,49,0.3)', borderRadius: '12px', overflow: 'hidden', marginBottom: '20px' }}>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(224,49,49,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: '12px', fontWeight: 600, color: '#E03131', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Unlogged sessions ({unloggedSessions.length})
+        </span>
+        <button onClick={() => setShowUnlogged(false)} style={{ background: 'none', border: 'none', color: '#9A9A9F', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}>×</button>
+      </div>
+      {unloggedSessions.map((session, i) => {
+        const sessionPlayers = session.group_id
+          ? players.filter(p => p.group_id === session.group_id)
+          : allSessionPlayers
+              .filter(sp => sp.session_id === session.id)
+              .map(sp => players.find(p => p.id === sp.player_id))
+              .filter(Boolean) as Player[]
+        return (
+          <div key={session.id} style={{ padding: '12px 16px', borderBottom: i < unloggedSessions.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff' }}>{session.title}</div>
+              <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+                {new Date(session.session_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {session.groups?.name && <span style={{ color: '#00FF9F' }}> · {session.groups.name}</span>}
+                {!session.groups?.name && sessionPlayers.length > 0 && (
+                  <span> · {sessionPlayers.map(p => p.full_name.split(' ')[0]).join(', ')}</span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                if (session.group_id) {
+                  router.push(`/dashboard/sessions/${session.id}/log`)
+                } else if (sessionPlayers.length === 1) {
+                  router.push(`/dashboard/players/${sessionPlayers[0].id}/log?sessionId=${session.id}`)
+                } else if (sessionPlayers.length > 1) {
+                  router.push(`/dashboard/players/${sessionPlayers[0].id}/log?also=${sessionPlayers.slice(1).map(p => p.id).join(',')}&sessionId=${session.id}`)
+                } else {
+                  router.push(`/dashboard/sessions/${session.id}/log`)
+                }
+              }}
+              style={{ fontSize: '12px', padding: '6px 14px', borderRadius: '8px', border: 'none', background: '#E03131', color: '#ffffff', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+              Log now
+            </button>
+          </div>
+        )
+      })}
+    </div>
   )}
 </div>
 
@@ -325,10 +404,18 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
          .filter(sp => sp.session_id === session.id)
          .map(sp => players.find(p => p.id === sp.player_id))
          .filter(Boolean) as Player[]
-        return (
-          <div key={session.id} style={{ background: 'rgba(0,255,159,0.05)', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' as const }}>
+         const { isPast, isLogged } = getSessionDisplayState(session)
+         return (
+           <div key={session.id} style={{ background: isPast ? 'rgba(154,154,159,0.05)' : 'rgba(0,255,159,0.05)', border: `1px solid ${isPast ? 'rgba(154,154,159,0.2)' : 'rgba(0,255,159,0.25)'}`, borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' as const }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', marginBottom: '4px' }}>{session.title}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <div style={{ fontSize: '15px', fontWeight: 600, color: isPast ? '#9A9A9F' : '#ffffff' }}>{session.title}</div>
+                {isPast && (
+                  <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 7px', borderRadius: '99px', background: isLogged ? 'rgba(154,154,159,0.15)' : 'rgba(224,49,49,0.15)', color: isLogged ? '#9A9A9F' : '#E03131' }}>
+                    {isLogged ? 'Completed' : 'Not logged'}
+                  </span>
+                )}
+              </div>
               <div style={{ fontSize: '13px', color: '#9A9A9F' }}>
               {session.groups?.name
                 ? <span onClick={() => router.push(`/dashboard/groups/${session.group_id}`)} style={{ color: '#00FF9F', cursor: 'pointer', fontWeight: 600 }}>{session.groups.name}</span>
@@ -345,21 +432,22 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end', flexShrink: 0 }}>
   <div style={{ display: 'flex', gap: '8px' }}>
-    <button
-     onClick={() => {
-      if (session.group_id) {
-        router.push(`/dashboard/sessions/${session.id}/log`)
-      } else if (sessionPlayers.length === 1) {
-        router.push(`/dashboard/players/${sessionPlayers[0].id}/log`)
-      } else if (sessionPlayers.length > 1) {
-        router.push(`/dashboard/players/${sessionPlayers[0].id}/log?also=${sessionPlayers.slice(1).map(p => p.id).join(',')}`)
-      } else {
-        router.push(`/dashboard/sessions/${session.id}/log`)
-      }
-    }}
-      style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer' }}>
-      Log session
-    </button>
+  <button
+                onClick={() => {
+                  if (isLogged) return
+                  if (session.group_id) {
+                    router.push(`/dashboard/sessions/${session.id}/log`)
+                  } else if (sessionPlayers.length === 1) {
+                    router.push(`/dashboard/players/${sessionPlayers[0].id}/log?sessionId=${session.id}`)
+                  } else if (sessionPlayers.length > 1) {
+                    router.push(`/dashboard/players/${sessionPlayers[0].id}/log?also=${sessionPlayers.slice(1).map(p => p.id).join(',')}&sessionId=${session.id}`)
+                  } else {
+                    router.push(`/dashboard/sessions/${session.id}/log`)
+                  }
+                }}
+                style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '8px', border: 'none', background: isLogged ? '#2A2A2D' : isPast ? '#E03131' : '#00FF9F', color: isLogged ? '#9A9A9F' : '#0E0E0F', fontWeight: 600, cursor: isLogged ? 'default' : 'pointer' }}>
+                {isLogged ? 'Logged' : isPast ? 'Log now' : 'Log session'}
+              </button>
     {session.group_id && (
       <button
         onClick={() => router.push(`/dashboard/drills/new?group=${session.group_id}`)}
@@ -371,10 +459,11 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
   <SessionActionButtons session={session} />
 </div>
           </div>
-        )
-      })}
-    </div>
+         
+          )
+        })}
   </div>
+</div>
 )}
 
 {/* UPCOMING SESSIONS */}

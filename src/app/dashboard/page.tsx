@@ -37,8 +37,10 @@ export default async function DashboardPage() {
   const today = new Date().toISOString().split('T')[0]
 
   const { data: sessionPlayers } = await supabase
-    .from('session_players')
-    .select('session_id, player_id')
+  .from('session_players')
+  .select('session_id, player_id')
+
+
 
     const { data: todaySessions } = await supabase
     .from('sessions').select('*, groups(name, sport)')
@@ -48,6 +50,21 @@ export default async function DashboardPage() {
     .is('player_id', null)
     .order('session_time', { ascending: true })
 
+    const { data: sessionLogs } = await supabase
+  .from('session_logs')
+  .select('session_id')
+  .in('session_id', [
+    ...(todaySessions?.map(s => s.id) || []),
+  ])
+  const { data: unloggedSessions } = await supabase
+  .from('sessions')
+  .select('*, groups(name, sport)')
+  .eq('trainer_id', user.id)
+  .is('player_id', null)
+  .lte('session_date', today)
+  .neq('status', 'logged')
+  .neq('status', 'cancelled')
+  .order('session_date', { ascending: false })
   // Fetch upcoming one-off sessions
   const { data: upcomingOneOff } = await supabase
     .from('sessions').select('*, groups(name, sport)')
@@ -98,18 +115,20 @@ export default async function DashboardPage() {
     .sort((a, b) => a.session_date.localeCompare(b.session_date))
     .slice(0, 10)
 
-  return (
-    <DashboardClient
-      profile={profile}
-      players={players || []}
-      groups={groups || []}
-      sessions={sessions || []}
-      drillWeeks={drillWeeks || []}
-      drills={drills || []}
-      completions={completions || []}
-      todaySessions={todaySessions || []}
-      upcomingSessions={allUpcoming}
-      allSessionPlayers={sessionPlayers || []}
-    />
-  )
+    return (
+      <DashboardClient
+        profile={profile}
+        players={players || []}
+        groups={groups || []}
+        sessions={sessions || []}
+        drillWeeks={drillWeeks || []}
+        drills={drills || []}
+        completions={completions || []}
+        todaySessions={todaySessions || []}
+        upcomingSessions={allUpcoming}
+        allSessionPlayers={sessionPlayers || []}
+        sessionLogs={sessionLogs || []}
+        unloggedSessions={unloggedSessions || []}
+      />
+    )
 }

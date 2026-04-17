@@ -175,7 +175,10 @@ const [sentEmails, setSentEmails] = useState<string[]>([])
         }
       }
     }
-
+// Mark session as logged
+await supabase.from('sessions')
+.update({ status: 'logged' })
+.eq('id', sessionId)
     setLoading(false)
 
     // If group session with players who have parent emails, go to player notes step
