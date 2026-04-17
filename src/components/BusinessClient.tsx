@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 
 interface Profile { id: string; full_name: string; individual_rate: number | null; group_rate: number | null }
-interface Player { id: string; full_name: string; created_at: string; custom_rate: number | null }
+interface Player { id: string; full_name: string; created_at: string; custom_rate: number | null; group_id: string | null }
 interface Session { id: string; player_id: string; session_date: string; session_type: string; rate_override: number | null; group_id: string | null }
 interface Attendance { session_id: string; player_id: string; attended: boolean }
 
