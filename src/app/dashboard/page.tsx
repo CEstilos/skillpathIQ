@@ -40,11 +40,12 @@ export default async function DashboardPage() {
     .from('session_players')
     .select('session_id, player_id')
 
-  const { data: todaySessions } = await supabase
+    const { data: todaySessions } = await supabase
     .from('sessions').select('*, groups(name, sport)')
     .eq('trainer_id', user.id)
     .eq('session_date', today)
     .neq('status', 'cancelled')
+    .is('player_id', null)
     .order('session_time', { ascending: true })
 
   // Fetch upcoming one-off sessions
@@ -54,6 +55,7 @@ export default async function DashboardPage() {
     .eq('type', 'one-off')
     .gt('session_date', today)
     .neq('status', 'cancelled')
+    .is('player_id', null)
     .order('session_date', { ascending: true })
     .limit(10)
 
@@ -63,6 +65,7 @@ export default async function DashboardPage() {
     .eq('trainer_id', user.id)
     .eq('type', 'recurring')
     .neq('status', 'cancelled')
+    .is('player_id', null)
 
   // Calculate next occurrence for each recurring session
   function getNextOccurrence(sessionDate: string, recurrenceRule: string): string {

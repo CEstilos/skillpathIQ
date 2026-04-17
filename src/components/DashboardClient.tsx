@@ -332,22 +332,31 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
               <div style={{ fontSize: '13px', color: '#9A9A9F' }}>
               {session.groups?.name
                 ? <span onClick={() => router.push(`/dashboard/groups/${session.group_id}`)} style={{ color: '#00FF9F', cursor: 'pointer', fontWeight: 600 }}>{session.groups.name}</span>
-                : <span>Individual session</span>}
+                : sessionPlayers.length > 0
+                  ? <span>{sessionPlayers.map((p, i) => (
+                      <span key={p.id}>
+                        <span onClick={() => router.push(`/dashboard/players/${p.id}`)} style={{ color: '#00FF9F', cursor: 'pointer', fontWeight: 600 }}>{p.full_name}</span>
+                        {i < sessionPlayers.length - 1 ? ', ' : ''}
+                      </span>
+                    ))}</span>
+                  : <span>Individual session</span>}
               {session.session_time && <span style={{ color: '#9A9A9F' }}> · {formatTime(session.session_time)}</span>}
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end', flexShrink: 0 }}>
   <div style={{ display: 'flex', gap: '8px' }}>
     <button
-      onClick={() => {
-        if (session.group_id) {
-          router.push(`/dashboard/sessions/${session.id}/log`)
-        } else if (sessionPlayers.length === 1) {
-          router.push(`/dashboard/players/${sessionPlayers[0].id}/log`)
-        } else {
-          router.push(`/dashboard/sessions/${session.id}/log`)
-        }
-      }}
+     onClick={() => {
+      if (session.group_id) {
+        router.push(`/dashboard/sessions/${session.id}/log`)
+      } else if (sessionPlayers.length === 1) {
+        router.push(`/dashboard/players/${sessionPlayers[0].id}/log`)
+      } else if (sessionPlayers.length > 1) {
+        router.push(`/dashboard/players/${sessionPlayers[0].id}/log?also=${sessionPlayers.slice(1).map(p => p.id).join(',')}`)
+      } else {
+        router.push(`/dashboard/sessions/${session.id}/log`)
+      }
+    }}
       style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 600, cursor: 'pointer' }}>
       Log session
     </button>
