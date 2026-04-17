@@ -233,8 +233,7 @@ export default function GroupEditPage() {
 
           {/* LEFT — GROUP DETAILS */}
           <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Group details</div>
-
+          <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', marginBottom: '16px' }}>GROUP DETAILS</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Group name</label>
@@ -289,17 +288,97 @@ export default function GroupEditPage() {
           </div>
 
           {/* RIGHT — PLAYERS */}
-          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #2A2A2D' }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
-                Players ({groupPlayers.length})
-              </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>PLAYER LIST</div>
               <button
-                onClick={() => setShowAddPlayer(!showAddPlayer)}
-                style={{ width: '100%', background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '9px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-                + Add player
+                onClick={() => setShowEmailComposer(!showEmailComposer)}
+                style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                ✉ Create group email
               </button>
             </div>
+
+            {/* INLINE EMAIL COMPOSER */}
+            {showEmailComposer && (
+              <div style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.3)', borderRadius: '12px', padding: '16px', marginBottom: '12px' }}>
+                {groupPlayers.filter(p => p.parent_email).length === 0 ? (
+                  <p style={{ fontSize: '13px', color: '#9A9A9F' }}>No parent emails on file. Add parent emails to players first.</p>
+                ) : (
+                  <>
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '11px', color: '#9A9A9F', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recipients</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }}>
+                        {groupPlayers.filter(p => p.parent_email).map(player => (
+                          <div key={player.id}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: emailRecipients.includes(player.id) ? 'rgba(0,255,159,0.1)' : '#0E0E0F', border: `1px solid ${emailRecipients.includes(player.id) ? 'rgba(0,255,159,0.3)' : '#2A2A2D'}`, borderRadius: '99px', padding: '4px 10px', cursor: 'pointer' }}
+                            onClick={() => setEmailRecipients(prev => prev.includes(player.id) ? prev.filter(id => id !== player.id) : [...prev, player.id])}>
+                            <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: emailRecipients.includes(player.id) ? '#00FF9F' : '#2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              {emailRecipients.includes(player.id) && (
+                                <svg width="7" height="7" viewBox="0 0 8 8" fill="none">
+                                  <polyline points="1,4 3,6 7,2" stroke="#0E0E0F" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                            <span style={{ fontSize: '12px', color: emailRecipients.includes(player.id) ? '#00FF9F' : '#9A9A9F', fontWeight: 500 }}>{player.full_name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '10px' }}>
+                      <input
+                        type="text"
+                        value={emailSubject}
+                        onChange={e => setEmailSubject(e.target.value)}
+                        placeholder={`Subject: Update from ${name || group?.name || 'your trainer'}`}
+                        style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: '#ffffff', outline: 'none', width: '100%' }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <textarea
+                        value={emailBody}
+                        onChange={e => setEmailBody(e.target.value)}
+                        placeholder="Write your update, upcoming schedule, reminders..."
+                        rows={4}
+                        style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: '#ffffff', outline: 'none', width: '100%', resize: 'vertical' as const, fontFamily: 'sans-serif' }}
+                      />
+                    </div>
+                    {emailResults.length > 0 && (
+                      <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {emailResults.map(r => (
+                          <div key={r.playerId} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                            <span style={{ color: r.success ? '#00FF9F' : '#E03131' }}>{r.success ? '✓' : '✕'}</span>
+                            <span style={{ color: '#9A9A9F' }}>{r.playerName}</span>
+                            <span style={{ color: r.success ? '#00FF9F' : '#E03131' }}>{r.success ? 'Sent' : 'Failed'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={handleSendGroupEmail}
+                        disabled={sendingGroupEmail || emailRecipients.length === 0 || !emailBody.trim()}
+                        style={{ flex: 1, background: emailRecipients.length > 0 && emailBody.trim() ? '#00FF9F' : '#2A2A2D', color: emailRecipients.length > 0 && emailBody.trim() ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '13px', fontWeight: 700, cursor: emailRecipients.length > 0 && emailBody.trim() ? 'pointer' : 'default' }}>
+                        {sendingGroupEmail ? 'Sending...' : `Send to ${emailRecipients.length} parent${emailRecipients.length !== 1 ? 's' : ''}`}
+                      </button>
+                      <button
+                        onClick={() => { setEmailBody(''); setEmailSubject(''); setEmailResults([]); setShowEmailComposer(false) }}
+                        style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', fontSize: '13px', cursor: 'pointer' }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid #2A2A2D' }}>
+                <button
+                  onClick={() => setShowAddPlayer(!showAddPlayer)}
+                  style={{ width: '100%', background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '9px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                  + Add player
+                </button>
+              </div>
 
             {/* ADD PLAYER PANEL */}
             {showAddPlayer && (
@@ -397,105 +476,7 @@ export default function GroupEditPage() {
 
         </div>
 
-        {/* EMAIL COMPOSER */}
-        <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Email parents</div>
-              <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
-                {groupPlayers.filter(p => p.parent_email).length} parent email{groupPlayers.filter(p => p.parent_email).length !== 1 ? 's' : ''} on file
-              </div>
-            </div>
-            <button
-              onClick={() => setShowEmailComposer(!showEmailComposer)}
-              style={{ fontSize: '12px', color: '#00FF9F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-              {showEmailComposer ? 'Cancel' : '+ Compose'}
-            </button>
-          </div>
-
-          {showEmailComposer && (
-            <div style={{ padding: '20px' }}>
-              {groupPlayers.filter(p => p.parent_email).length === 0 ? (
-                <p style={{ fontSize: '13px', color: '#9A9A9F' }}>No parent emails on file for this group. Add parent emails to players first.</p>
-              ) : (
-                <>
-                  <div style={{ marginBottom: '14px' }}>
-                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recipients</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }}>
-                      {groupPlayers.filter(p => p.parent_email).map(player => (
-                        <div key={player.id}
-                          style={{ display: 'flex', alignItems: 'center', gap: '6px', background: emailRecipients.includes(player.id) ? 'rgba(0,255,159,0.1)' : '#0E0E0F', border: `1px solid ${emailRecipients.includes(player.id) ? 'rgba(0,255,159,0.3)' : '#2A2A2D'}`, borderRadius: '99px', padding: '4px 10px', cursor: 'pointer', transition: 'all 0.15s' }}
-                          onClick={() => setEmailRecipients(prev => prev.includes(player.id) ? prev.filter(id => id !== player.id) : [...prev, player.id])}>
-                          <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: emailRecipients.includes(player.id) ? '#00FF9F' : '#2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {emailRecipients.includes(player.id) && (
-                              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                                <polyline points="1,4 3,6 7,2" stroke="#0E0E0F" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            )}
-                          </div>
-                          <span style={{ fontSize: '12px', color: emailRecipients.includes(player.id) ? '#00FF9F' : '#9A9A9F', fontWeight: 500 }}>{player.full_name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Subject</label>
-                    <input
-                      type="text"
-                      value={emailSubject}
-                      onChange={e => setEmailSubject(e.target.value)}
-                      placeholder={`Update from ${name || group?.name || 'your trainer'}`}
-                      style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Message</label>
-                    <textarea
-                      value={emailBody}
-                      onChange={e => setEmailBody(e.target.value)}
-                      placeholder="Write your update, upcoming schedule, reminders, or any other notes for parents..."
-                      rows={6}
-                      style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', resize: 'vertical' as const, fontFamily: 'sans-serif', lineHeight: 1.6 }}
-                    />
-                  </div>
-
-                  {emailResults.length > 0 && (
-                    <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {emailResults.map(r => (
-                        <div key={r.playerId} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-                          <span style={{ color: r.success ? '#00FF9F' : '#E03131' }}>{r.success ? '✓' : '✕'}</span>
-                          <span style={{ color: '#9A9A9F' }}>{r.playerName}</span>
-                          <span style={{ color: r.success ? '#00FF9F' : '#E03131', fontSize: '12px' }}>{r.success ? 'Sent' : 'Failed'}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                      onClick={handleSendGroupEmail}
-                      disabled={sendingGroupEmail || emailRecipients.length === 0 || !emailBody.trim()}
-                      style={{
-                        flex: 1,
-                        background: emailRecipients.length > 0 && emailBody.trim() ? '#00FF9F' : '#2A2A2D',
-                        color: emailRecipients.length > 0 && emailBody.trim() ? '#0E0E0F' : '#9A9A9F',
-                        border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 700,
-                        cursor: emailRecipients.length > 0 && emailBody.trim() ? 'pointer' : 'default',
-                      }}>
-                      {sendingGroupEmail ? 'Sending...' : `Send to ${emailRecipients.length} parent${emailRecipients.length !== 1 ? 's' : ''}`}
-                    </button>
-                    <button
-                      onClick={() => { setEmailBody(''); setEmailSubject(''); setEmailResults([]); setShowEmailComposer(false) }}
-                      style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', fontSize: '14px', cursor: 'pointer' }}>
-                      Clear
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+       
         </div>
 
       </div>

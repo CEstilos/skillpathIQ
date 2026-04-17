@@ -6,15 +6,13 @@ import NavBar from '@/components/NavBar'
 
 interface Profile { id: string; full_name: string; individual_rate: number | null; group_rate: number | null }
 interface Player { id: string; full_name: string; created_at: string; custom_rate: number | null }
-interface Session { id: string; player_id: string; session_date: string; session_type: string; rate_override: number | null }
+interface Session { id: string; player_id: string; session_date: string; session_type: string; rate_override: number | null; group_id: string | null }
+interface Attendance { session_id: string; player_id: string; attended: boolean }
 
-interface Props {
-  profile: Profile | null
-  players: Player[]
-  sessions: Session[]
-}
+interface Props { profile: Profile | null; players: Player[]; sessions: Session[]; attendance: Attendance[] }
 
-export default function BusinessClient({ profile, players, sessions }: Props) {
+
+export default function BusinessClient({ profile, players, sessions, attendance }: Props) {
   const router = useRouter()
 
   const now = new Date()
@@ -43,7 +41,15 @@ export default function BusinessClient({ profile, players, sessions }: Props) {
 
   function getSessionRevenue(s: Session) {
     if (s.rate_override !== null && s.rate_override !== undefined) return Number(s.rate_override) || 0
-    if (s.session_type === 'group') return Number(profile?.group_rate) || 0
+    if (s.session_type === 'group') {
+      const groupRate = Number(profile?.group_rate) || 0
+      // Count players who attended this session
+      const attendingCount = attendance.filter(a => a.session_id === s.id && a.attended).length
+      // If no attendance data, fall back to counting players in the group
+      if (attendingCount > 0) return groupRate * attendingCount
+      const groupPlayerCount = players.filter(p => p.group_id === s.group_id).length
+      return groupRate * Math.max(groupPlayerCount, 1)
+    }
     const player = players.find(p => p.id === s.player_id)
     const rate = player?.custom_rate ?? profile?.individual_rate ?? 0
     return Number(rate) || 0

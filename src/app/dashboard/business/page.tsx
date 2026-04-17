@@ -17,11 +17,17 @@ export default async function BusinessPage() {
     .from('sessions').select('*').eq('trainer_id', user.id)
     .order('session_date', { ascending: false })
 
+  const { data: attendance } = await supabase
+    .from('session_attendance')
+    .select('session_id, player_id, attended')
+    .eq('trainer_id', user.id)
+
   return (
     <BusinessClient
       profile={profile}
       players={players || []}
       sessions={sessions || []}
+      attendance={attendance || []}
     />
   )
 }

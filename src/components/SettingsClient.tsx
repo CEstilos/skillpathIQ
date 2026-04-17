@@ -97,7 +97,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Group session rate</label>
+              <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Group session rate <span style={{ fontSize: '11px', color: '#9A9A9F', fontWeight: 400 }}>(per player)</span></label>
                 <div style={{ display: 'flex', alignItems: 'center', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', overflow: 'hidden' }}>
                   <span style={{ padding: '11px 14px', fontSize: '14px', color: '#9A9A9F', borderRight: '1px solid #2A2A2D' }}>$</span>
                   <input
@@ -108,7 +108,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                   />
                   <span style={{ padding: '11px 14px', fontSize: '13px', color: '#9A9A9F' }}>per session</span>
                 </div>
-                <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Flat rate applied to group training sessions</span>
+                <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Rate per player · multiplied by attendance at each session</span>
               </div>
             </div>
 
