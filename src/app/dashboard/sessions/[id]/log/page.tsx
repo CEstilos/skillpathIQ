@@ -135,8 +135,11 @@ const [sentEmails, setSentEmails] = useState<string[]>([])
             trainer_id: user.id,
             player_id: p.id,
             session_date: session?.session_date || new Date().toISOString().split('T')[0],
-            notes: notes || drillsCovered || null,
+            title: `Session — ${p.full_name}`,
+            notes: notes || null,
+            drills_covered: drillsCovered || null,
             session_type: 'group',
+            status: 'logged',
           }))
         )
       }
