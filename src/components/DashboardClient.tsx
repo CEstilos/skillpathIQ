@@ -186,11 +186,17 @@ const [showUnlogged, setShowUnlogged] = useState(false)
     setActionLoading(sessionId + '_reschedule')
     const supabaseClient = createClient()
     await supabaseClient.from('sessions')
-      .update({ status: 'rescheduled', rescheduled_date: rescheduleDate, session_time: rescheduleTime || undefined })
+      .update({
+        status: 'scheduled',
+        session_date: rescheduleDate,
+        rescheduled_date: rescheduleDate,
+        session_time: rescheduleTime || undefined
+      })
       .eq('id', sessionId)
     setSessionStatuses(prev => ({ ...prev, [sessionId]: 'rescheduled' }))
     setRescheduleOpen(null)
     setActionLoading(null)
+    router.refresh()
   }
   
   function getSessionStatus(session: ScheduledSession) {
@@ -426,7 +432,7 @@ const [showUnlogged, setShowUnlogged] = useState(false)
                         {i < sessionPlayers.length - 1 ? ', ' : ''}
                       </span>
                     ))}</span>
-                  : <span>Individual session</span>}
+                  : <span style={{ color: '#9A9A9F' }}>No players linked</span>}
               {session.session_time && <span style={{ color: '#9A9A9F' }}> · {formatTime(session.session_time)}</span>}
               </div>
             </div>
@@ -486,7 +492,20 @@ const [showUnlogged, setShowUnlogged] = useState(false)
             <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
             {session.groups?.name
               ? <span onClick={() => router.push(`/dashboard/groups/${session.group_id}`)} style={{ cursor: 'pointer', color: '#00FF9F', fontWeight: 600 }}>{session.groups.name}</span>
-              : <span>Individual session</span>}
+              : (() => {
+                  const upcomingPlayers = allSessionPlayers
+                    .filter(sp => sp.session_id === session.id)
+                    .map(sp => players.find(p => p.id === sp.player_id))
+                    .filter(Boolean) as Player[]
+                  return upcomingPlayers.length > 0
+                    ? <span>{upcomingPlayers.map((p, i) => (
+                        <span key={p.id}>
+                          <span onClick={() => router.push(`/dashboard/players/${p.id}`)} style={{ color: '#00FF9F', cursor: 'pointer', fontWeight: 600 }}>{p.full_name}</span>
+                          {i < upcomingPlayers.length - 1 ? ', ' : ''}
+                        </span>
+                      ))}</span>
+                    : <span style={{ color: '#9A9A9F' }}>Individual session</span>
+                })()}
             {session.session_time && <span> · {formatTime(session.session_time)}</span>}
               {session.type === 'recurring' && (
                 <span style={{ marginLeft: '8px', fontSize: '11px', background: 'rgba(0,255,159,0.12)', color: '#00FF9F', padding: '2px 6px', borderRadius: '4px' }}>Recurring</span>
@@ -651,9 +670,9 @@ const [showUnlogged, setShowUnlogged] = useState(false)
   <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color, whiteSpace: 'nowrap' }}>{statusStyle.label}</span>
 </div>
 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-  <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>Schedule Session</button>
-  <button onClick={() => copyPlayerLink(player.id)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: `1px solid ${isCopied ? '#00FF9F' : '#2A2A2D'}`, background: 'transparent', color: isCopied ? '#00FF9F' : '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>{isCopied ? '✓ Copied!' : 'Send Player Profile'}</button>
-  <button onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>Assign drills</button>
+  <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' as const, fontWeight: 500 }}>+ Log session</button>
+  <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' as const, fontWeight: 500 }}>Schedule session</button>
+  <button onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' as const, fontWeight: 500 }}>Assign drills</button>
 </div>
                 </div>
               )
@@ -719,10 +738,10 @@ const [showUnlogged, setShowUnlogged] = useState(false)
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px' }}>
-  <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
+  <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
     + Log session
   </button>
-  <button onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
+  <button onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
     Assign drills
   </button>
 </div>
