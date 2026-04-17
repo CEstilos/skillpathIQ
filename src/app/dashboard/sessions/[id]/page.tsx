@@ -36,6 +36,7 @@ export default function SessionDetailPage() {
   const [newTime, setNewTime] = useState('')
   const [cancelReason, setCancelReason] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+ 
 
   useEffect(() => { loadData() }, [sessionId])
 

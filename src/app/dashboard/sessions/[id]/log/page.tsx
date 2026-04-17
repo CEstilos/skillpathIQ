@@ -39,6 +39,7 @@ export default function LogSessionPage() {
   const [generatingEmails, setGeneratingEmails] = useState(false)
   const [sendingEmail, setSendingEmail] = useState<string | null>(null)
 const [sentEmails, setSentEmails] = useState<string[]>([])
+const [editingEmail, setEditingEmail] = useState<string | null>(null)
 
   useEffect(() => { loadData() }, [sessionId])
 
@@ -545,11 +546,16 @@ Return ONLY the email text, nothing else.`
                       <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>To: {pe.parentEmail}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                      <button
-                        onClick={() => copyEmail(pe.playerId, pe.email)}
-                        style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: pe.copied ? '#00FF9F' : '#9A9A9F', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
-                        {pe.copied ? '✓ Copied' : 'Copy'}
-                      </button>
+                    <button
+                      onClick={() => setEditingEmail(editingEmail === pe.playerId ? null : pe.playerId)}
+                      style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #2A2A2D', background: editingEmail === pe.playerId ? 'rgba(0,255,159,0.1)' : 'transparent', color: editingEmail === pe.playerId ? '#00FF9F' : '#9A9A9F', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
+                      {editingEmail === pe.playerId ? 'Done' : 'Edit'}
+                    </button>
+                    <button
+                      onClick={() => copyEmail(pe.playerId, pe.email)}
+                      style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: pe.copied ? '#00FF9F' : '#9A9A9F', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
+                      {pe.copied ? '✓ Copied' : 'Copy'}
+                    </button>
                       <button
                         onClick={() => handleSendEmail(pe)}
                         disabled={sendingEmail === pe.playerId || sentEmails.includes(pe.playerId)}
@@ -558,8 +564,16 @@ Return ONLY the email text, nothing else.`
                       </button>
                     </div>
                   </div>
-                  <div style={{ padding: '16px', fontSize: '13px', color: '#ffffff', lineHeight: 1.7, whiteSpace: 'pre-wrap' as const }}>
-                    {pe.email}
+                  <div style={{ padding: '16px' }}>
+                    {editingEmail === pe.playerId ? (
+                      <textarea
+                        value={pe.email}
+                        onChange={e => setPlayerEmails(prev => prev.map(r => r.playerId === pe.playerId ? { ...r, email: e.target.value } : r))}
+                        style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '12px', fontSize: '13px', color: '#ffffff', outline: 'none', width: '100%', minHeight: '160px', resize: 'vertical' as const, fontFamily: 'sans-serif', lineHeight: 1.7 }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: '13px', color: '#ffffff', lineHeight: 1.7, whiteSpace: 'pre-wrap' as const }}>{pe.email}</div>
+                    )}
                   </div>
                 </div>
               ))}
