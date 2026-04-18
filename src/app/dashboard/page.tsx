@@ -56,6 +56,18 @@ export default async function DashboardPage() {
   .in('session_id', [
     ...(todaySessions?.map(s => s.id) || []),
   ])
+  const playerIds = players?.map(p => p.id) || []
+  let sessionRequests: { id: string; player_id: string; note: string | null; requested_at: string; status: string; players?: { id: string; full_name: string; parent_email: string } }[] = []
+  if (playerIds.length > 0) {
+    const { data: requestsData } = await supabase
+      .from('session_requests')
+      .select('*, players(id, full_name, parent_email)')
+      .eq('status', 'pending')
+      .in('player_id', playerIds)
+      .order('requested_at', { ascending: false })
+    sessionRequests = requestsData || []
+  }
+
   const { data: unloggedSessions } = await supabase
   .from('sessions')
   .select('*, groups(name, sport)')
@@ -129,6 +141,7 @@ export default async function DashboardPage() {
         allSessionPlayers={sessionPlayers || []}
         sessionLogs={sessionLogs || []}
         unloggedSessions={unloggedSessions || []}
+        sessionRequests={sessionRequests || []}
       />
     )
 }

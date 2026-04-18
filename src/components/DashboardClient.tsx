@@ -14,6 +14,7 @@ interface DrillWeek { id: string; group_id: string | null; player_id: string | n
 interface Drill { id: string; drill_week_id: string; title: string }
 interface Completion { id: string; player_id: string; drill_id: string }
 interface SessionPlayer { session_id: string; player_id: string }
+interface SessionRequest { id: string; player_id: string; note: string | null; requested_at: string; status: string; players?: { id: string; full_name: string; parent_email: string } }
 
 interface SessionLog { session_id: string }
 
@@ -30,9 +31,10 @@ interface Props {
   allSessionPlayers: SessionPlayer[]
   sessionLogs: SessionLog[]
   unloggedSessions: ScheduledSession[]
+  sessionRequests: SessionRequest[]
 }
 
-export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions, allSessionPlayers, sessionLogs, unloggedSessions }: Props) {
+export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions, allSessionPlayers, sessionLogs, unloggedSessions, sessionRequests }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<string>('all')
@@ -44,6 +46,8 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     }
     return false
   })
+  const [dismissingRequest, setDismissingRequest] = useState<string | null>(null)
+  
 
   const [sessionStatuses, setSessionStatuses] = useState<Record<string, string>>({})
 const [rescheduleOpen, setRescheduleOpen] = useState<string | null>(null)
@@ -258,6 +262,17 @@ const [showUnlogged, setShowUnlogged] = useState(false)
       </div>
     )
   }
+  async function dismissRequest(requestId: string) {
+    setDismissingRequest(requestId)
+    const supabaseClient = createClient()
+    await supabaseClient.from('session_requests')
+      .update({ status: 'dismissed' })
+      .eq('id', requestId)
+    setDismissingRequest(null)
+    router.refresh()
+  }
+
+
   function getSessionDisplayState(session: ScheduledSession) {
     const now = new Date()
     const isLogged = session.status === 'logged' || sessionLogs.some(l => l.session_id === session.id)
@@ -334,6 +349,13 @@ const [showUnlogged, setShowUnlogged] = useState(false)
     {todaySessions.length === 0 && upcomingSessions.length === 0 && (
       <span>No sessions scheduled</span>
     )}
+    {sessionRequests.length > 0 && (
+      <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <span style={{ color: '#00FF9F', fontWeight: 700, fontSize: '13px' }}>●</span>
+        <span style={{ color: '#00FF9F', fontWeight: 600 }}>{sessionRequests.length}</span>
+        <span style={{ color: '#00FF9F' }}>session request{sessionRequests.length !== 1 ? 's' : ''}</span>
+      </span>
+    )}
     {unloggedSessions.length > 0 && (
       <button
         onClick={() => setShowUnlogged(!showUnlogged)}
@@ -345,6 +367,51 @@ const [showUnlogged, setShowUnlogged] = useState(false)
     )}
   </div>
 
+  {/* SESSION REQUESTS */}
+  {sessionRequests.length > 0 && (
+    <div style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F' }} />
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Session requests ({sessionRequests.length})
+          </span>
+        </div>
+      </div>
+      {sessionRequests.map((req, i) => (
+        <div key={req.id} style={{ padding: '14px 16px', borderBottom: i < sessionRequests.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
+            {req.players?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              onClick={() => router.push(`/dashboard/players/${req.player_id}`)}
+              style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>
+              {req.players?.full_name}
+            </div>
+            {req.note && <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{req.note}</div>}
+            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>
+              {new Date(req.requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+            <button
+              onClick={() => router.push(`/dashboard/sessions/new?player=${req.player_id}`)}
+              style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>
+              Schedule
+            </button>
+            <button
+              onClick={() => dismissRequest(req.id)}
+              disabled={dismissingRequest === req.id}
+              style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
+              {dismissingRequest === req.id ? '...' : 'Dismiss'}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+  
   {/* UNLOGGED PANEL */}
   {showUnlogged && unloggedSessions.length > 0 && (
     <div style={{ background: '#1A1A1C', border: '1px solid rgba(224,49,49,0.3)', borderRadius: '12px', overflow: 'hidden', marginBottom: '20px' }}>
@@ -412,8 +479,23 @@ const [showUnlogged, setShowUnlogged] = useState(false)
          .filter(Boolean) as Player[]
          const { isPast, isLogged } = getSessionDisplayState(session)
          return (
-           <div key={session.id} style={{ background: isPast ? 'rgba(154,154,159,0.05)' : 'rgba(0,255,159,0.05)', border: `1px solid ${isPast ? 'rgba(154,154,159,0.2)' : 'rgba(0,255,159,0.25)'}`, borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' as const }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+          <div key={session.id} style={{ background: isPast ? 'rgba(154,154,159,0.05)' : 'rgba(0,255,159,0.05)', border: `1px solid ${isPast ? 'rgba(154,154,159,0.2)' : 'rgba(0,255,159,0.25)'}`, borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' as const }}>
+          {/* DATE */}
+          <div style={{ width: '48px', textAlign: 'center', flexShrink: 0 }}>
+            <div style={{ fontSize: '10px', color: isPast ? '#9A9A9F' : '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
+              {new Date(session.session_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' })}
+            </div>
+            <div style={{ fontSize: '28px', fontFamily: 'monospace', fontWeight: 700, color: isPast ? '#9A9A9F' : '#ffffff', lineHeight: 1 }}>
+              {new Date(session.session_date + 'T00:00:00').getDate()}
+            </div>
+            {session.session_time && (
+              <div style={{ fontSize: '10px', color: '#9A9A9F', marginTop: '2px' }}>
+                {formatTime(session.session_time)}
+              </div>
+            )}
+          </div>
+          <div style={{ width: '1px', height: '40px', background: isPast ? 'rgba(154,154,159,0.2)' : 'rgba(0,255,159,0.2)', flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                 <div style={{ fontSize: '15px', fontWeight: 600, color: isPast ? '#9A9A9F' : '#ffffff' }}>{session.title}</div>
                 {isPast && (
