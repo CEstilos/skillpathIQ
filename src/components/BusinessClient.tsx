@@ -43,13 +43,13 @@ export default function BusinessClient({ profile, players, sessions, attendance 
     if (s.rate_override !== null && s.rate_override !== undefined) return Number(s.rate_override) || 0
     if (s.session_type === 'group') {
       const groupRate = Number(profile?.group_rate) || 0
-      // Count players who attended this session
       const attendingCount = attendance.filter(a => a.session_id === s.id && a.attended).length
-      // If no attendance data, fall back to counting players in the group
       if (attendingCount > 0) return groupRate * attendingCount
+      // Fall back to group player count
       const groupPlayerCount = players.filter(p => p.group_id === s.group_id).length
       return groupRate * Math.max(groupPlayerCount, 1)
     }
+    // Individual session — use player's custom rate or default individual rate
     const player = players.find(p => p.id === s.player_id)
     const rate = player?.custom_rate ?? profile?.individual_rate ?? 0
     return Number(rate) || 0
@@ -57,12 +57,22 @@ export default function BusinessClient({ profile, players, sessions, attendance 
 
   function getRevenue(from: Date, to: Date) {
     const relevant = sessions.filter(s => sd(s) >= from && sd(s) <= to)
-    const groupDates = new Set<string>()
     let total = 0
+    const countedGroupSessions = new Set<string>()
+
     for (const s of relevant) {
       if (s.session_type === 'group') {
-        if (!groupDates.has(s.session_date)) { groupDates.add(s.session_date); total += getSessionRevenue(s) }
-      } else { total += getSessionRevenue(s) }
+        // Only count the scheduled group session (no player_id) once per session
+        if (!s.player_id && !countedGroupSessions.has(s.id)) {
+          countedGroupSessions.add(s.id)
+          total += getSessionRevenue(s)
+        }
+      } else {
+        // Only count individual sessions that are logged (have player_id)
+        if (s.player_id) {
+          total += getSessionRevenue(s)
+        }
+      }
     }
     return total
   }
