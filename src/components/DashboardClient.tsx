@@ -283,8 +283,7 @@ const [showUnlogged, setShowUnlogged] = useState(false)
     const [h, m] = session.session_time.split(':').map(Number)
     const sessionStart = new Date()
     sessionStart.setHours(h, m, 0, 0)
-    const twoHoursAfter = new Date(sessionStart.getTime() + 2 * 60 * 60 * 1000)
-    const isPast = now > twoHoursAfter
+    const isPast = now > sessionStart
 
     return { isPast, isLogged: false }
   }
