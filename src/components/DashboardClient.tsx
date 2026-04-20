@@ -567,12 +567,12 @@ const [showAllUpcoming, setShowAllUpcoming] = useState(false)
 {/* UPCOMING SESSIONS */}
 {upcomingSessions.length > 0 && (
   <div style={{ marginBottom: '20px' }}>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
       <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Upcoming</div>
       {upcomingSessions.length > 3 && (
         <button
           onClick={() => setShowAllUpcoming(!showAllUpcoming)}
-          style={{ fontSize: '12px', color: '#00FF9F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>
+          style={{ fontSize: '12px', color: '#00FF9F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, padding: '0' }}>
           {showAllUpcoming ? 'Show less' : `See all (${upcomingSessions.length})`}
         </button>
       )}
