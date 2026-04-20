@@ -181,7 +181,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
 
   const totalAtRiskRevenue = atRiskPlayers.reduce((sum, p) => sum + getPlayerRate(p), 0)
   const totalLapsedRevenue = lapsedPlayers.reduce((sum, p) => sum + getMonthlyRecoveryRevenue(p), 0)
-  const totalActiveMonthly = activePlayers.reduce((sum, p) => sum + getPlayerRate(p), 0)
+  const totalActiveMonthly = activePlayers.reduce((sum, p) => sum + getMonthlyRecoveryRevenue(p), 0)
 
   function StatColumns({ playerId, days }: { playerId: string; days: number | null }) {
     return (
@@ -306,7 +306,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
           <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '18px' }}>
             <div style={{ fontSize: '10px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Active</div>
             <div style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{activePlayers.length}</div>
-            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>{formatCurrency(totalActiveMonthly)}/session avg</div>
+            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>{formatCurrency(totalActiveMonthly)}/mo est. revenue</div>
           </div>
           <div style={{ background: '#1A1A1C', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '12px', padding: '18px' }}>
             <div style={{ fontSize: '10px', fontWeight: 600, color: '#F5A623', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>At risk</div>
