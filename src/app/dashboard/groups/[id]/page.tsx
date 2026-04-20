@@ -235,22 +235,22 @@ export default function GroupEditPage() {
 
             {/* GROUP ACTIONS */}
             <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px' }}>Group actions</div>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px' }}>GROUP ACTIONS</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button
+              <button
                   onClick={() => router.push(`/dashboard/sessions/new?group=${groupId}`)}
-                  style={{ width: '100%', background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.4)', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', fontWeight: 600, color: '#9A9A9F', cursor: 'pointer', textAlign: 'left' as const }}>
-                  📅 Schedule session
+                  style={{ width: '100%', background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.4)', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textAlign: 'center' as const }}>
+                  Schedule session
                 </button>
                 <button
                   onClick={() => router.push(`/dashboard/drills/new?group=${groupId}`)}
-                  style={{ width: '100%', background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.4)', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', fontWeight: 600, color: '#9A9A9F', cursor: 'pointer', textAlign: 'left' as const }}>
-                  📋 Assign drills
+                  style={{ width: '100%', background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.4)', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textAlign: 'center' as const }}>
+                  Assign drills
                 </button>
                 <button
                   onClick={() => setShowEmailComposer(!showEmailComposer)}
-                  style={{ width: '100%', background: showEmailComposer ? 'rgba(0,255,159,0.1)' : '#1A1A1C', border: '1px solid rgba(0,255,159,0.4)', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', fontWeight: 600, color: showEmailComposer ? '#00FF9F' : '#9A9A9F', cursor: 'pointer', textAlign: 'left' as const }}>
-                  ✉ Create group email
+                  style={{ width: '100%', background: showEmailComposer ? 'rgba(0,255,159,0.1)' : '#1A1A1C', border: '1px solid rgba(0,255,159,0.4)', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', fontWeight: 600, color: showEmailComposer ? '#00FF9F' : '#ffffff', cursor: 'pointer', textAlign: 'center' as const }}>
+                  Create group email
                 </button>
               </div>
 
@@ -331,8 +331,8 @@ export default function GroupEditPage() {
             {/* PLAYER LIST */}
             <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
               <div style={{ padding: '16px 20px', borderBottom: '1px solid #2A2A2D' }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
-                  Player list ({groupPlayers.length})
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
+                  PLAYER LIST({groupPlayers.length})
                 </div>
                 <button
                   onClick={() => setShowAddPlayer(!showAddPlayer)}
@@ -437,7 +437,7 @@ export default function GroupEditPage() {
 
           {/* RIGHT — GROUP DETAILS */}
           <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px' }}>
-            <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', marginBottom: '16px' }}>Group details</div>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', marginBottom: '16px' }}>GROUP DETAILS</div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
