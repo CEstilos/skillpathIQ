@@ -69,10 +69,24 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
     return Math.floor(getDaysSince(last.session_date) / 7)
   }
 
-  function getEstimatedLostRevenue(player: Player) {
-    const rate = getPlayerRate(player)
-    const weeks = getWeeksLapsed(player.id) || 0
-    return rate * Math.max(0, weeks - 4)
+  function getMonthlyRecoveryRevenue(player: Player) {
+    const playerSessions = sessions.filter(s => s.player_id === player.id)
+    if (playerSessions.length === 0) return 0
+
+    // Calculate date range of actual sessions
+    const dates = playerSessions.map(s => new Date(s.session_date).getTime())
+    const firstSession = new Date(Math.min(...dates))
+    const lastSession = new Date(Math.max(...dates))
+    const monthsActive = Math.max(1, (lastSession.getTime() - firstSession.getTime()) / (1000 * 60 * 60 * 24 * 30))
+
+    // Calculate total historical revenue
+    const totalRevenue = playerSessions.reduce((sum, s) => {
+      if (s.session_type === 'group') return sum + (profile?.group_rate || 0)
+      return sum + (player.custom_rate ?? profile?.individual_rate ?? 0)
+    }, 0)
+
+    // Monthly average
+    return Math.round(totalRevenue / monthsActive)
   }
 
   function formatCurrency(val: number) {
@@ -166,7 +180,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
   const newPlayers = players.filter(p => getStatus(p.id) === 'new')
 
   const totalAtRiskRevenue = atRiskPlayers.reduce((sum, p) => sum + getPlayerRate(p), 0)
-  const totalLapsedRevenue = lapsedPlayers.reduce((sum, p) => sum + getEstimatedLostRevenue(p), 0)
+  const totalLapsedRevenue = lapsedPlayers.reduce((sum, p) => sum + getMonthlyRecoveryRevenue(p), 0)
   const totalActiveMonthly = activePlayers.reduce((sum, p) => sum + getPlayerRate(p), 0)
 
   function StatColumns({ playerId, days }: { playerId: string; days: number | null }) {
@@ -302,7 +316,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
           <div style={{ background: '#1A1A1C', border: '1px solid rgba(224,49,49,0.2)', borderRadius: '12px', padding: '18px' }}>
             <div style={{ fontSize: '10px', fontWeight: 600, color: '#E03131', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Lapsed</div>
             <div style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{lapsedPlayers.length}</div>
-            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>{formatCurrency(totalLapsedRevenue)} lost</div>
+            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>{formatCurrency(totalLapsedRevenue)}/mo recoverable</div>
           </div>
           <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '18px' }}>
             <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>New</div>
@@ -361,7 +375,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
               {lapsedPlayers.map(player => {
                 const last = getLastSession(player.id)
                 const days = last ? getDaysSince(last.session_date) : null
-                const lostRevenue = getEstimatedLostRevenue(player)
+                const monthlyRecovery = getMonthlyRecoveryRevenue(player)
                 const group = getGroup(player.group_id)
                 return (
                   <div key={player.id} style={{ background: '#1A1A1C', border: '1px solid rgba(224,49,49,0.25)', borderRadius: '12px', overflow: 'hidden' }}>
@@ -374,7 +388,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
                           {player.full_name}
                         </div>
                         <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
-                          {group ? group.name : 'Individual'} · {formatCurrency(lostRevenue)} est. lost
+                          {group ? group.name : 'Individual'} · {formatCurrency(monthlyRecovery)}/mo potential recovery
                         </div>
                       </div>
                       <StatColumns playerId={player.id} days={days} />
