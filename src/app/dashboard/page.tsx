@@ -86,7 +86,7 @@ export default async function DashboardPage() {
     .neq('status', 'cancelled')
     .is('player_id', null)
     .order('session_date', { ascending: true })
-    .limit(10)
+    .limit(20)
 
   // Fetch all recurring sessions (including past ones — we'll compute next occurrence)
   const { data: recurringSessions } = await supabase
@@ -125,7 +125,7 @@ export default async function DashboardPage() {
   // Merge and sort all upcoming sessions
   const allUpcoming = [...(upcomingOneOff || []), ...upcomingRecurring]
     .sort((a, b) => a.session_date.localeCompare(b.session_date))
-    .slice(0, 10)
+    .slice(0, 20)
 
     return (
       <DashboardClient

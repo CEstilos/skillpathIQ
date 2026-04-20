@@ -40,6 +40,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const [activeFilter, setActiveFilter] = useState<string>('all')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+
   const [bannerDismissed, setBannerDismissed] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('welcome_dismissed') === 'true'
@@ -55,6 +56,8 @@ const [rescheduleDate, setRescheduleDate] = useState('')
 const [rescheduleTime, setRescheduleTime] = useState('')
 const [actionLoading, setActionLoading] = useState<string | null>(null)
 const [showUnlogged, setShowUnlogged] = useState(false)
+const [localSessionRequests, setLocalSessionRequests] = useState<SessionRequest[]>(sessionRequests)
+const [showAllUpcoming, setShowAllUpcoming] = useState(false)
   function dismissBanner() {
     localStorage.setItem('welcome_dismissed', 'true')
     setBannerDismissed(true)
@@ -269,7 +272,7 @@ const [showUnlogged, setShowUnlogged] = useState(false)
       .update({ status: 'dismissed' })
       .eq('id', requestId)
     setDismissingRequest(null)
-    router.refresh()
+    setLocalSessionRequests(prev => prev.filter(r => r.id !== requestId))
   }
 
 
@@ -348,11 +351,11 @@ const [showUnlogged, setShowUnlogged] = useState(false)
     {todaySessions.length === 0 && upcomingSessions.length === 0 && (
       <span>No sessions scheduled</span>
     )}
-    {sessionRequests.length > 0 && (
+    {localSessionRequests.length > 0 && (
       <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
         <span style={{ color: '#00FF9F', fontWeight: 700, fontSize: '13px' }}>●</span>
-        <span style={{ color: '#00FF9F', fontWeight: 600 }}>{sessionRequests.length}</span>
-        <span style={{ color: '#00FF9F' }}>session request{sessionRequests.length !== 1 ? 's' : ''}</span>
+        <span style={{ color: '#00FF9F', fontWeight: 600 }}>{localSessionRequests.length}</span>
+        <span style={{ color: '#00FF9F' }}>session request{localSessionRequests.length !== 1 ? 's' : ''}</span>
       </span>
     )}
     {unloggedSessions.length > 0 && (
@@ -367,18 +370,18 @@ const [showUnlogged, setShowUnlogged] = useState(false)
   </div>
 
   {/* SESSION REQUESTS */}
-  {sessionRequests.length > 0 && (
+  {localSessionRequests.length > 0 && (
     <div style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', overflow: 'hidden', marginBottom: '16px' }}>
       <div style={{ padding: '12px 16px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F' }} />
           <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Session requests ({sessionRequests.length})
+            Session requests ({localSessionRequests.length})
           </span>
         </div>
       </div>
-      {sessionRequests.map((req, i) => (
-        <div key={req.id} style={{ padding: '14px 16px', borderBottom: i < sessionRequests.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
+      {localSessionRequests.map((req, i) => (
+        <div key={req.id} style={{ padding: '14px 16px', borderBottom: i < localSessionRequests.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
             {req.players?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'}
           </div>
@@ -394,8 +397,16 @@ const [showUnlogged, setShowUnlogged] = useState(false)
             </div>
           </div>
           <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-            <button
-              onClick={() => router.push(`/dashboard/sessions/new?player=${req.player_id}`)}
+          <button
+              onClick={async () => {
+                setLocalSessionRequests(prev => prev.filter(r => r.id !== req.id))
+                const supabaseClient = createClient()
+                supabaseClient.from('session_requests')
+                  .update({ status: 'dismissed' })
+                  .eq('id', req.id)
+                  .then(() => {})
+                router.push(`/dashboard/sessions/new?player=${req.player_id}`)
+              }}
               style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>
               Schedule
             </button>
@@ -556,10 +567,21 @@ const [showUnlogged, setShowUnlogged] = useState(false)
 {/* UPCOMING SESSIONS */}
 {upcomingSessions.length > 0 && (
   <div style={{ marginBottom: '20px' }}>
-    <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Upcoming</div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+      <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Upcoming</div>
+      {upcomingSessions.length > 3 && (
+        <button
+          onClick={() => setShowAllUpcoming(!showAllUpcoming)}
+          style={{ fontSize: '12px', color: '#00FF9F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>
+          {showAllUpcoming ? 'Show less' : `See all (${upcomingSessions.length})`}
+        </button>
+      )}
+    </div>
     <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
-      {upcomingSessions.map((session, i) => (
-        <div key={session.id} style={{ padding: '14px 20px', borderBottom: i < upcomingSessions.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '16px' }}>
+      {(showAllUpcoming ? upcomingSessions : upcomingSessions.slice(0, 3)).map((session, i) => {
+        const visibleSessions = showAllUpcoming ? upcomingSessions : upcomingSessions.slice(0, 3)
+        return (
+        <div key={session.id} style={{ padding: '14px 20px', borderBottom: i < visibleSessions.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ width: '44px', textAlign: 'center', flexShrink: 0 }}>
             <div style={{ fontSize: '10px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               {new Date(session.session_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' })}
@@ -598,9 +620,10 @@ const [showUnlogged, setShowUnlogged] = useState(false)
   <SessionActionButtons session={session} />
 </div>
         </div>
-      ))}
-    </div>
+     )
+    })}
   </div>
+</div>
 )}
 
 
