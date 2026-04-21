@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 
-interface Player { id: string; full_name: string; group_id: string | null; birth_year: number | null; skill_level: string | null; parent_email: string | null }
+interface Player { id: string; full_name: string; group_id: string | null; birth_year: number | null; skill_level: string | null; parent_email: string | null; contact_type: string | null }
 interface Profile { full_name: string }
 interface PlayerRecap { playerId: string; playerName: string; parentSummary: string; copied: boolean }
 
@@ -104,7 +104,7 @@ Trainer notes: ${notes || 'None provided'}
 
 Generate THREE things:
 
-1. A SHORT parent summary (2-3 sentences) — warm and personal, written from the trainer to the parent. Mention what was worked on, something positive, and what to focus on at home. Do NOT use generic phrases.
+1. A SHORT summary (2-3 sentences) — warm and personal, written from the trainer to the ${player.contact_type === 'player' ? 'athlete directly (coach-to-athlete tone, use their first name)' : 'parent (warm, parent-facing tone)'}.
 
 2. A drill week title (4-6 words max) based on what was covered.
 
@@ -537,7 +537,7 @@ router.push(`/dashboard/players/${playerId}`)
             <div style={{ marginBottom: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
                 <span style={{ fontSize: '16px' }}>✦</span>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Parent emails ready</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Emails ready</span>
               </div>
               <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '8px' }}>Review and send</h1>
               <p style={{ fontSize: '14px', color: '#9A9A9F' }}>AI-generated parent updates based on today&apos;s session. Edit before sending.</p>

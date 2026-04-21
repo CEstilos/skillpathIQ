@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 
-interface Player { id: string; full_name: string; group_id: string; parent_email: string | null; birth_year: number | null; skill_level: string | null }
+interface Player { id: string; full_name: string; group_id: string; parent_email: string | null; contact_type: string | null; birth_year: number | null; skill_level: string | null }
 interface Session { id: string; title: string; session_date: string; session_time: string; group_id: string }
 
 const CATEGORIES = ['Ball handling', 'Shooting', 'Passing', 'Footwork', 'Defense', 'Conditioning']
@@ -221,7 +221,9 @@ Group session notes: ${notes || drillsCovered || 'General training session'}
 Drills covered: ${drillsCovered || 'Various drills'}
 Specific note for this player: ${playerNote || 'None — use general session notes'}
 
-Write a SHORT, warm, personalized parent email (3-4 sentences) from the trainer.
+Write a SHORT, warm, personalized email (3-4 sentences) from the trainer to the ${player.contact_type === 'player' ? 'athlete directly' : 'parent'}.
+- If writing to the athlete: use their first name, speak directly to them, coach-to-athlete tone
+- If writing to the parent: reference "your child" or the player's first name, warm parent-facing tone
 - Start with "Hi [parent]," — use a generic greeting since we don't have parent name
 - Mention what the group worked on
 - Include something specific and positive about ${firstName} ${playerNote ? `based on: "${playerNote}"` : 'based on general participation'}
@@ -461,11 +463,11 @@ Return ONLY the email text, nothing else.`
             <div style={{ marginBottom: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F' }} />
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Parent emails</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Emails</span>
               </div>
               <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '8px' }}>Any specific notes?</h1>
               <p style={{ fontSize: '14px', color: '#9A9A9F', lineHeight: 1.6 }}>
-                Add optional notes for individual players — AI will weave them into personalized parent emails. Leave blank to use the general session notes.
+                Add optional notes for individual players — AI will weave them into personalized emails. Leave blank to use the general session notes.
               </p>
             </div>
 
@@ -507,12 +509,12 @@ Return ONLY the email text, nothing else.`
                         <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#00FF9F', animation: `pulse 0.8s ease-in-out ${i * 0.15}s infinite` }} />
                       ))}
                     </div>
-                    <span style={{ fontSize: '14px', fontWeight: 600, color: '#00FF9F' }}>Generating parent emails...</span>
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: '#00FF9F' }}>Generating emails...</span>
                   </>
                 ) : (
                   <>
                     <span style={{ fontSize: '16px' }}>✦</span>
-                    <span style={{ fontSize: '14px', fontWeight: 600, color: '#00FF9F' }}>Generate personalized parent emails with AI</span>
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: '#00FF9F' }}>Generate personalized emails with AI</span>
                   </>
                 )}
               </button>
@@ -531,7 +533,7 @@ Return ONLY the email text, nothing else.`
             <div style={{ marginBottom: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
                 <span style={{ fontSize: '16px' }}>✦</span>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Parent emails ready</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Emails ready</span>
               </div>
               <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '8px' }}>Review and send</h1>
               <p style={{ fontSize: '14px', color: '#9A9A9F' }}>Copy each email and send it directly to the parent. Each one is personalized.</p>

@@ -123,7 +123,7 @@ export default function GroupEditPage() {
         trainer_id: user.id,
         group_id: groupId,
         full_name: newPlayerName.trim(),
-        parent_email: newPlayerEmail.trim() || null,
+        parent_email: newPlayerEmail.trim(),
         avatar_initials: newPlayerName.trim().split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
       })
       .select().single()
@@ -258,7 +258,7 @@ export default function GroupEditPage() {
               {showEmailComposer && (
                 <div style={{ marginTop: '14px', borderTop: '1px solid #2A2A2D', paddingTop: '14px' }}>
                   {groupPlayers.filter(p => p.parent_email).length === 0 ? (
-                    <p style={{ fontSize: '13px', color: '#9A9A9F' }}>No parent emails on file. Add parent emails to players first.</p>
+                    <p style={{ fontSize: '13px', color: '#9A9A9F' }}>No contact emails on file. Add contact emails to players first.</p>
                   ) : (
                     <>
                       <div style={{ marginBottom: '12px' }}>
@@ -357,15 +357,15 @@ export default function GroupEditPage() {
                       />
                       <input
                         type="email"
-                        placeholder="Parent email (optional)"
+                        placeholder="Contact email (mandatory)"
                         value={newPlayerEmail}
                         onChange={e => setNewPlayerEmail(e.target.value)}
                         style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: '#ffffff', outline: 'none', width: '100%' }}
                       />
                       <button
                         onClick={handleAddNewPlayer}
-                        disabled={addingPlayer || !newPlayerName.trim()}
-                        style={{ background: newPlayerName.trim() ? '#00FF9F' : '#2A2A2D', color: newPlayerName.trim() ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '9px', fontSize: '13px', fontWeight: 700, cursor: newPlayerName.trim() ? 'pointer' : 'default' }}>
+                        disabled={addingPlayer || !newPlayerName.trim() || !newPlayerEmail.trim()}
+                        style={{ background: newPlayerName.trim() && newPlayerEmail.trim() ? '#00FF9F' : '#2A2A2D', color: newPlayerName.trim() && newPlayerEmail.trim() ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '9px', fontSize: '13px', fontWeight: 700, cursor: newPlayerName.trim() && newPlayerEmail.trim() ? 'pointer' : 'default' }}>
                         {addingPlayer ? 'Adding...' : 'Add new player'}
                       </button>
                     </div>
