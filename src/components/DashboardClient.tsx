@@ -686,8 +686,8 @@ const [showAllUpcoming, setShowAllUpcoming] = useState(false)
         {steps.map(s => (
           <div
             key={s.key}
-            onClick={!s.done && s.action ? s.action : undefined}
-            style={{ display: 'flex', alignItems: 'center', gap: '14px', background: s.done ? 'rgba(0,255,159,0.04)' : '#1A1A1C', borderRadius: '10px', padding: '14px 16px', cursor: !s.done && s.action ? 'pointer' : 'default', border: `1px solid ${s.done ? 'rgba(0,255,159,0.15)' : '#2A2A2D'}`, opacity: s.done ? 0.6 : 1 }}>
+            onClick={!s.done && s.action ? () => s.action!() : undefined}
+            style={{ display: 'flex', alignItems: 'center', gap: '14px', background: s.done ? 'rgba(0,255,159,0.04)' : '#1A1A1C', borderRadius: '10px', padding: '14px 16px', cursor: !s.done && s.action !== null ? 'pointer' : 'default', border: `1px solid ${s.done ? 'rgba(0,255,159,0.15)' : '#2A2A2D'}`, opacity: s.done ? 0.6 : 1 }}>
             <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: s.done ? '#00FF9F' : '#2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {s.done ? (
                 <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
@@ -701,7 +701,7 @@ const [showAllUpcoming, setShowAllUpcoming] = useState(false)
               <div style={{ fontSize: '13px', fontWeight: 600, color: s.done ? '#9A9A9F' : '#ffffff', textDecoration: s.done ? 'line-through' : 'none' }}>{s.title}</div>
               {!s.done && <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{s.desc}</div>}
             </div>
-            {!s.done && s.action && <div style={{ color: '#00FF9F', fontSize: '16px', flexShrink: 0 }}>→</div>}
+            {!s.done && s.action !== null && <div style={{ color: '#00FF9F', fontSize: '16px', flexShrink: 0 }}>→</div>}
           </div>
         ))}
       </div>
