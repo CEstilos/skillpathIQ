@@ -291,10 +291,10 @@ const [showAllUpcoming, setShowAllUpcoming] = useState(false)
     return { isPast, isLogged: false }
   }
   return (
-    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
+    <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%', position: 'relative' }}>
 
 <style>{`
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; max-width: 100%; }
   html, body { overflow-x: hidden; max-width: 100vw; }
   @media (max-width: 640px) {
     .nav-links { display: none !important; }
@@ -634,7 +634,7 @@ const [showAllUpcoming, setShowAllUpcoming] = useState(false)
   const hasScheduled = todaySessions.length > 0 || upcomingSessions.length > 0
   const hasLoggedSession = sessions.some(s => s.player_id !== null)
   const hasAiRecap = sessions.some(s => s.player_id !== null && (s as { feedback?: string | null }).feedback)
-  const hasSharedLink = typeof window !== 'undefined' && localStorage.getItem('shared_player_link') === 'true'
+
 
   const steps = [
     {
@@ -665,13 +665,7 @@ const [showAllUpcoming, setShowAllUpcoming] = useState(false)
       done: hasAiRecap,
       action: () => players.length > 0 ? router.push(`/dashboard/players/${players[0].id}/log`) : router.push('/dashboard/players/new'),
     },
-    {
-      key: 'share',
-      title: 'Share a player profile link',
-      desc: 'Send a parent their player\'s drill checklist and session history',
-      done: hasSharedLink,
-      action: null,
-    },
+    
   ]
 
   const completedCount = steps.filter(s => s.done).length
