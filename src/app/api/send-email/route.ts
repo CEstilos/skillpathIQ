@@ -11,23 +11,38 @@ export async function POST(request: Request) {
       to: [to],
       subject: subject || `Session update for ${playerName}`,
       html: `
-        <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 16px; background: #ffffff;">
-          <div style="margin-bottom: 24px;">
-            <img src="https://skillpathiq.com/logo.png" alt="SkillPathIQ" style="height: 36px; width: auto;" />
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 0; background: #ffffff;">
+          
+          <!-- HEADER -->
+          <div style="background: #0E0E0F; padding: 20px 32px; border-radius: 12px 12px 0 0;">
+            <div style="font-family: monospace; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 2px;">
+              SkillPath<span style="color: #00FF9F;">IQ</span>
+            </div>
           </div>
-          <div style="font-size: 15px; color: #333333; line-height: 1.7; white-space: pre-wrap; margin-bottom: 32px;">
+
+          <!-- BODY -->
+          <div style="padding: 32px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">
+            <div style="font-size: 15px; color: #1a1a1a; line-height: 1.8; white-space: pre-wrap; margin-bottom: 28px;">
 ${body}
+            </div>
+
+            ${playerUrl ? `
+            <!-- CTA BUTTON -->
+            <div style="margin-bottom: 28px;">
+              <a href="${playerUrl}" style="display: inline-block; background: #00FF9F; color: #0E0E0F; text-decoration: none; padding: 13px 24px; border-radius: 8px; font-weight: 700; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
+                View ${playerName}&apos;s progress →
+              </a>
+            </div>
+            ` : ''}
+
+            <!-- FOOTER -->
+            <div style="border-top: 1px solid #e5e5e5; padding-top: 20px; margin-top: 8px;">
+              <p style="font-size: 12px; color: #999999; margin: 0;">
+                Sent via <a href="https://skillpathiq.com" style="color: #00CC7A; text-decoration: none; font-weight: 600;">SkillPathIQ</a> · Youth sports trainer platform
+              </p>
+            </div>
           </div>
-          ${playerUrl ? `
-          <div style="margin-bottom: 32px;">
-            <a href="${playerUrl}" style="display: inline-block; background: #00FF9F; color: #0E0E0F; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 14px;">
-              View ${playerName}'s drill progress →
-            </a>
-          </div>
-          ` : ''}
-          <div style="border-top: 1px solid #e5e5e5; padding-top: 20px; font-size: 12px; color: #999999;">
-            Powered by SkillPathIQ · <a href="https://skillpathiq.com" style="color: #999999;">skillpathiq.com</a>
-          </div>
+
         </div>
       `,
     })
