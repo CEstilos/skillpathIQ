@@ -13,12 +13,10 @@ export async function POST(request: Request) {
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 0; background: #ffffff;">
           
-          <!-- HEADER -->
-          <div style="background: #0E0E0F; padding: 20px 32px; border-radius: 12px 12px 0 0;">
-            <div style="font-family: monospace; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 2px;">
-              SkillPath<span style="color: #00FF9F;">IQ</span>
-            </div>
-          </div>
+        <!-- HEADER -->
+        <div style="background: #0E0E0F; padding: 20px 32px; border-radius: 12px 12px 0 0; text-align: center;">
+          <img src="https://skillpathiq.com/logo.png" alt="SkillPathIQ" style="height: 48px; width: auto;" />
+        </div>
 
           <!-- BODY -->
           <div style="padding: 32px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 12px 12px;">

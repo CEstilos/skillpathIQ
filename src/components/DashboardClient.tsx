@@ -427,11 +427,7 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
     {todaySessions.length === 0 && upcomingSessions.length === 0 && (
       <span>No sessions scheduled</span>
     )}
-    <button
-      onClick={() => setBroadcastEmailOpen(!broadcastEmailOpen)}
-      style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '13px', color: '#9A9A9F' }}>
-      ✉ Email active parents
-    </button>
+   
     {localSessionRequests.length > 0 && (
       <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
         <span style={{ color: '#00FF9F', fontWeight: 700, fontSize: '13px' }}>●</span>
@@ -447,7 +443,14 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
         <span style={{ color: '#E03131', fontWeight: 600 }}>{unloggedSessions.length}</span>
         <span style={{ color: '#E03131' }}>unlogged</span>
       </button>
+      
     )}
+   
+    <button
+      onClick={() => setBroadcastEmailOpen(!broadcastEmailOpen)}
+      style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: '1px solid rgba(0,255,159,0.4)', borderRadius: '6px', cursor: 'pointer', padding: '4px 10px', fontSize: '12px', color: '#00FF9F', fontWeight: 600 }}>
+      ✉ Email All Players/Parents
+    </button>
   </div>
 
   {/* SESSION REQUESTS */}
