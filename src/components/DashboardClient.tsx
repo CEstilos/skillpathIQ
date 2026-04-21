@@ -628,30 +628,93 @@ const [showAllUpcoming, setShowAllUpcoming] = useState(false)
 
 
 
-{/* WELCOME BANNER */}
-{!bannerDismissed && players.length === 0 && (
-  <div style={{ background: 'rgba(0,255,159,0.06)', border: '1px solid rgba(0,255,159,0.2)', borderRadius: '16px', padding: '24px', marginBottom: '20px', position: 'relative' }}>
-    <button onClick={dismissBanner} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: '#9A9A9F', cursor: 'pointer', fontSize: '18px', lineHeight: 1 }}>×</button>
-    <div style={{ fontSize: '15px', fontWeight: 700, color: '#00FF9F', marginBottom: '4px', fontFamily: '"Exo 2", sans-serif' }}>Welcome to SkillPathIQ 👋</div>
-    <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '20px' }}>Get started in three simple steps</div>
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {[
-        { step: '01', title: 'Add your first player', desc: 'Tap + Add player to add a player to your roster', action: () => router.push('/dashboard/players/new') },
-        { step: '02', title: 'Log your first session', desc: 'After training, log the date and what you worked on', action: () => router.push('/dashboard/sessions/new') },
-        { step: '03', title: 'Share a player link', desc: 'Send players their personal drill checklist link', action: null },
-      ].map(s => (
-        <div key={s.step} onClick={s.action ? s.action : undefined} style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#1A1A1C', borderRadius: '10px', padding: '14px 16px', cursor: s.action ? 'pointer' : 'default' }}>
-          <div style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '20px', fontWeight: 800, color: '#00FF9F', flexShrink: 0, width: '32px' }}>{s.step}</div>
-          <div>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{s.title}</div>
-            <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{s.desc}</div>
+{/* ACTIVATION CHECKLIST */}
+{(() => {
+  const hasPlayer = players.length > 0
+  const hasScheduled = todaySessions.length > 0 || upcomingSessions.length > 0
+  const hasLoggedSession = sessions.some(s => s.player_id !== null)
+  const hasAiRecap = sessions.some(s => s.player_id !== null && (s as { feedback?: string | null }).feedback)
+  const hasSharedLink = typeof window !== 'undefined' && localStorage.getItem('shared_player_link') === 'true'
+
+  const steps = [
+    {
+      key: 'player',
+      title: 'Add your first player',
+      desc: 'Build your roster by adding a player to the app',
+      done: hasPlayer,
+      action: () => router.push('/dashboard/players/new'),
+    },
+    {
+      key: 'schedule',
+      title: 'Schedule a session',
+      desc: 'Set up an upcoming training session',
+      done: hasScheduled,
+      action: () => router.push('/dashboard/sessions/new'),
+    },
+    {
+      key: 'log',
+      title: 'Log your first session',
+      desc: 'Record what happened after a training session',
+      done: hasLoggedSession,
+      action: () => players.length > 0 ? router.push(`/dashboard/players/${players[0].id}/log`) : router.push('/dashboard/players/new'),
+    },
+    {
+      key: 'ai',
+      title: 'Generate an AI parent recap',
+      desc: 'Let AI write a personalized parent update after a session',
+      done: hasAiRecap,
+      action: () => players.length > 0 ? router.push(`/dashboard/players/${players[0].id}/log`) : router.push('/dashboard/players/new'),
+    },
+    {
+      key: 'share',
+      title: 'Share a player profile link',
+      desc: 'Send a parent their player\'s drill checklist and session history',
+      done: hasSharedLink,
+      action: null,
+    },
+  ]
+
+  const completedCount = steps.filter(s => s.done).length
+  const allDone = completedCount === steps.length
+
+  if (allDone) return null
+
+  return (
+    <div style={{ background: 'rgba(0,255,159,0.04)', border: '1px solid rgba(0,255,159,0.2)', borderRadius: '16px', padding: '24px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: '#00FF9F', fontFamily: '"Exo 2", sans-serif' }}>Getting started 👋</div>
+        <div style={{ fontSize: '13px', color: '#9A9A9F' }}>{completedCount} of {steps.length} complete</div>
+      </div>
+      <div style={{ height: '4px', background: '#2A2A2D', borderRadius: '99px', overflow: 'hidden', marginBottom: '20px' }}>
+        <div style={{ height: '100%', width: `${(completedCount / steps.length) * 100}%`, background: '#00FF9F', borderRadius: '99px', transition: 'width 0.4s ease' }} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {steps.map(s => (
+          <div
+            key={s.key}
+            onClick={!s.done && s.action ? s.action : undefined}
+            style={{ display: 'flex', alignItems: 'center', gap: '14px', background: s.done ? 'rgba(0,255,159,0.04)' : '#1A1A1C', borderRadius: '10px', padding: '14px 16px', cursor: !s.done && s.action ? 'pointer' : 'default', border: `1px solid ${s.done ? 'rgba(0,255,159,0.15)' : '#2A2A2D'}`, opacity: s.done ? 0.6 : 1 }}>
+            <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: s.done ? '#00FF9F' : '#2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {s.done ? (
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                  <polyline points="2,5.5 4.5,8 9,3" stroke="#0E0E0F" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : (
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#9A9A9F' }} />
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: s.done ? '#9A9A9F' : '#ffffff', textDecoration: s.done ? 'line-through' : 'none' }}>{s.title}</div>
+              {!s.done && <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{s.desc}</div>}
+            </div>
+            {!s.done && s.action && <div style={{ color: '#00FF9F', fontSize: '16px', flexShrink: 0 }}>→</div>}
           </div>
-          {s.action && <div style={{ marginLeft: 'auto', color: '#00FF9F', fontSize: '16px' }}>→</div>}
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
-  </div>
-)}
+  )
+})()}
+
 {/* MY GROUPS */}
 {groups.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
