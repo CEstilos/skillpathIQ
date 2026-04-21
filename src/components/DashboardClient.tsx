@@ -58,6 +58,16 @@ const [actionLoading, setActionLoading] = useState<string | null>(null)
 const [showUnlogged, setShowUnlogged] = useState(false)
 const [localSessionRequests, setLocalSessionRequests] = useState<SessionRequest[]>(sessionRequests)
 const [showAllUpcoming, setShowAllUpcoming] = useState(false)
+const [emailingPlayer, setEmailingPlayer] = useState<Player | null>(null)
+const [quickEmailSubject, setQuickEmailSubject] = useState('')
+const [quickEmailBody, setQuickEmailBody] = useState('')
+const [sendingQuickEmail, setSendingQuickEmail] = useState(false)
+const [quickEmailSent, setQuickEmailSent] = useState(false)
+const [broadcastEmailOpen, setBroadcastEmailOpen] = useState(false)
+const [broadcastSubject, setBroadcastSubject] = useState('')
+const [broadcastBody, setBroadcastBody] = useState('')
+const [sendingBroadcast, setSendingBroadcast] = useState(false)
+const [broadcastResults, setBroadcastResults] = useState<{name: string; success: boolean}[]>([])
   function dismissBanner() {
     localStorage.setItem('welcome_dismissed', 'true')
     setBannerDismissed(true)
@@ -290,7 +300,73 @@ const [showAllUpcoming, setShowAllUpcoming] = useState(false)
 
     return { isPast, isLogged: false }
   }
+  async function sendQuickEmail() {
+    if (!emailingPlayer?.parent_email || !quickEmailBody.trim()) return
+    setSendingQuickEmail(true)
+    const playerUrl = `${window.location.origin}/player?id=${emailingPlayer.id}`
+    const response = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: emailingPlayer.parent_email,
+        subject: quickEmailSubject || `Update about ${emailingPlayer.full_name.split(' ')[0]}`,
+        body: quickEmailBody,
+        playerName: emailingPlayer.full_name.split(' ')[0],
+        playerUrl,
+      }),
+    })
+    const data = await response.json()
+    setSendingQuickEmail(false)
+    if (!data.error) {
+      setQuickEmailSent(true)
+      setTimeout(() => {
+        setEmailingPlayer(null)
+        setQuickEmailSubject('')
+        setQuickEmailBody('')
+        setQuickEmailSent(false)
+      }, 2000)
+    }
+  }
+
+  async function sendBroadcastEmail() {
+    setSendingBroadcast(true)
+    setBroadcastResults([])
+    const targets = players.filter(p => {
+      if (!p.parent_email) return false
+      const status = getStatus(p.id)
+      return status === 'active' || status === 'at-risk'
+    })
+    const results: {name: string; success: boolean}[] = []
+    for (const player of targets) {
+      const playerUrl = `${window.location.origin}/player?id=${player.id}`
+      try {
+        const response = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: player.parent_email,
+            subject: broadcastSubject || 'Update from your trainer',
+            body: broadcastBody,
+            playerName: player.full_name.split(' ')[0],
+            playerUrl,
+          }),
+        })
+        const data = await response.json()
+        results.push({ name: player.full_name, success: !data.error })
+      } catch {
+        results.push({ name: player.full_name, success: false })
+      }
+    }
+    setBroadcastResults(results)
+    setSendingBroadcast(false)
+    if (results.every(r => r.success)) {
+      setBroadcastBody('')
+      setBroadcastSubject('')
+    }
+  }
+
   return (
+  
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%', position: 'relative' }}>
 
 <style>{`
@@ -351,6 +427,11 @@ const [showAllUpcoming, setShowAllUpcoming] = useState(false)
     {todaySessions.length === 0 && upcomingSessions.length === 0 && (
       <span>No sessions scheduled</span>
     )}
+    <button
+      onClick={() => setBroadcastEmailOpen(!broadcastEmailOpen)}
+      style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '13px', color: '#9A9A9F' }}>
+      ✉ Email active parents
+    </button>
     {localSessionRequests.length > 0 && (
       <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
         <span style={{ color: '#00FF9F', fontWeight: 700, fontSize: '13px' }}>●</span>
@@ -421,7 +502,52 @@ const [showAllUpcoming, setShowAllUpcoming] = useState(false)
       ))}
     </div>
   )}
-  
+  {/* BROADCAST EMAIL */}
+  {broadcastEmailOpen && (
+        <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>Email active & at-risk parents</div>
+              <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+                {players.filter(p => p.parent_email && (getStatus(p.id) === 'active' || getStatus(p.id) === 'at-risk')).length} parents with email on file
+              </div>
+            </div>
+            <button onClick={() => { setBroadcastEmailOpen(false); setBroadcastBody(''); setBroadcastSubject(''); setBroadcastResults([]) }} style={{ background: 'none', border: 'none', color: '#9A9A9F', cursor: 'pointer', fontSize: '20px', lineHeight: 1 }}>×</button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <input
+              type="text"
+              placeholder="Subject: Update from your trainer"
+              value={broadcastSubject}
+              onChange={e => setBroadcastSubject(e.target.value)}
+              style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
+            />
+            <textarea
+              placeholder="Write your update — going out of town, schedule changes, new availability, etc..."
+              value={broadcastBody}
+              onChange={e => setBroadcastBody(e.target.value)}
+              rows={4}
+              style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', resize: 'vertical' as const, fontFamily: 'sans-serif' }}
+            />
+            {broadcastResults.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {broadcastResults.map((r, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                    <span style={{ color: r.success ? '#00FF9F' : '#E03131' }}>{r.success ? '✓' : '✕'}</span>
+                    <span style={{ color: '#9A9A9F' }}>{r.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={sendBroadcastEmail}
+              disabled={sendingBroadcast || !broadcastBody.trim()}
+              style={{ background: broadcastBody.trim() ? '#00FF9F' : '#2A2A2D', color: broadcastBody.trim() ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 700, cursor: broadcastBody.trim() ? 'pointer' : 'default' }}>
+              {sendingBroadcast ? 'Sending...' : `Send to ${players.filter(p => p.parent_email && (getStatus(p.id) === 'active' || getStatus(p.id) === 'at-risk')).length} parents`}
+            </button>
+          </div>
+        </div>
+      )}
   {/* UNLOGGED PANEL */}
   {showUnlogged && unloggedSessions.length > 0 && (
     <div style={{ background: '#1A1A1C', border: '1px solid rgba(224,49,49,0.3)', borderRadius: '12px', overflow: 'hidden', marginBottom: '20px' }}>
@@ -831,9 +957,12 @@ const [showAllUpcoming, setShowAllUpcoming] = useState(false)
   <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color, whiteSpace: 'nowrap' }}>{statusStyle.label}</span>
 </div>
 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-  <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' as const, fontWeight: 500 }}>+ Log session</button>
+<button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' as const, fontWeight: 500 }}>+ Log session</button>
   <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' as const, fontWeight: 500 }}>Schedule session</button>
   <button onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' as const, fontWeight: 500 }}>Assign drills</button>
+  {player.parent_email && (
+    <button onClick={() => setEmailingPlayer(player)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' as const, fontWeight: 500 }}>✉ Email parent</button>
+  )}
 </div>
                 </div>
               )
@@ -898,13 +1027,18 @@ const [showAllUpcoming, setShowAllUpcoming] = useState(false)
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
   <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
     + Log session
   </button>
   <button onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
     Assign drills
   </button>
+  {player.parent_email && (
+    <button onClick={() => setEmailingPlayer(player)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
+      ✉ Email
+    </button>
+  )}
 </div>
                 </div>
               )
@@ -912,7 +1046,44 @@ const [showAllUpcoming, setShowAllUpcoming] = useState(false)
           )}
         </div>
 
+        </div>
+
+{/* QUICK EMAIL MODAL */}
+{emailingPlayer && (
+  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+    <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '480px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div>
+          <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>Email parent</div>
+          <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>To: {emailingPlayer.parent_email}</div>
+        </div>
+        <button onClick={() => { setEmailingPlayer(null); setQuickEmailSubject(''); setQuickEmailBody(''); setQuickEmailSent(false) }} style={{ background: 'none', border: 'none', color: '#9A9A9F', cursor: 'pointer', fontSize: '20px', lineHeight: 1 }}>×</button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <input
+          type="text"
+          placeholder={`Subject: Update about ${emailingPlayer.full_name.split(' ')[0]}`}
+          value={quickEmailSubject}
+          onChange={e => setQuickEmailSubject(e.target.value)}
+          style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
+        />
+        <textarea
+          placeholder="Write your message to the parent..."
+          value={quickEmailBody}
+          onChange={e => setQuickEmailBody(e.target.value)}
+          rows={5}
+          style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', resize: 'vertical' as const, fontFamily: 'sans-serif' }}
+        />
+        <button
+          onClick={sendQuickEmail}
+          disabled={sendingQuickEmail || !quickEmailBody.trim()}
+          style={{ background: quickEmailSent ? '#2A2A2D' : quickEmailBody.trim() ? '#00FF9F' : '#2A2A2D', color: quickEmailSent ? '#9A9A9F' : quickEmailBody.trim() ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 700, cursor: quickEmailBody.trim() ? 'pointer' : 'default' }}>
+          {quickEmailSent ? '✓ Sent!' : sendingQuickEmail ? 'Sending...' : 'Send email'}
+        </button>
       </div>
     </div>
-  )
+  </div>
+)}
+</div>
+)
 }

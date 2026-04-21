@@ -40,6 +40,9 @@ export default function QuickLogPage() {
   const [dataLoading, setDataLoading] = useState(true)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiGenerated, setAiGenerated] = useState(false)
+  const [step, setStep] = useState<'log' | 'emails'>('log')
+  const [playerEmails, setPlayerEmails] = useState<{ playerId: string; playerName: string; parentEmail: string; email: string; copied: boolean; sent: boolean; sending: boolean }[]>([])
+  const [generatingEmails, setGeneratingEmails] = useState(false)
 
   const allPlayerIds = [playerId, ...alsoPlayerIds]
   const isMultiPlayer = allPlayerIds.length > 1
@@ -240,16 +243,61 @@ if (scheduledSessionId) {
     .eq('id', scheduledSessionId)
 }
 
-router.push(`/dashboard/players/${playerId}`)
-    router.push(`/dashboard/players/${playerId}`)
+setLoading(false)
+
+// If any players have parent emails and AI generated recaps, show email step
+const playersWithEmails = players.filter(p => p.parent_email)
+if (playersWithEmails.length > 0 && playerRecaps.length > 0) {
+  const emails = playersWithEmails.map(p => {
+    const recap = playerRecaps.find(r => r.playerId === p.id)
+    return {
+      playerId: p.id,
+      playerName: p.full_name,
+      parentEmail: p.parent_email!,
+      email: recap?.parentSummary || '',
+      copied: false,
+      sent: false,
+      sending: false,
+    }
+  }).filter(e => e.email)
+  if (emails.length > 0) {
+    setPlayerEmails(emails)
+    setStep('emails')
+    return
   }
+}
+
+router.push(`/dashboard/players/${playerId}`)
+}
 
   if (dataLoading) return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ color: '#9A9A9F', fontSize: '14px' }}>Loading...</p>
     </div>
   )
-
+  async function handleSendPlayerEmail(playerId: string) { //added 
+    const pe = playerEmails.find(e => e.playerId === playerId)
+    if (!pe) return
+    setPlayerEmails(prev => prev.map(e => e.playerId === playerId ? { ...e, sending: true } : e))
+    const playerUrl = `${window.location.origin}/player?id=${playerId}`
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: pe.parentEmail,
+          subject: `Session update for ${pe.playerName.split(' ')[0]}`,
+          body: pe.email,
+          playerName: pe.playerName.split(' ')[0],
+          playerUrl,
+        }),
+      })
+      const data = await response.json()
+      setPlayerEmails(prev => prev.map(e => e.playerId === playerId ? { ...e, sending: false, sent: !data.error } : e))
+    } catch {
+      setPlayerEmails(prev => prev.map(e => e.playerId === playerId ? { ...e, sending: false } : e))
+    }
+  }
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
       <style>{`* { box-sizing: border-box; margin: 0; padding: 0; } html, body { background: #0E0E0F; overflow-x: hidden; } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
@@ -483,6 +531,58 @@ router.push(`/dashboard/players/${playerId}`)
           </button>
 
         </form>
+        {/* STEP 2 — EMAIL PREVIEWS */}
+        {step === 'emails' && (
+          <>
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '16px' }}>✦</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Parent emails ready</span>
+              </div>
+              <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '8px' }}>Review and send</h1>
+              <p style={{ fontSize: '14px', color: '#9A9A9F' }}>AI-generated parent updates based on today&apos;s session. Edit before sending.</p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+              {playerEmails.map(pe => (
+                <div key={pe.playerId} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 16px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{pe.playerName}</div>
+                      <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>To: {pe.parentEmail}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(pe.email); setPlayerEmails(prev => prev.map(e => e.playerId === pe.playerId ? { ...e, copied: true } : e)); setTimeout(() => setPlayerEmails(prev => prev.map(e => e.playerId === pe.playerId ? { ...e, copied: false } : e)), 2000) }}
+                        style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: pe.copied ? '#00FF9F' : '#9A9A9F', fontWeight: 600, cursor: 'pointer' }}>
+                        {pe.copied ? '✓ Copied' : 'Copy'}
+                      </button>
+                      <button
+                        onClick={() => handleSendPlayerEmail(pe.playerId)}
+                        disabled={pe.sending || pe.sent}
+                        style={{ fontSize: '12px', padding: '6px 14px', borderRadius: '8px', border: 'none', background: pe.sent ? '#2A2A2D' : '#00FF9F', color: pe.sent ? '#9A9A9F' : '#0E0E0F', fontWeight: 700, cursor: pe.sent ? 'default' : 'pointer' }}>
+                        {pe.sending ? 'Sending...' : pe.sent ? '✓ Sent' : 'Send email'}
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ padding: '16px' }}>
+                    <textarea
+                      value={pe.email}
+                      onChange={e => setPlayerEmails(prev => prev.map(r => r.playerId === pe.playerId ? { ...r, email: e.target.value } : r))}
+                      style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '12px', fontSize: '13px', color: '#ffffff', outline: 'none', width: '100%', minHeight: '120px', resize: 'vertical' as const, fontFamily: 'sans-serif', lineHeight: 1.7 }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => router.push(`/dashboard/players/${playerId}`)}
+              style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', width: '100%' }}>
+              Done — go to player profile
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
