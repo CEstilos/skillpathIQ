@@ -11,6 +11,7 @@ interface Profile {
   email: string
   individual_rate: number | null
   group_rate: number | null
+  welcome_message: string | null
 }
 
 export default function SettingsClient({ profile }: { profile: Profile | null }) {
@@ -26,6 +27,9 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordSaved, setPasswordSaved] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [welcomeMessage, setWelcomeMessage] = useState(profile?.welcome_message || '')
+const [welcomeSaved, setWelcomeSaved] = useState(false)
+const [welcomeLoading, setWelcomeLoading] = useState(false)
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -59,6 +63,16 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
     setConfirmPassword('')
     setTimeout(() => setPasswordSaved(false), 3000)
     setPasswordLoading(false)
+  }
+
+  async function handleSaveWelcome() {
+    setWelcomeLoading(true)
+    await supabase.from('profiles')
+      .update({ welcome_message: welcomeMessage })
+      .eq('id', profile?.id)
+    setWelcomeLoading(false)
+    setWelcomeSaved(true)
+    setTimeout(() => setWelcomeSaved(false), 2000)
   }
 
   return (
@@ -125,7 +139,30 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
             </div>
 
             {error && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{error}</p>}
-
+            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Welcome email</div>
+                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Sent automatically to parents when you add a new player. Leave blank to skip.</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Message</label>
+                <textarea
+                  value={welcomeMessage}
+                  onChange={e => setWelcomeMessage(e.target.value)}
+                  placeholder={`Hi! I'm excited to start working with your player. Through SkillPathIQ you'll be able to track their progress, see their drill assignments, and stay updated after every session. I'll send updates after each session — looking forward to getting started!`}
+                  rows={6}
+                  style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', resize: 'vertical' as const, fontFamily: 'sans-serif', lineHeight: 1.6 }}
+                />
+                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>The player&apos;s profile link will be included automatically.</div>
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveWelcome}
+                disabled={welcomeLoading}
+                style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+                {welcomeSaved ? '✓ Saved!' : welcomeLoading ? 'Saving...' : 'Save welcome message'}
+              </button>
+            </div>
             <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Change password</div>
 

@@ -48,7 +48,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {/* HERO */}
       <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '80px 24px 64px', textAlign: 'center' }}>
         <div className="fade-up" style={{ display: 'inline-block', background: 'rgba(0,255,159,0.1)', border: '1px solid rgba(0,255,159,0.3)', borderRadius: '99px', padding: '6px 16px', fontSize: '13px', fontWeight: 600, color: '#00AA6D', marginBottom: '24px' }}>
-          Now in early access · Free for founding trainers
+          Now in early access · Free for a limited number of early users
         </div>
 
         <h1 className="hero-title fade-up-2" style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '56px', fontWeight: 800, color: '#0E0E0F', lineHeight: 1.1, marginBottom: '24px', letterSpacing: '-0.5px' }}>
@@ -283,7 +283,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <Link href="/auth/signup" style={{ background: '#00FF9F', color: '#0E0E0F', padding: '16px 40px', borderRadius: '10px', fontSize: '17px', fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
           Get early access — it&apos;s free
         </Link>
-        <p style={{ fontSize: '13px', color: '#6B6B72', marginTop: '12px' }}>No credit card · No trial clock · Free for founding trainers</p>
+        <p style={{ fontSize: '13px', color: '#6B6B72', marginTop: '12px' }}>No credit card · No trial clock · Free for a limited number of early users</p>
       </div>
 
       {/* FOOTER */}

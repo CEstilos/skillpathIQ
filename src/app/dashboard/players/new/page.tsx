@@ -40,14 +40,41 @@ function NewPlayerForm() {
     setError(null)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/auth/login'); return }
-    const { error } = await supabase.from('players').insert({
+
+    const { data: newPlayer, error } = await supabase.from('players').insert({
       trainer_id: user.id,
       group_id: groupId || null,
       full_name: fullName,
       parent_email: parentEmail || null,
       avatar_initials: getInitials(fullName),
-    })
+    }).select().single()
+
     if (error) { setError(error.message); setLoading(false); return }
+
+    // Send welcome email if parent email and trainer has a welcome message
+    if (parentEmail && newPlayer) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('welcome_message, full_name')
+        .eq('id', user.id)
+        .single()
+
+      if (profileData?.welcome_message) {
+        const playerUrl = `${window.location.origin}/player?id=${newPlayer.id}`
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: parentEmail,
+            subject: `Welcome to ${profileData.full_name?.split(' ')[0] || 'your trainer'}'s training program!`,
+            body: profileData.welcome_message,
+            playerName: fullName.split(' ')[0],
+            playerUrl,
+          }),
+        })
+      }
+    }
+
     router.push('/dashboard')
   }
 
