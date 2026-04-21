@@ -35,7 +35,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       {/* NAV */}
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: '64px', borderBottom: '1px solid #f0f0f0', background: '#ffffff', position: 'sticky', top: 0, zIndex: 100, width: '100%', boxSizing: 'border-box' }}>
-        <img src="/logo-dark.png" alt="SkillPathIQ" style={{ height: '36px', width: 'auto' }} />
+        <img src="/logo-dark.png" alt="SkillPathIQ" style={{ height: '195px', width: 'auto' }} />
         <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
           <a href="#features" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>Features</a>
           <a href="#how-it-works" style={{ fontSize: '14px', color: '#6B6B72', textDecoration: 'none' }}>How it works</a>
