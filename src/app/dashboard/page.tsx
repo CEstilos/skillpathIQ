@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import DashboardClient from '@/components/DashboardClient'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   const supabase = await createServerSupabaseClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -34,7 +34,7 @@ export default async function DashboardPage() {
     .from('completions').select('*')
     .in('player_id', players?.map(p => p.id) || [])
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = (await searchParams).date || new Date().toISOString().split('T')[0]
 
   const { data: sessionPlayers } = await supabase
   .from('session_players')
