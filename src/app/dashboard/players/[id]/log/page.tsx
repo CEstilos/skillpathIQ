@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 
-interface Player { id: string; full_name: string; group_id: string | null; birth_year: number | null; skill_level: string | null }
+interface Player { id: string; full_name: string; group_id: string | null; birth_year: number | null; skill_level: string | null; parent_email: string | null }
 interface Profile { full_name: string }
 interface PlayerRecap { playerId: string; playerName: string; parentSummary: string; copied: boolean }
 
