@@ -510,7 +510,7 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
         <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>Email active & at-risk parents</div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>Email All Players and Parents</div>
               <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
                 {players.filter(p => p.parent_email && (getStatus(p.id) === 'active' || getStatus(p.id) === 'at-risk')).length} parents with email on file
               </div>

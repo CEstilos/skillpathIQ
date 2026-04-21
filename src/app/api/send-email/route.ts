@@ -15,7 +15,7 @@ export async function POST(request: Request) {
           
         <!-- HEADER -->
         <div style="background: #0E0E0F; padding: 20px 32px; border-radius: 12px 12px 0 0; text-align: center;">
-          <img src="https://skillpathiq.com/logo.png" alt="SkillPathIQ" style="height: 48px; width: auto;" />
+        <img src="https://skillpathiq.com/logo.png" alt="SkillPathIQ" style="height: 28px; width: auto; max-width: 160px;" />
         </div>
 
           <!-- BODY -->
