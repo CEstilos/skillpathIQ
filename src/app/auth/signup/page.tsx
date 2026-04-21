@@ -20,7 +20,8 @@ export default function SignupPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-  
+    const fullName = `${firstName.trim()} ${lastName.trim()}`
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
