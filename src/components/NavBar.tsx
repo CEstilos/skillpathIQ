@@ -34,6 +34,7 @@ export default function NavBar({ trainerName }: { trainerName?: string }) {
         @media (max-width: 640px) {
           .nav-links { display: none !important; }
           .nav-menu-btn { display: flex !important; }
+          .nav-logo { height: 44px !important; }
         }
       `}</style>
 
@@ -41,7 +42,7 @@ export default function NavBar({ trainerName }: { trainerName?: string }) {
 
         {/* LOGO */}
         <div onClick={() => router.push('/dashboard')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-  <img src="/logo.png" alt="SkillPathIQ" style={{ height: '65px', width: 'auto' }} />
+        <img src="/logo.png" alt="SkillPathIQ" style={{ height: '65px', width: 'auto' }} className="nav-logo" />
 </div>
 
         {/* DESKTOP LINKS */}
