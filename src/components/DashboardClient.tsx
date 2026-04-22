@@ -621,7 +621,7 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
           <div key={session.id} style={{ background: isPast ? 'rgba(154,154,159,0.05)' : 'rgba(0,255,159,0.05)', border: `1px solid ${isPast ? 'rgba(154,154,159,0.2)' : 'rgba(0,255,159,0.25)'}`, borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
 
             {/* TIME + MODIFY */}
-            <div style={{ textAlign: 'center', flexShrink: 0, minWidth: '44px' }}>
+            <div style={{ textAlign: 'center', flexShrink: 0, minWidth: '44px', position: 'relative' }}>
               <div style={{ fontSize: '13px', fontFamily: 'monospace', fontWeight: 700, color: isPast ? '#9A9A9F' : '#ffffff', lineHeight: 1, marginBottom: '4px' }}>
                 {session.session_time ? formatTime(session.session_time) : '—'}
               </div>
@@ -630,6 +630,52 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
                 style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
                 Modify
               </button>
+              {rescheduleOpen === session.id && (
+                <div style={{ position: 'absolute', left: 0, top: '100%', marginTop: '4px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '8px', zIndex: 50, minWidth: '140px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                  <button
+                    onClick={() => setRescheduleOpen(`reschedule-${session.id}`)}
+                    style={{ width: '100%', padding: '8px 12px', textAlign: 'left' as const, background: 'none', border: 'none', color: '#ffffff', fontSize: '13px', cursor: 'pointer', borderRadius: '6px' }}>
+                    Reschedule
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const supabaseClient = createClient()
+                      await supabaseClient.from('sessions').update({ status: 'cancelled' }).eq('id', session.id)
+                      setRescheduleOpen(null)
+                      router.refresh()
+                    }}
+                    style={{ width: '100%', padding: '8px 12px', textAlign: 'left' as const, background: 'none', border: 'none', color: '#E03131', fontSize: '13px', cursor: 'pointer', borderRadius: '6px' }}>
+                    Cancel session
+                  </button>
+                </div>
+              )}
+              {rescheduleOpen === `reschedule-${session.id}` && (
+                <div style={{ position: 'absolute', left: 0, top: '100%', marginTop: '4px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '16px', zIndex: 50, minWidth: '220px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                  <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pick new date & time</div>
+                  <input type="date" defaultValue={session.session_date} id={`today-date-${session.id}`} style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '8px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', marginBottom: '8px' }} />
+                  <input type="time" defaultValue={session.session_time || ''} id={`today-time-${session.id}`} style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '8px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', marginBottom: '10px' }} />
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={async () => {
+                        const dateInput = document.getElementById(`today-date-${session.id}`) as HTMLInputElement
+                        const timeInput = document.getElementById(`today-time-${session.id}`) as HTMLInputElement
+                        if (!dateInput?.value) return
+                        const supabaseClient = createClient()
+                        await supabaseClient.from('sessions').update({ session_date: dateInput.value, session_time: timeInput?.value || null }).eq('id', session.id)
+                        setRescheduleOpen(null)
+                        router.refresh()
+                      }}
+                      style={{ flex: 1, background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setRescheduleOpen(null)}
+                      style={{ flex: 1, background: 'transparent', color: '#9A9A9F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* DIVIDER */}
@@ -638,11 +684,11 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
             {/* NAME */}
             <div style={{ flex: 1, minWidth: 0 }}>
               {session.groups?.name
-                ? <span onClick={() => router.push(`/dashboard/groups/${session.group_id}`)} style={{ fontSize: '15px', fontWeight: 600, color: '#00FF9F', cursor: 'pointer' }}>{session.groups.name}</span>
+                ? <span onClick={() => router.push(`/dashboard/groups/${session.group_id}`)} style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', cursor: 'pointer' }}>{session.groups.name}</span>
                 : sessionPlayers.length > 0
                   ? <span>{sessionPlayers.map((p, i) => (
                       <span key={p.id}>
-                        <span onClick={() => router.push(`/dashboard/players/${p.id}`)} style={{ fontSize: '15px', fontWeight: 600, color: '#00FF9F', cursor: 'pointer' }}>{p.full_name}</span>
+                        <span onClick={() => router.push(`/dashboard/players/${p.id}`)} style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', cursor: 'pointer' }}>{p.full_name}</span>
                         {i < sessionPlayers.length - 1 ? ', ' : ''}
                       </span>
                     ))}</span>
@@ -672,26 +718,7 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
               {isLogged ? '✓ Logged' : 'Log session'}
             </button>
 
-            {/* MODIFY DROPDOWN */}
-            {rescheduleOpen === session.id && (
-              <div style={{ position: 'absolute', right: '16px', marginTop: '80px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '8px', zIndex: 50, minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
-                <button
-                  onClick={() => { router.push(`/dashboard/sessions/${session.id}/reschedule`); setRescheduleOpen(null) }}
-                  style={{ width: '100%', padding: '8px 12px', textAlign: 'left' as const, background: 'none', border: 'none', color: '#ffffff', fontSize: '13px', cursor: 'pointer', borderRadius: '6px' }}>
-                  📅 Reschedule
-                </button>
-                <button
-                  onClick={async () => {
-                    const supabaseClient = createClient()
-                    await supabaseClient.from('sessions').update({ status: 'cancelled' }).eq('id', session.id)
-                    setRescheduleOpen(null)
-                    router.refresh()
-                  }}
-                  style={{ width: '100%', padding: '8px 12px', textAlign: 'left' as const, background: 'none', border: 'none', color: '#E03131', fontSize: '13px', cursor: 'pointer', borderRadius: '6px' }}>
-                  ✕ Cancel session
-                </button>
-              </div>
-            )}
+            
           </div>
          
           )
@@ -717,44 +744,101 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
       {(showAllUpcoming ? upcomingSessions : upcomingSessions.slice(0, 3)).map((session, i) => {
         const visibleSessions = showAllUpcoming ? upcomingSessions : upcomingSessions.slice(0, 3)
         return (
-        <div key={session.id} style={{ padding: '14px 20px', borderBottom: i < visibleSessions.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ width: '44px', textAlign: 'center', flexShrink: 0 }}>
-            <div style={{ fontSize: '10px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <div key={session.id} style={{ padding: '11px 16px', borderBottom: i < visibleSessions.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
+
+          {/* DATE */}
+          <div style={{ textAlign: 'center' as const, flexShrink: 0, minWidth: '32px' }}>
+            <div style={{ fontSize: '10px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>
               {new Date(session.session_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' })}
             </div>
-            <div style={{ fontSize: '22px', fontFamily: 'monospace', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>
+            <div style={{ fontSize: '20px', fontFamily: 'monospace', fontWeight: 700, color: '#ffffff', lineHeight: 1.1 }}>
               {new Date(session.session_date + 'T00:00:00').getDate()}
             </div>
           </div>
+
+          {/* TIME + MODIFY */}
+          <div style={{ textAlign: 'center' as const, flexShrink: 0, position: 'relative' }}>
+            <div style={{ fontSize: '12px', color: '#ffffff', fontWeight: 600, marginBottom: '3px' }}>
+              {session.session_time ? formatTime(session.session_time) : '—'}
+            </div>
+            <button
+              onClick={() => setRescheduleOpen(rescheduleOpen === session.id ? null : session.id)}
+              style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
+              Modify
+            </button>
+            {rescheduleOpen === session.id && (
+              <div style={{ position: 'absolute', left: 0, top: '100%', marginTop: '4px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '8px', zIndex: 50, minWidth: '140px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                <button
+                  onClick={() => setRescheduleOpen(`reschedule-${session.id}`)}
+                  style={{ width: '100%', padding: '8px 12px', textAlign: 'left' as const, background: 'none', border: 'none', color: '#ffffff', fontSize: '13px', cursor: 'pointer', borderRadius: '6px' }}>
+                  Reschedule
+                </button>
+                <button
+                  onClick={async () => {
+                    const supabaseClient = createClient()
+                    await supabaseClient.from('sessions').update({ status: 'cancelled' }).eq('id', session.id)
+                    setRescheduleOpen(null)
+                    router.refresh()
+                  }}
+                  style={{ width: '100%', padding: '8px 12px', textAlign: 'left' as const, background: 'none', border: 'none', color: '#E03131', fontSize: '13px', cursor: 'pointer', borderRadius: '6px' }}>
+                  Cancel session
+                </button>
+              </div>
+            )}
+            {rescheduleOpen === `reschedule-${session.id}` && (
+              <div style={{ position: 'absolute', left: 0, top: '100%', marginTop: '4px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '16px', zIndex: 50, minWidth: '220px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pick new date & time</div>
+                <input type="date" defaultValue={session.session_date} id={`upcoming-date-${session.id}`} style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '8px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', marginBottom: '8px' }} />
+                <input type="time" defaultValue={session.session_time || ''} id={`upcoming-time-${session.id}`} style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '8px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', marginBottom: '10px' }} />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={async () => {
+                      const dateInput = document.getElementById(`upcoming-date-${session.id}`) as HTMLInputElement
+                      const timeInput = document.getElementById(`upcoming-time-${session.id}`) as HTMLInputElement
+                      if (!dateInput?.value) return
+                      const supabaseClient = createClient()
+                      await supabaseClient.from('sessions').update({ session_date: dateInput.value, session_time: timeInput?.value || null }).eq('id', session.id)
+                      setRescheduleOpen(null)
+                      router.refresh()
+                    }}
+                    style={{ flex: 1, background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setRescheduleOpen(null)}
+                    style={{ flex: 1, background: 'transparent', color: '#9A9A9F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* DIVIDER */}
+          <div style={{ width: '1px', height: '30px', background: '#2A2A2D', flexShrink: 0 }} />
+
+          {/* NAME */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff' }}>{session.title}</div>
-            <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
             {session.groups?.name
-              ? <span onClick={() => router.push(`/dashboard/groups/${session.group_id}`)} style={{ cursor: 'pointer', color: '#00FF9F', fontWeight: 600 }}>{session.groups.name}</span>
+              ? <span onClick={() => router.push(`/dashboard/groups/${session.group_id}`)} style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', cursor: 'pointer' }}>{session.groups.name}</span>
               : (() => {
                   const upcomingPlayers = allSessionPlayers
                     .filter(sp => sp.session_id === session.id)
                     .map(sp => players.find(p => p.id === sp.player_id))
                     .filter(Boolean) as Player[]
                   return upcomingPlayers.length > 0
-                    ? <span>{upcomingPlayers.map((p, i) => (
+                    ? <span>{upcomingPlayers.map((p, j) => (
                         <span key={p.id}>
-                          <span onClick={() => router.push(`/dashboard/players/${p.id}`)} style={{ color: '#00FF9F', cursor: 'pointer', fontWeight: 600 }}>{p.full_name}</span>
-                          {i < upcomingPlayers.length - 1 ? ', ' : ''}
+                          <span onClick={() => router.push(`/dashboard/players/${p.id}`)} style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', cursor: 'pointer' }}>{p.full_name}</span>
+                          {j < upcomingPlayers.length - 1 ? ', ' : ''}
                         </span>
                       ))}</span>
-                    : <span style={{ color: '#9A9A9F' }}>Individual session</span>
+                    : <span style={{ fontSize: '14px', color: '#9A9A9F' }}>Individual session</span>
                 })()}
-            {session.session_time && <span> · {formatTime(session.session_time)}</span>}
-              {session.type === 'recurring' && (
-                <span style={{ marginLeft: '8px', fontSize: '11px', background: 'rgba(0,255,159,0.12)', color: '#00FF9F', padding: '2px 6px', borderRadius: '4px' }}>Recurring</span>
-              )}
-            </div>
+            {session.type === 'recurring' && (
+              <span style={{ marginLeft: '8px', fontSize: '10px', background: 'rgba(0,255,159,0.12)', color: '#00FF9F', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Recurring</span>
+            )}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end', flexShrink: 0 }}>
-  <div style={{ fontSize: '12px', color: '#9A9A9F' }}>{formatUpcomingDate(session.session_date)}</div>
-  <SessionActionButtons session={session} />
-</div>
         </div>
      )
     })}
