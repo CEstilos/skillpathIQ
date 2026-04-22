@@ -1010,9 +1010,10 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
               + Assign drills
             </button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 100px 80px 200px', gap: '0', padding: '8px 20px', borderBottom: '1px solid #2A2A2D', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 1fr 1fr 1fr 1fr', gap: '0', padding: '8px 20px', borderBottom: '1px solid #2A2A2D', alignItems: 'center' }}>
             <div />
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: '12px' }}>Player</div>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' as const }}>Group</div>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' as const }}>Last Session</div>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' as const }}>Drills</div>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: '8px' }}>Actions</div>
@@ -1033,17 +1034,22 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
               const isCopied = copiedId === player.id
               const isLast = i === filteredPlayers.length - 1
               return (
-                <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '36px 1fr 100px 80px 200px', gap: '0', padding: '12px 20px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', alignItems: 'center' }}>
+                <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '36px 1fr 1fr 1fr 1fr 1fr', gap: '0', padding: '12px 20px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', alignItems: 'center' }}>
                   {/* INITIALS */}
                   <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F' }}>{getInitials(player.full_name)}</div>
-                  {/* NAME + GROUP */}
+                  {/* NAME */}
                   <div style={{ paddingLeft: '12px', minWidth: 0 }}>
                     <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{player.full_name}</div>
-                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '1px' }}>{group ? group.name : 'Individual'}</div>
+                  </div>
+                  {/* GROUP */}
+                  <div style={{ textAlign: 'center' as const }}>
+                    {group
+                      ? <span style={{ fontSize: '12px', background: '#2A2A2D', padding: '3px 8px', borderRadius: '6px', color: '#9A9A9F', whiteSpace: 'nowrap' as const }}>{group.name}</span>
+                      : <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Individual</span>}
                   </div>
                   {/* LAST SESSION */}
                   <div style={{ textAlign: 'center' as const }}>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: days !== null && days > 30 ? '#E03131' : '#ffffff' }}>{formatDaysAgo(days)}</div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: days !== null && days > 30 ? '#E03131' : '#9A9A9F' }}>{formatDaysAgo(days)}</div>
                   </div>
                   {/* DRILLS */}
                   <div style={{ textAlign: 'center' as const }}>
@@ -1053,7 +1059,7 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
                       const pct = Math.round((counts.done / counts.total) * 100)
                       return (
                         <div>
-                          <div style={{ fontSize: '12px', fontWeight: 600, color: counts.done === counts.total ? '#00FF9F' : '#ffffff', marginBottom: '4px' }}>{counts.done}/{counts.total}</div>
+                          <div style={{ fontSize: '12px', fontWeight: 600, color: counts.done === counts.total ? '#00FF9F' : '#9A9A9F', marginBottom: '4px' }}>{counts.done}/{counts.total}</div>
                           <div style={{ height: '3px', background: '#2A2A2D', borderRadius: '99px', overflow: 'hidden', margin: '0 auto', width: '50px' }}>
                             <div style={{ height: '100%', width: pct + '%', background: counts.done === counts.total ? '#00FF9F' : 'rgba(0,255,159,0.5)', borderRadius: '99px' }} />
                           </div>
@@ -1066,7 +1072,7 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
                     <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontWeight: 500 }}>+ Session</button>
                     <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '11px', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontWeight: 500 }}>Log Session</button>
                     {player.parent_email && (
-                      <button onClick={() => setEmailingPlayer(player)} style={{ fontSize: '11px', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontWeight: 500 }}>Send Email</button>
+                      <button onClick={() => setEmailingPlayer(player)} style={{ fontSize: '11px', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontWeight: 500 }}>Email</button>
                     )}
                   </div>
                 </div>
