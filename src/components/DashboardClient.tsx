@@ -168,7 +168,14 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
     const done = completions.filter(c => c.player_id === player.id && weekDrills.some(d => d.id === c.drill_id)).length
     return Math.round((done / weekDrills.length) * 100)
   }
-
+  function getDrillCounts(player: Player) {
+    const week = getCurrentDrillWeek(player)
+    if (!week) return null
+    const weekDrills = drills.filter(d => d.drill_week_id === week.id)
+    if (!weekDrills.length) return null
+    const done = completions.filter(c => c.player_id === player.id && weekDrills.some(d => d.id === c.drill_id)).length
+    return { done, total: weekDrills.length }
+  }
   function copyPlayerLink(playerId: string) {
     const url = `${window.location.origin}/player?id=${playerId}`
     navigator.clipboard.writeText(url).then(() => {
@@ -1003,10 +1010,12 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
               + Assign drills
             </button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.5fr', gap: '16px', padding: '10px 20px', borderBottom: '1px solid #2A2A2D' }}>
-          {['Player', 'Group', 'Last session', 'Drills', 'Status', 'Actions'].map(h => (
-  <div key={h} style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</div>
-))}
+          <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 100px 80px 200px', gap: '0', padding: '8px 20px', borderBottom: '1px solid #2A2A2D', alignItems: 'center' }}>
+            <div />
+            <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: '12px' }}>Player</div>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' as const }}>Last Session</div>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' as const }}>Drills</div>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: '8px' }}>Actions</div>
           </div>
           {filteredPlayers.length === 0 ? (
             <div style={{ padding: '48px 20px', textAlign: 'center' }}>
@@ -1024,40 +1033,42 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
               const isCopied = copiedId === player.id
               const isLast = i === filteredPlayers.length - 1
               return (
-                <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.5fr', gap: '16px', padding: '14px 20px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>{getInitials(player.full_name)}</div>
-                    <div>
-                    <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{player.full_name}</div>
-                      <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{player.parent_email || 'No parent email'}</div>
-                    </div>
+                <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '36px 1fr 100px 80px 200px', gap: '0', padding: '12px 20px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', alignItems: 'center' }}>
+                  {/* INITIALS */}
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F' }}>{getInitials(player.full_name)}</div>
+                  {/* NAME + GROUP */}
+                  <div style={{ paddingLeft: '12px', minWidth: 0 }}>
+                    <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{player.full_name}</div>
+                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '1px' }}>{group ? group.name : 'Individual'}</div>
                   </div>
-                  <div>{group ? <span style={{ background: '#2A2A2D', padding: '3px 8px', borderRadius: '6px', fontSize: '12px', color: '#a0a0a8' }}>{group.name}</span> : <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Individual</span>}</div>
-                  <div style={{ fontSize: '13px', color: days !== null && days > 30 ? '#E03131' : '#a0a0a8' }}>
-                    {formatDaysAgo(days)}
-                    {lastSession?.notes && <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>{lastSession.notes}</div>}
+                  {/* LAST SESSION */}
+                  <div style={{ textAlign: 'center' as const }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: days !== null && days > 30 ? '#E03131' : '#ffffff' }}>{formatDaysAgo(days)}</div>
                   </div>
-                  <div>
-                    {pct !== null ? (
-                      <div>
-                        <div style={{ height: '4px', background: '#2A2A2D', borderRadius: '99px', overflow: 'hidden', marginBottom: '4px', width: '80px' }}>
-                          <div style={{ height: '100%', width: pct + '%', background: pct === 100 ? '#00FF9F' : '#00FF9F', borderRadius: '99px' }} />
+                  {/* DRILLS */}
+                  <div style={{ textAlign: 'center' as const }}>
+                    {(() => {
+                      const counts = getDrillCounts(player)
+                      if (!counts) return <span style={{ fontSize: '13px', color: '#9A9A9F' }}>—</span>
+                      const pct = Math.round((counts.done / counts.total) * 100)
+                      return (
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 600, color: counts.done === counts.total ? '#00FF9F' : '#ffffff', marginBottom: '4px' }}>{counts.done}/{counts.total}</div>
+                          <div style={{ height: '3px', background: '#2A2A2D', borderRadius: '99px', overflow: 'hidden', margin: '0 auto', width: '50px' }}>
+                            <div style={{ height: '100%', width: pct + '%', background: counts.done === counts.total ? '#00FF9F' : 'rgba(0,255,159,0.5)', borderRadius: '99px' }} />
+                          </div>
                         </div>
-                        <div style={{ fontSize: '11px', color: '#9A9A9F' }}>{pct}% done</div>
-                      </div>
-                    ) : <span style={{ fontSize: '12px', color: '#9A9A9F' }}>No drills</span>}
+                      )
+                    })()}
                   </div>
-                  <div>
-  <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color, whiteSpace: 'nowrap' }}>{statusStyle.label}</span>
-</div>
-<div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-<button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' as const, fontWeight: 500 }}>+ Log session</button>
-  <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' as const, fontWeight: 500 }}>Schedule session</button>
-  <button onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' as const, fontWeight: 500 }}>Assign drills</button>
-  {player.parent_email && (
-    <button onClick={() => setEmailingPlayer(player)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' as const, fontWeight: 500 }}>✉ Email parent</button>
-  )}
-</div>
+                  {/* ACTIONS */}
+                  <div style={{ display: 'flex', gap: '5px', paddingLeft: '8px' }}>
+                    <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontWeight: 500 }}>+ Session</button>
+                    <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '11px', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontWeight: 500 }}>Log Session</button>
+                    {player.parent_email && (
+                      <button onClick={() => setEmailingPlayer(player)} style={{ fontSize: '11px', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontWeight: 500 }}>Send Email</button>
+                    )}
+                  </div>
                 </div>
               )
             })
@@ -1090,51 +1101,38 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
               const pct = getCompletionPct(player)
               const isCopied = copiedId === player.id
               return (
-                <div key={player.id} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>{getInitials(player.full_name)}</div>
-                      <div>
-                      <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{player.full_name}</div>
-                        <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '1px' }}>{group ? group.name : 'Individual'}</div>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color, flexShrink: 0 }}>{statusStyle.label}</span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '10px' }}>
-                      <div style={{ fontSize: '10px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Last session</div>
-                      <div style={{ fontSize: '13px', fontWeight: 500, color: days !== null && days > 30 ? '#E03131' : '#ffffff' }}>{formatDaysAgo(days)}</div>
-                      {lastSession?.notes && <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lastSession.notes}</div>}
-                    </div>
-                    <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '10px' }}>
-                      <div style={{ fontSize: '10px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Drills</div>
-                      {pct !== null ? (
-                        <div>
-                          <div style={{ fontSize: '13px', fontWeight: 500, color: '#ffffff', marginBottom: '4px' }}>{pct}% done</div>
-                          <div style={{ height: '4px', background: '#2A2A2D', borderRadius: '99px', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: pct + '%', background: pct === 100 ? '#00FF9F' : '#00FF9F', borderRadius: '99px' }} />
-                          </div>
-                        </div>
-                      ) : <div style={{ fontSize: '13px', color: '#9A9A9F' }}>None assigned</div>}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
-  <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
-    + Log session
-  </button>
-  <button onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
-    Assign drills
-  </button>
-  {player.parent_email && (
-    <button onClick={() => setEmailingPlayer(player)} style={{ flex: 1, padding: '9px', borderRadius: '8px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
-      ✉ Email
-    </button>
-  )}
-</div>
+                <div key={player.id} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {/* INITIALS */}
+                <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>{getInitials(player.full_name)}</div>
+                {/* NAME + GROUP */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{player.full_name}</div>
+                  <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '1px' }}>{group ? group.name : 'Individual'}</div>
                 </div>
+                {/* LAST SESSION */}
+                <div style={{ textAlign: 'center' as const, flexShrink: 0 }}>
+                  <div style={{ fontSize: '10px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>Last</div>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: days !== null && days > 30 ? '#E03131' : '#ffffff' }}>{formatDaysAgo(days)}</div>
+                </div>
+                {/* DRILLS */}
+                <div style={{ textAlign: 'center' as const, flexShrink: 0, minWidth: '44px' }}>
+                    <div style={{ fontSize: '10px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>Drills</div>
+                    {(() => {
+                      const counts = getDrillCounts(player)
+                      return counts
+                        ? <span style={{ fontSize: '13px', fontWeight: 600, color: counts.done === counts.total ? '#00FF9F' : '#ffffff' }}>{counts.done}/{counts.total}</span>
+                        : <span style={{ fontSize: '11px', color: '#9A9A9F' }}>—</span>
+                    })()}
+                  </div>
+                {/* ACTIONS */}
+                <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                  <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '5px 7px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontWeight: 500 }}>Schedule</button>
+                  <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '11px', padding: '5px 7px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontWeight: 500 }}>Log</button>
+                  {player.parent_email && (
+                    <button onClick={() => setEmailingPlayer(player)} style={{ fontSize: '11px', padding: '5px 7px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', fontWeight: 500 }}>✉</button>
+                  )}
+                </div>
+              </div>
               )
             })
           )}
