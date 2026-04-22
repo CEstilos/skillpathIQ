@@ -618,73 +618,80 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
          .filter(Boolean) as Player[]
          const { isPast, isLogged } = getSessionDisplayState(session)
          return (
-          <div key={session.id} style={{ background: isPast ? 'rgba(154,154,159,0.05)' : 'rgba(0,255,159,0.05)', border: `1px solid ${isPast ? 'rgba(154,154,159,0.2)' : 'rgba(0,255,159,0.25)'}`, borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' as const }}>
-          {/* DATE */}
-          <div style={{ width: '48px', textAlign: 'center', flexShrink: 0 }}>
-            <div style={{ fontSize: '10px', color: isPast ? '#9A9A9F' : '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
-              {new Date(session.session_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' })}
-            </div>
-            <div style={{ fontSize: '28px', fontFamily: 'monospace', fontWeight: 700, color: isPast ? '#9A9A9F' : '#ffffff', lineHeight: 1 }}>
-              {new Date(session.session_date + 'T00:00:00').getDate()}
-            </div>
-            {session.session_time && (
-              <div style={{ fontSize: '10px', color: '#9A9A9F', marginTop: '2px' }}>
-                {formatTime(session.session_time)}
+          <div key={session.id} style={{ background: isPast ? 'rgba(154,154,159,0.05)' : 'rgba(0,255,159,0.05)', border: `1px solid ${isPast ? 'rgba(154,154,159,0.2)' : 'rgba(0,255,159,0.25)'}`, borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+
+            {/* TIME + MODIFY */}
+            <div style={{ textAlign: 'center', flexShrink: 0, minWidth: '44px' }}>
+              <div style={{ fontSize: '13px', fontFamily: 'monospace', fontWeight: 700, color: isPast ? '#9A9A9F' : '#ffffff', lineHeight: 1, marginBottom: '4px' }}>
+                {session.session_time ? formatTime(session.session_time) : '—'}
               </div>
-            )}
-          </div>
-          <div style={{ width: '1px', height: '40px', background: isPast ? 'rgba(154,154,159,0.2)' : 'rgba(0,255,159,0.2)', flexShrink: 0 }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <div style={{ fontSize: '15px', fontWeight: 600, color: isPast ? '#9A9A9F' : '#ffffff' }}>{session.title}</div>
-                {isPast && (
-                  <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 7px', borderRadius: '99px', background: isLogged ? 'rgba(154,154,159,0.15)' : 'rgba(224,49,49,0.15)', color: isLogged ? '#9A9A9F' : '#E03131' }}>
-                    {isLogged ? 'Completed' : 'Not logged'}
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: '13px', color: '#9A9A9F' }}>
+              <button
+                onClick={() => setRescheduleOpen(rescheduleOpen === session.id ? null : session.id)}
+                style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
+                Modify
+              </button>
+            </div>
+
+            {/* DIVIDER */}
+            <div style={{ width: '1px', height: '36px', background: isPast ? 'rgba(154,154,159,0.2)' : 'rgba(0,255,159,0.2)', flexShrink: 0 }} />
+
+            {/* NAME */}
+            <div style={{ flex: 1, minWidth: 0 }}>
               {session.groups?.name
-                ? <span onClick={() => router.push(`/dashboard/groups/${session.group_id}`)} style={{ color: '#00FF9F', cursor: 'pointer', fontWeight: 600 }}>{session.groups.name}</span>
+                ? <span onClick={() => router.push(`/dashboard/groups/${session.group_id}`)} style={{ fontSize: '15px', fontWeight: 600, color: '#00FF9F', cursor: 'pointer' }}>{session.groups.name}</span>
                 : sessionPlayers.length > 0
                   ? <span>{sessionPlayers.map((p, i) => (
                       <span key={p.id}>
-                        <span onClick={() => router.push(`/dashboard/players/${p.id}`)} style={{ color: '#00FF9F', cursor: 'pointer', fontWeight: 600 }}>{p.full_name}</span>
+                        <span onClick={() => router.push(`/dashboard/players/${p.id}`)} style={{ fontSize: '15px', fontWeight: 600, color: '#00FF9F', cursor: 'pointer' }}>{p.full_name}</span>
                         {i < sessionPlayers.length - 1 ? ', ' : ''}
                       </span>
                     ))}</span>
-                  : <span style={{ color: '#9A9A9F' }}>No players linked</span>}
-              {session.session_time && <span style={{ color: '#9A9A9F' }}> · {formatTime(session.session_time)}</span>}
-              </div>
+                  : <span style={{ fontSize: '15px', color: '#9A9A9F' }}>No players linked</span>}
+              {isPast && (
+                <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '99px', background: isLogged ? 'rgba(154,154,159,0.15)' : 'rgba(224,49,49,0.15)', color: isLogged ? '#9A9A9F' : '#E03131' }}>
+                  {isLogged ? 'Logged' : 'Not logged'}
+                </span>
+              )}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end', flexShrink: 0 }}>
-  <div style={{ display: 'flex', gap: '8px' }}>
-  <button
-                onClick={() => {
-                  if (isLogged) return
-                  if (session.group_id) {
-                    router.push(`/dashboard/sessions/${session.id}/log`)
-                  } else if (sessionPlayers.length === 1) {
-                    router.push(`/dashboard/players/${sessionPlayers[0].id}/log?sessionId=${session.id}`)
-                  } else if (sessionPlayers.length > 1) {
-                    router.push(`/dashboard/players/${sessionPlayers[0].id}/log?also=${sessionPlayers.slice(1).map(p => p.id).join(',')}&sessionId=${session.id}`)
-                  } else {
-                    router.push(`/dashboard/sessions/${session.id}/log`)
-                  }
-                }}
-                style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '8px', border: 'none', background: isLogged ? '#2A2A2D' : isPast ? '#E03131' : '#00FF9F', color: isLogged ? '#9A9A9F' : '#0E0E0F', fontWeight: 600, cursor: isLogged ? 'default' : 'pointer' }}>
-                {isLogged ? 'Logged' : isPast ? 'Log now' : 'Log session'}
-              </button>
-    {session.group_id && (
-      <button
-        onClick={() => router.push(`/dashboard/drills/new?group=${session.group_id}`)}
-        style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
-        Assign drills
-      </button>
-    )}
-  </div>
-  <SessionActionButtons session={session} />
-</div>
+
+            {/* LOG BUTTON */}
+            <button
+              onClick={() => {
+                if (isLogged) return
+                if (session.group_id) {
+                  router.push(`/dashboard/sessions/${session.id}/log`)
+                } else if (sessionPlayers.length === 1) {
+                  router.push(`/dashboard/players/${sessionPlayers[0].id}/log?sessionId=${session.id}`)
+                } else if (sessionPlayers.length > 1) {
+                  router.push(`/dashboard/players/${sessionPlayers[0].id}/log?also=${sessionPlayers.slice(1).map(p => p.id).join(',')}&sessionId=${session.id}`)
+                } else {
+                  router.push(`/dashboard/sessions/${session.id}/log`)
+                }
+              }}
+              style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: isLogged ? '#2A2A2D' : isPast ? '#E03131' : '#00FF9F', color: isLogged ? '#9A9A9F' : '#0E0E0F', fontWeight: 700, cursor: isLogged ? 'default' : 'pointer', flexShrink: 0 }}>
+              {isLogged ? '✓ Logged' : 'Log session'}
+            </button>
+
+            {/* MODIFY DROPDOWN */}
+            {rescheduleOpen === session.id && (
+              <div style={{ position: 'absolute', right: '16px', marginTop: '80px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '8px', zIndex: 50, minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                <button
+                  onClick={() => { router.push(`/dashboard/sessions/${session.id}/reschedule`); setRescheduleOpen(null) }}
+                  style={{ width: '100%', padding: '8px 12px', textAlign: 'left' as const, background: 'none', border: 'none', color: '#ffffff', fontSize: '13px', cursor: 'pointer', borderRadius: '6px' }}>
+                  📅 Reschedule
+                </button>
+                <button
+                  onClick={async () => {
+                    const supabaseClient = createClient()
+                    await supabaseClient.from('sessions').update({ status: 'cancelled' }).eq('id', session.id)
+                    setRescheduleOpen(null)
+                    router.refresh()
+                  }}
+                  style={{ width: '100%', padding: '8px 12px', textAlign: 'left' as const, background: 'none', border: 'none', color: '#E03131', fontSize: '13px', cursor: 'pointer', borderRadius: '6px' }}>
+                  ✕ Cancel session
+                </button>
+              </div>
+            )}
           </div>
          
           )
