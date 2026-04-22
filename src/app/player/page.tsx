@@ -47,20 +47,17 @@ function PlayerView() {
     if (!playerData) { setError('Player not found'); setLoading(false); return }
     setPlayer(playerData)
 
-    // Latest feedback
     const { data: sessionData } = await supabase
       .from('sessions').select('feedback, session_date')
       .eq('player_id', playerId).not('feedback', 'is', null)
       .order('session_date', { ascending: false }).limit(1).single()
     if (sessionData?.feedback) setLatestFeedback(sessionData.feedback)
 
-    // All sessions
     const { data: sessionsData } = await supabase
       .from('sessions').select('*').eq('player_id', playerId)
       .order('session_date', { ascending: false }).limit(20)
     setSessions(sessionsData || [])
 
-    // Current drill week
     let weekData: DrillWeek | null = null
     const { data: playerWeek } = await supabase
       .from('drill_weeks').select('*').eq('player_id', playerId)
@@ -86,7 +83,6 @@ function PlayerView() {
       setCompletions(completionsData || [])
     }
 
-    // All drill weeks for history
     const groupId = playerData.group_id
     const { data: allWeeksData } = await supabase
       .from('drill_weeks').select('*')
@@ -121,12 +117,16 @@ function PlayerView() {
 
   async function handleSessionRequest() {
     if (!player) return
-    // Store request in Supabase — trainer can see it on dashboard
-    await supabase.from('session_requests').insert({
+    const { error } = await supabase.from('session_requests').insert({
       player_id: playerId,
       note: requestNote,
       requested_at: new Date().toISOString(),
-    }).select()
+    })
+    if (error) {
+      console.error('Session request error:', error)
+      alert('Failed to send request: ' + error.message)
+      return
+    }
     setRequestSent(true)
     setShowRequestForm(false)
     setRequestNote('')
@@ -175,7 +175,7 @@ function PlayerView() {
 
         {/* LOGO */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <img src="/logo-dark.png" alt="SkillPathIQ" style={{ height: '36px', width: 'auto' }} />
+          <img src="/logo-dark.png" alt="SkillPathIQ" style={{ height: '32px', width: 'auto' }} />
         </div>
 
         {/* PLAYER HEADER */}
@@ -190,7 +190,6 @@ function PlayerView() {
             {sessions.length} session{sessions.length !== 1 ? 's' : ''} · {allDrillWeeks.length} drill week{allDrillWeeks.length !== 1 ? 's' : ''}
           </div>
 
-          {/* REQUEST SESSION BUTTON */}
           {!requestSent ? (
             <button
               onClick={() => setShowRequestForm(!showRequestForm)}
@@ -206,7 +205,7 @@ function PlayerView() {
           {showRequestForm && (
             <div style={{ marginTop: '12px', textAlign: 'left' }}>
               <textarea
-                placeholder="Any notes for your coach? (optional) — e.g. available Tuesday evenings, want to work on shooting"
+                placeholder="Any notes for your coach? (optional)"
                 value={requestNote}
                 onChange={e => setRequestNote(e.target.value)}
                 style={{ width: '100%', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '13px', color: '#ffffff', outline: 'none', resize: 'none', minHeight: '80px', fontFamily: 'sans-serif', marginBottom: '8px' }}
@@ -259,7 +258,7 @@ function PlayerView() {
           ))}
         </div>
 
-        {/* TAB: THIS WEEK'S DRILLS */}
+        {/* TAB: THIS WEEK */}
         {activeTab === 'drills' && (
           <>
             {drillWeek ? (
@@ -312,7 +311,7 @@ function PlayerView() {
           </>
         )}
 
-        {/* TAB: SESSION HISTORY */}
+        {/* TAB: SESSIONS */}
         {activeTab === 'sessions' && (
           <div>
             {sessions.length === 0 ? (
@@ -336,9 +335,7 @@ function PlayerView() {
                         <span style={{ color: '#ffffff', fontWeight: 500 }}>Covered: </span>{session.drills_covered}
                       </div>
                     )}
-                    {session.notes && (
-                      <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '6px' }}>{session.notes}</div>
-                    )}
+                    {session.notes && <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '6px' }}>{session.notes}</div>}
                     {session.feedback && (
                       <div style={{ background: 'rgba(0,255,159,0.05)', border: '1px solid rgba(0,255,159,0.2)', borderRadius: '8px', padding: '10px 12px', marginTop: '8px' }}>
                         <div style={{ fontSize: '11px', fontWeight: 600, color: '#00FF9F', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Coach note</div>
@@ -374,7 +371,7 @@ function PlayerView() {
                           <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{week.title}</div>
                           <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>Week of {formatDate(week.week_start)}</div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
+                        <div style={{ textAlign: 'right' as const }}>
                           <div style={{ fontSize: '18px', fontFamily: 'monospace', fontWeight: 700, color: weekPct === 100 ? '#00FF9F' : '#ffffff' }}>{weekPct}%</div>
                           <div style={{ fontSize: '11px', color: '#9A9A9F' }}>{weekCompletions.length}/{weekDrills.length} done</div>
                         </div>

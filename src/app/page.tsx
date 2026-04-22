@@ -52,7 +52,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
 
         <h1 className="hero-title fade-up-2" style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '56px', fontWeight: 800, color: '#0E0E0F', lineHeight: 1.1, marginBottom: '24px', letterSpacing: '-0.5px' }}>
-          Keep parents in the loop.<br />Keep clients coming back.
+          Stop chasing follow-ups.<br />Keep players engaged and coming back.
         </h1>
 
         <p className="fade-up-3" style={{ fontSize: '20px', color: '#6B6B72', lineHeight: 1.6, maxWidth: '640px', margin: '0 auto 40px' }}>
