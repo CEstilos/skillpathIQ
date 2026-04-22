@@ -34,7 +34,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     .from('completions').select('*')
     .in('player_id', players?.map(p => p.id) || [])
 
-  const today = (await searchParams).date || new Date().toISOString().split('T')[0]
+    const { cookies } = await import('next/headers')
+    const cookieStore = await cookies()
+    const cookieDate = cookieStore.get('localDate')?.value
+    const today = (await searchParams).date || cookieDate || new Date().toISOString().split('T')[0]
 
   const { data: sessionPlayers } = await supabase
   .from('session_players')

@@ -8,7 +8,9 @@ export default function DateProvider() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    const localDate = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local timezone
+    const localDate = new Date().toLocaleDateString('en-CA')
+    // Set cookie so server can read it
+    document.cookie = `localDate=${localDate};path=/;max-age=86400`
     const currentDate = searchParams.get('date')
     if (currentDate !== localDate) {
       const params = new URLSearchParams(searchParams.toString())
