@@ -404,6 +404,7 @@ const [savingOnboarding, setSavingOnboarding] = useState(false)
     .header-buttons button { flex: 1 !important; }
     .player-card-grid { display: none !important; }
     .player-cards { display: flex !important; }
+    .top-row { grid-template-columns: 1fr !important; }
   }
   @media (min-width: 641px) {
     .nav-menu-btn { display: none !important; }
@@ -437,15 +438,133 @@ const [savingOnboarding, setSavingOnboarding] = useState(false)
     </button>
   </div>
 </div>
+{/* TOP ROW — TODAY'S FOCUS + QUICK ACCESS */}
+<div className="top-row" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '16px', marginBottom: '20px', alignItems: 'start' }}>
+      {/* TODAY'S FOCUS */}
+      {(() => {
+        const atRiskPlayers = players.filter(p => {
+          const last = sessions.filter(s => s.player_id === p.id).sort((a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime())[0]
+          if (!last) return false
+          const days = Math.floor((new Date().getTime() - new Date(last.session_date).getTime()) / (1000 * 60 * 60 * 24))
+          return days >= 30
+        })
+        const hasAnything = todaySessions.length > 0 || unloggedSessions.length > 0 || atRiskPlayers.length > 0
+        if (!hasAnything) return null
+        return (
+          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', padding: '20px', marginBottom: '20px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px' }}>Today&apos;s Focus</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
+              {/* TODAY'S SESSIONS */}
+              {todaySessions.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', background: 'rgba(0,255,159,0.05)', border: '1px solid rgba(0,255,159,0.15)', borderRadius: '10px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(0,255,159,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>📅</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
+                      {todaySessions.length} session{todaySessions.length !== 1 ? 's' : ''} scheduled today
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+                      {todaySessions.map(s => s.groups?.name || s.title).join(', ')}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => document.getElementById('todays-sessions')?.scrollIntoView({ behavior: 'smooth' })}
+                    style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '7px', border: '1px solid rgba(0,255,159,0.3)', background: 'transparent', color: '#00FF9F', cursor: 'pointer', flexShrink: 0, fontWeight: 500 }}>
+                    View
+                  </button>
+                </div>
+              )}
+
+              {/* UNLOGGED SESSIONS */}
+              {unloggedSessions.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', background: 'rgba(224,49,49,0.05)', border: '1px solid rgba(224,49,49,0.2)', borderRadius: '10px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(224,49,49,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>⚠️</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
+                      {unloggedSessions.length} unlogged session{unloggedSessions.length !== 1 ? 's' : ''}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>Log these to keep your records and AI recaps up to date</div>
+                  </div>
+                  <button
+                    onClick={() => setShowUnlogged(true)}
+                    style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '7px', border: '1px solid rgba(224,49,49,0.3)', background: 'transparent', color: '#E03131', cursor: 'pointer', flexShrink: 0, fontWeight: 500 }}>
+                    Review
+                  </button>
+                </div>
+              )}
+
+              {/* AT RISK PLAYERS */}
+              {atRiskPlayers.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', background: 'rgba(245,166,35,0.05)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '10px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245,166,35,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>💬</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
+                      {atRiskPlayers.length} player{atRiskPlayers.length !== 1 ? 's' : ''} haven&apos;t trained in 30+ days
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                      {atRiskPlayers.slice(0, 3).map(p => p.full_name.split(' ')[0]).join(', ')}{atRiskPlayers.length > 3 ? ` +${atRiskPlayers.length - 3} more` : ''}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => router.push('/dashboard/clients')}
+                    style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '7px', border: '1px solid rgba(245,166,35,0.3)', background: 'transparent', color: '#F5A623', cursor: 'pointer', flexShrink: 0, fontWeight: 500 }}>
+                    Reach out
+                  </button>
+                </div>
+              )}
+
+            </div>
+          </div>
+      )
+    })()}
+
+ {/* QUICK ACCESS PANEL */}
+ <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid #2A2A2D' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Quick Access</div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {[
+            {
+              label: 'My Players',
+              count: players.length,
+              target: 'my-players',
+            },
+            {
+              label: 'My Groups',
+              count: groups.length,
+              target: 'my-groups',
+            },
+            {
+              label: 'Recent Sessions',
+              count: sessions.filter(s => s.player_id).length,
+              target: 'recent-sessions',
+            },
+          ].map((item, i, arr) => (
+            <div key={item.label} style={{ padding: '14px 16px', borderBottom: i < arr.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{item.label}</div>
+                <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{item.count} {item.label === 'My Players' ? `player${item.count !== 1 ? 's' : ''}` : item.label === 'My Groups' ? `group${item.count !== 1 ? 's' : ''}` : `logged`}</div>
+              </div>
+              <button
+                onClick={() => document.getElementById(item.target)?.scrollIntoView({ behavior: 'smooth' })}
+                style={{ fontSize: '12px', padding: '5px 14px', borderRadius: '7px', border: '1px solid #2A2A2D', background: 'transparent', color: '#00FF9F', cursor: 'pointer', fontWeight: 600 }}>
+                View
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
       {/* SESSION SUMMARY ROW */}
+<div id="recent-sessions" />
 <div style={{ marginBottom: showUnlogged ? '0' : '20px' }}>
   <div style={{ fontSize: '13px', color: '#9A9A9F', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' as const, marginBottom: showUnlogged ? '12px' : '0' }}>
     {todaySessions.length > 0 && (
       <span><span style={{ color: '#00FF9F', fontWeight: 600 }}>{todaySessions.length}</span> session{todaySessions.length !== 1 ? 's' : ''} today</span>
     )}
     {upcomingSessions.length > 0 && (
-      <span><span style={{ color: '#ffffff', fontWeight: 600 }}>{upcomingSessions.length}</span> upcoming</span>
+      <span><span style={{ color: '#ffffff', fontWeight: 600 }}>{upcomingSessions.length}</span> Upcoming Sessions</span>
     )}
     {todaySessions.length === 0 && upcomingSessions.length === 0 && (
       <span>No sessions scheduled</span>
@@ -464,7 +583,7 @@ const [savingOnboarding, setSavingOnboarding] = useState(false)
         style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: '0' }}>
         <span style={{ color: '#E03131', fontWeight: 700, fontSize: '13px' }}>!</span>
         <span style={{ color: '#E03131', fontWeight: 600 }}>{unloggedSessions.length}</span>
-        <span style={{ color: '#E03131' }}>unlogged</span>
+        <span style={{ color: '#E03131' }}>Athletes waiting on follow-up</span>
       </button>
       
     )}
@@ -472,7 +591,7 @@ const [savingOnboarding, setSavingOnboarding] = useState(false)
     <button
       onClick={() => setBroadcastEmailOpen(!broadcastEmailOpen)}
       style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: '1px solid rgba(0,255,159,0.4)', borderRadius: '6px', cursor: 'pointer', padding: '4px 10px', fontSize: '12px', color: '#00FF9F', fontWeight: 600 }}>
-      ✉ Email All Players/Parents
+      ✉ Email All Athletes
     </button>
   </div>
 
@@ -626,7 +745,7 @@ const [savingOnboarding, setSavingOnboarding] = useState(false)
 
 {/* TODAY'S SESSIONS */}
 {todaySessions.length > 0 && (
-  <div style={{ marginBottom: '20px' }}>
+  <div id="todays-sessions" style={{ marginBottom: '20px' }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F' }} />
       <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Today&apos;s sessions</span>
@@ -954,7 +1073,7 @@ const [savingOnboarding, setSavingOnboarding] = useState(false)
 
 {/* MY GROUPS */}
 {groups.length > 0 && (
-          <div style={{ marginBottom: '24px' }}>
+          <div id="my-groups" style={{ marginBottom: '24px' }}>
             <div style={{ fontSize: '20px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>My groups</div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' as const }}>
               {groups.map(group => (
@@ -986,7 +1105,7 @@ const [savingOnboarding, setSavingOnboarding] = useState(false)
 
      
 {/* PLAYER LIST HEADING */}
-<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', marginTop: '8px' }}>
+<div id="my-players" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', marginTop: '8px' }}>
   <h2 style={{ fontFamily: '"Exo 2", sans-serif', fontSize: '20px', fontWeight: 700, color: '#ffffff',textTransform: 'uppercase', margin: 0 }}>My Players</h2>
 </div>
         {/* FILTER TABS */}
