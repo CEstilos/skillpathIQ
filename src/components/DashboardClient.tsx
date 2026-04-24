@@ -241,19 +241,7 @@ const [savingOnboarding, setSavingOnboarding] = useState(false)
         Cancelled
       </span>
     )
-    async function submitOnboarding(skip = false) {
-      setSavingOnboarding(true)
-      const supabaseClient = createClient()
-      await supabaseClient.from('profiles').update({
-        onboarding_completed: true,
-        athlete_count: skip ? null : onboardingAnswers.athlete_count,
-        parent_comms_method: skip ? null : onboardingAnswers.parent_comms === 'other' ? onboardingAnswers.other_comms : onboardingAnswers.parent_comms,
-        biggest_challenge: skip ? null : onboardingAnswers.challenge,
-        referral_source: skip ? null : onboardingAnswers.referral,
-      }).eq('id', profile?.id)
-      setSavingOnboarding(false)
-      setShowOnboarding(false)
-    }
+  
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
         <button
@@ -298,6 +286,22 @@ const [savingOnboarding, setSavingOnboarding] = useState(false)
       </div>
     )
   }
+ 
+  async function submitOnboarding(skip = false) {
+    setSavingOnboarding(true)
+    const supabaseClient = createClient()
+    await supabaseClient.from('profiles').update({
+      onboarding_completed: true,
+      athlete_count: skip ? null : onboardingAnswers.athlete_count,
+      parent_comms_method: skip ? null : onboardingAnswers.parent_comms === 'other' ? onboardingAnswers.other_comms : onboardingAnswers.parent_comms,
+      biggest_challenge: skip ? null : onboardingAnswers.challenge,
+      referral_source: skip ? null : onboardingAnswers.referral,
+    }).eq('id', profile?.id)
+    setSavingOnboarding(false)
+    setShowOnboarding(false)
+  }
+
+  async function dismissRequest(requestId: string) {
   async function dismissRequest(requestId: string) {
     setDismissingRequest(requestId)
     const supabaseClient = createClient()
