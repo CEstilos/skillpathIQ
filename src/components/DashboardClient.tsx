@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 
-interface Profile { id: string; full_name: string; email: string; primary_sport?: string }
+interface Profile { id: string; full_name: string; email: string; primary_sport?: string; onboarding_completed?: boolean }
 interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; trainer_id: string; created_at: string }
 interface Group { id: string; name: string; sport: string; session_day: string; session_time: string }
 interface Session { id: string; player_id: string; session_date: string; notes: string | null }
@@ -68,6 +68,10 @@ const [broadcastSubject, setBroadcastSubject] = useState('')
 const [broadcastBody, setBroadcastBody] = useState('')
 const [sendingBroadcast, setSendingBroadcast] = useState(false)
 const [broadcastResults, setBroadcastResults] = useState<{name: string; success: boolean}[]>([])
+const [showOnboarding, setShowOnboarding] = useState(!profile?.onboarding_completed && players.length === 0)
+const [onboardingStep, setOnboardingStep] = useState(0)
+const [onboardingAnswers, setOnboardingAnswers] = useState({ athlete_count: '', parent_comms: '', challenge: '', referral: '', other_comms: '' })
+const [savingOnboarding, setSavingOnboarding] = useState(false)
   function dismissBanner() {
     localStorage.setItem('welcome_dismissed', 'true')
     setBannerDismissed(true)
@@ -237,7 +241,19 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
         Cancelled
       </span>
     )
-  
+    async function submitOnboarding(skip = false) {
+      setSavingOnboarding(true)
+      const supabaseClient = createClient()
+      await supabaseClient.from('profiles').update({
+        onboarding_completed: true,
+        athlete_count: skip ? null : onboardingAnswers.athlete_count,
+        parent_comms_method: skip ? null : onboardingAnswers.parent_comms === 'other' ? onboardingAnswers.other_comms : onboardingAnswers.parent_comms,
+        biggest_challenge: skip ? null : onboardingAnswers.challenge,
+        referral_source: skip ? null : onboardingAnswers.referral,
+      }).eq('id', profile?.id)
+      setSavingOnboarding(false)
+      setShowOnboarding(false)
+    }
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
         <button
@@ -1152,7 +1168,114 @@ const [broadcastResults, setBroadcastResults] = useState<{name: string; success:
         </div>
 
         </div>
+{/* ONBOARDING QUESTIONNAIRE */}
+{showOnboarding && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '16px' }}>
+          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '20px', padding: '32px', width: '100%', maxWidth: '480px' }}>
 
+            {/* HEADER */}
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
+                {onboardingStep + 1} of 4
+              </div>
+              <div style={{ height: '3px', background: '#2A2A2D', borderRadius: '99px', overflow: 'hidden', marginBottom: '20px' }}>
+                <div style={{ height: '100%', width: `${((onboardingStep + 1) / 4) * 100}%`, background: '#00FF9F', borderRadius: '99px', transition: 'width 0.3s ease' }} />
+              </div>
+
+              {onboardingStep === 0 && (
+                <>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '6px' }}>How many athletes do you train?</div>
+                  <div style={{ fontSize: '14px', color: '#9A9A9F' }}>Helps us tailor the experience for your roster size</div>
+                </>
+              )}
+              {onboardingStep === 1 && (
+                <>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '6px' }}>How do you currently communicate with parents?</div>
+                  <div style={{ fontSize: '14px', color: '#9A9A9F' }}>What's your go-to right now?</div>
+                </>
+              )}
+              {onboardingStep === 2 && (
+                <>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '6px' }}>What's your biggest challenge?</div>
+                  <div style={{ fontSize: '14px', color: '#9A9A9F' }}>We'll focus on solving this for you first</div>
+                </>
+              )}
+              {onboardingStep === 3 && (
+                <>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '6px' }}>How did you hear about us?</div>
+                  <div style={{ fontSize: '14px', color: '#9A9A9F' }}>Just so we know where to focus</div>
+                </>
+              )}
+            </div>
+
+            {/* OPTIONS */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+              {onboardingStep === 0 && ['1–10', '11–20', '21–40', '40+'].map(opt => (
+                <button key={opt} onClick={() => setOnboardingAnswers(prev => ({ ...prev, athlete_count: opt }))}
+                  style={{ padding: '14px 16px', borderRadius: '10px', border: `1px solid ${onboardingAnswers.athlete_count === opt ? '#00FF9F' : '#2A2A2D'}`, background: onboardingAnswers.athlete_count === opt ? 'rgba(0,255,159,0.08)' : '#0E0E0F', color: onboardingAnswers.athlete_count === opt ? '#00FF9F' : '#ffffff', fontSize: '15px', fontWeight: 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
+                  {opt} athletes
+                </button>
+              ))}
+
+              {onboardingStep === 1 && (
+                <>
+                  {['Text message', 'Email', 'Google Sheets', 'Other'].map(opt => (
+                    <button key={opt} onClick={() => setOnboardingAnswers(prev => ({ ...prev, parent_comms: opt.toLowerCase().replace(' ', '_') }))}
+                      style={{ padding: '14px 16px', borderRadius: '10px', border: `1px solid ${onboardingAnswers.parent_comms === opt.toLowerCase().replace(' ', '_') ? '#00FF9F' : '#2A2A2D'}`, background: onboardingAnswers.parent_comms === opt.toLowerCase().replace(' ', '_') ? 'rgba(0,255,159,0.08)' : '#0E0E0F', color: onboardingAnswers.parent_comms === opt.toLowerCase().replace(' ', '_') ? '#00FF9F' : '#ffffff', fontSize: '15px', fontWeight: 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
+                      {opt}
+                    </button>
+                  ))}
+                  {onboardingAnswers.parent_comms === 'other' && (
+                    <input
+                      type="text"
+                      placeholder="Which tool do you use?"
+                      value={onboardingAnswers.other_comms}
+                      onChange={e => setOnboardingAnswers(prev => ({ ...prev, other_comms: e.target.value }))}
+                      style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px 16px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
+                    />
+                  )}
+                </>
+              )}
+
+              {onboardingStep === 2 && ['Keeping athletes engaged between sessions', 'Parent communication', 'Scheduling sessions', 'Getting repeat bookings'].map(opt => (
+                <button key={opt} onClick={() => setOnboardingAnswers(prev => ({ ...prev, challenge: opt }))}
+                  style={{ padding: '14px 16px', borderRadius: '10px', border: `1px solid ${onboardingAnswers.challenge === opt ? '#00FF9F' : '#2A2A2D'}`, background: onboardingAnswers.challenge === opt ? 'rgba(0,255,159,0.08)' : '#0E0E0F', color: onboardingAnswers.challenge === opt ? '#00FF9F' : '#ffffff', fontSize: '15px', fontWeight: 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
+                  {opt}
+                </button>
+              ))}
+
+              {onboardingStep === 3 && ['Instagram', 'Website', 'Word of mouth', 'Other'].map(opt => (
+                <button key={opt} onClick={() => setOnboardingAnswers(prev => ({ ...prev, referral: opt }))}
+                  style={{ padding: '14px 16px', borderRadius: '10px', border: `1px solid ${onboardingAnswers.referral === opt ? '#00FF9F' : '#2A2A2D'}`, background: onboardingAnswers.referral === opt ? 'rgba(0,255,159,0.08)' : '#0E0E0F', color: onboardingAnswers.referral === opt ? '#00FF9F' : '#ffffff', fontSize: '15px', fontWeight: 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
+                  {opt}
+                </button>
+              ))}
+            </div>
+
+            {/* FOOTER */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <button
+                onClick={() => submitOnboarding(true)}
+                style={{ fontSize: '13px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer', padding: '0' }}>
+                Skip for now
+              </button>
+              <button
+                onClick={() => {
+                  if (onboardingStep < 3) {
+                    setOnboardingStep(prev => prev + 1)
+                  } else {
+                    submitOnboarding(false)
+                  }
+                }}
+                disabled={savingOnboarding}
+                style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '10px', padding: '12px 28px', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}>
+                {savingOnboarding ? 'Saving...' : onboardingStep < 3 ? 'Next →' : 'Finish'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 {/* QUICK EMAIL MODAL */}
 {emailingPlayer && (
   <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
