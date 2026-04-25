@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import NavBar from '@/components/NavBar'
@@ -197,6 +197,11 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const activeCount = players.filter(p => getStatus(p.id) === 'active').length
   const atRiskCount = players.filter(p => getStatus(p.id) === 'at-risk').length
   const lapsedCount = players.filter(p => getStatus(p.id) === 'lapsed').length
+  const mobileAtRiskCount = players.filter(p => {
+    const last = getLastSession(p.id)
+    const days = getDaysSince(last?.session_date || null)
+    return days !== null && days >= 14
+  }).length
   
   
   async function cancelSession(sessionId: string) {
@@ -399,6 +404,8 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
 <style>{`
   * { box-sizing: border-box; margin: 0; padding: 0; max-width: 100%; }
   html, body { overflow-x: hidden; max-width: 100vw; }
+  .mobile-training-hub { display: none; }
+  .mobile-bottom-nav { display: none; }
   @media (max-width: 640px) {
     .nav-links { display: none !important; }
     .nav-menu-btn { display: flex !important; }
@@ -409,19 +416,235 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     .player-card-grid { display: none !important; }
     .player-cards { display: flex !important; }
     .top-row { grid-template-columns: 1fr !important; }
+    .desktop-training-hub { display: none !important; }
+    .mobile-training-hub { display: flex !important; flex-direction: column; }
+    .mobile-bottom-nav { display: flex !important; }
   }
   @media (min-width: 641px) {
     .nav-menu-btn { display: none !important; }
     .mobile-menu { display: none !important; }
     .player-cards { display: none !important; }
+    .mobile-training-hub { display: none !important; }
+    .mobile-bottom-nav { display: none !important; }
   }
 `}</style>
 
       {/* NAV */}
       <NavBar trainerName={profile?.full_name} />
-      
 
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px', width: '100%' }}>
+      {/* === MOBILE TRAINING HUB === */}
+      <div className="mobile-training-hub" style={{ flexDirection: 'column', minHeight: 'calc(100vh - 56px)', paddingBottom: '88px' }}>
+
+        {/* HEADER */}
+        <div style={{ padding: '20px 16px 8px' }}>
+          <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', margin: 0 }}>Training Hub</h1>
+          <p style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '4px' }}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            {players.length > 0 && <> &nbsp;&middot;&nbsp; {players.length} player{players.length !== 1 ? 's' : ''}</>}
+            {groups.length > 0 && <> &nbsp;&middot;&nbsp; {groups.length} group{groups.length !== 1 ? 's' : ''}</>}
+          </p>
+        </div>
+
+        {/* QUICK ADD */}
+        <div style={{ padding: '12px 16px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Quick Add</div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={() => router.push('/dashboard/players/new')}
+              style={{ flex: 1, background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '10px', padding: '14px 12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}>
+              + Add Player
+            </button>
+            <button
+              onClick={() => router.push('/dashboard/sessions/new')}
+              style={{ flex: 1, background: '#1A1A1C', color: '#ffffff', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px 12px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}>
+              📅 Schedule
+            </button>
+          </div>
+        </div>
+
+        {/* TODAY'S SESSIONS */}
+        <div style={{ padding: '4px 16px 12px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Today&apos;s Sessions</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {todaySessions.length === 0 && upcomingSessions.length === 0 && (
+              <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px 16px', textAlign: 'center' }}>
+                <p style={{ fontSize: '13px', color: '#9A9A9F', margin: 0 }}>No sessions scheduled</p>
+              </div>
+            )}
+            {todaySessions.map(session => {
+              const sessionPlayers = session.group_id
+                ? players.filter(p => p.group_id === session.group_id)
+                : allSessionPlayers.filter(sp => sp.session_id === session.id).map(sp => players.find(p => p.id === sp.player_id)).filter(Boolean) as Player[]
+              const { isLogged } = getSessionDisplayState(session)
+              const displayName = session.groups?.name || sessionPlayers.map(p => p.full_name).join(', ') || 'Session'
+              const timeParts = session.session_time ? formatTime(session.session_time).split(' ') : null
+              return (
+                <div key={session.id} style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.25)', borderLeft: '3px solid #00FF9F', borderRadius: '12px', padding: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ textAlign: 'center', flexShrink: 0, minWidth: '38px' }}>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{timeParts ? timeParts[0] : '—'}</div>
+                    <div style={{ fontSize: '10px', color: '#9A9A9F', marginTop: '2px' }}>{timeParts ? timeParts[1] : ''}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{displayName}</div>
+                    {session.title && <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{session.title}</div>}
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (isLogged) return
+                      if (session.group_id) {
+                        router.push(`/dashboard/sessions/${session.id}/log`)
+                      } else if (sessionPlayers.length === 1) {
+                        router.push(`/dashboard/players/${sessionPlayers[0].id}/log?sessionId=${session.id}`)
+                      } else if (sessionPlayers.length > 1) {
+                        router.push(`/dashboard/players/${sessionPlayers[0].id}/log?also=${sessionPlayers.slice(1).map(p => p.id).join(',')}&sessionId=${session.id}`)
+                      } else {
+                        router.push(`/dashboard/sessions/${session.id}/log`)
+                      }
+                    }}
+                    style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '8px', border: 'none', background: isLogged ? '#2A2A2D' : '#00FF9F', color: isLogged ? '#9A9A9F' : '#0E0E0F', fontWeight: 700, cursor: isLogged ? 'default' : 'pointer', flexShrink: 0 }}>
+                    {isLogged ? '✓' : 'Log'}
+                  </button>
+                </div>
+              )
+            })}
+            {upcomingSessions.length > 0 && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 0' }}>
+                  <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Next up →</span>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff', background: '#2A2A2D', padding: '3px 10px', borderRadius: '99px' }}>
+                    {upcomingSessions.length} upcoming
+                  </span>
+                </div>
+                {upcomingSessions.slice(0, 2).map(session => {
+                  const upcomingPlayers = session.group_id
+                    ? players.filter(p => p.group_id === session.group_id)
+                    : allSessionPlayers.filter(sp => sp.session_id === session.id).map(sp => players.find(p => p.id === sp.player_id)).filter(Boolean) as Player[]
+                  const displayName = session.groups?.name || upcomingPlayers.map(p => p.full_name).join(', ') || 'Session'
+                  const dayAbbr = new Date(session.session_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase()
+                  const timeParts = session.session_time ? formatTime(session.session_time).split(' ') : null
+                  return (
+                    <div key={session.id} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ textAlign: 'center', flexShrink: 0, minWidth: '38px' }}>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{timeParts ? timeParts[0] : '—'}</div>
+                        <div style={{ fontSize: '10px', color: '#9A9A9F', marginTop: '2px' }}>{dayAbbr}</div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{displayName}</div>
+                        {session.title && <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{session.title}</div>}
+                      </div>
+                      <button
+                        onClick={() => router.push(`/dashboard/sessions/${session.id}`)}
+                        style={{ fontSize: '13px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                        View
+                      </button>
+                    </div>
+                  )
+                })}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ACTION NEEDED */}
+        {(unloggedSessions.length > 0 || mobileAtRiskCount > 0) && (
+          <div style={{ padding: '4px 16px 12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Action Needed</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {unloggedSessions.length > 0 && (
+                <>
+                  <div style={{ background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.3)', borderRadius: '12px', padding: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '18px', flexShrink: 0 }}>⚠️</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{unloggedSessions.length} unlogged sessions</div>
+                      <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>AI recaps unavailable until logged</div>
+                    </div>
+                    <button
+                      onClick={() => setShowUnlogged(!showUnlogged)}
+                      style={{ fontSize: '12px', padding: '7px 12px', borderRadius: '8px', border: '1px solid rgba(245,166,35,0.5)', background: 'transparent', color: '#F5A623', fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' as const }}>
+                      Review
+                    </button>
+                  </div>
+                  {showUnlogged && (
+                    <div style={{ background: '#1A1A1C', border: '1px solid rgba(245,166,35,0.3)', borderRadius: '12px', overflow: 'hidden' }}>
+                      <div style={{ padding: '10px 14px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#F5A623', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Unlogged ({unloggedSessions.length})</span>
+                        <button onClick={() => setShowUnlogged(false)} style={{ background: 'none', border: 'none', color: '#9A9A9F', cursor: 'pointer', fontSize: '16px' }}>×</button>
+                      </div>
+                      {unloggedSessions.map((session, i) => {
+                        const sessionPlayers = session.group_id
+                          ? players.filter(p => p.group_id === session.group_id)
+                          : allSessionPlayers.filter(sp => sp.session_id === session.id).map(sp => players.find(p => p.id === sp.player_id)).filter(Boolean) as Player[]
+                        return (
+                          <div key={session.id} style={{ padding: '10px 14px', borderBottom: i < unloggedSessions.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '13px', fontWeight: 500, color: '#ffffff' }}>{session.title}</div>
+                              <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '1px' }}>
+                                {new Date(session.session_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                {session.groups?.name && <span style={{ color: '#00FF9F' }}> · {session.groups.name}</span>}
+                                {!session.groups?.name && sessionPlayers.length > 0 && <span> · {sessionPlayers.map(p => p.full_name.split(' ')[0]).join(', ')}</span>}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                if (session.group_id) {
+                                  router.push(`/dashboard/sessions/${session.id}/log`)
+                                } else if (sessionPlayers.length === 1) {
+                                  router.push(`/dashboard/players/${sessionPlayers[0].id}/log?sessionId=${session.id}`)
+                                } else {
+                                  router.push(`/dashboard/sessions/${session.id}/log`)
+                                }
+                              }}
+                              style={{ fontSize: '11px', padding: '5px 10px', borderRadius: '7px', border: 'none', background: '#E03131', color: '#ffffff', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                              Log now
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+              {mobileAtRiskCount > 0 && (
+                <div style={{ background: 'rgba(224,49,49,0.08)', border: '1px solid rgba(224,49,49,0.3)', borderRadius: '12px', padding: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '18px', flexShrink: 0 }}>🔴</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{mobileAtRiskCount} players lapsed</div>
+                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>No session in 14+ days</div>
+                  </div>
+                  <button
+                    onClick={() => router.push('/dashboard/clients')}
+                    style={{ fontSize: '12px', padding: '7px 12px', borderRadius: '8px', border: '1px solid rgba(224,49,49,0.5)', background: 'transparent', color: '#E03131', fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' as const }}>
+                    Re-engage
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* OVERVIEW */}
+        <div style={{ padding: '4px 16px 12px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Overview</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px 12px' }}>
+              <div style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{players.length}</div>
+              <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '4px' }}>Players</div>
+            </div>
+            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px 12px' }}>
+              <div style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{sessions.length}</div>
+              <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '4px' }}>Sessions logged</div>
+            </div>
+            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px 12px' }}>
+              <div style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{groups.length}</div>
+              <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '4px' }}>Active group{groups.length !== 1 ? 's' : ''}</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* === DESKTOP TRAINING HUB === */}
+      <div className="desktop-training-hub" style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px', width: '100%' }}>
 {/* PAGE HEADER */}
 <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
   <div>
@@ -1399,6 +1622,40 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           </div>
         </div>
       )}
+{/* === MOBILE BOTTOM NAV === */}
+<div className="mobile-bottom-nav" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: '72px', background: '#0E0E0F', borderTop: '1px solid #2A2A2D', zIndex: 200, alignItems: 'stretch' }}>
+  {([
+    { label: 'Hub', path: '/dashboard', active: true, icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
+      </svg>
+    )},
+    { label: 'Players', path: '/dashboard/clients', active: false, icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
+      </svg>
+    )},
+    { label: 'Sessions', path: '/dashboard/sessions/new', active: false, icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="8" y="2" width="8" height="4" rx="1" ry="1" /><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" /><line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" />
+      </svg>
+    )},
+    { label: 'Retention', path: '/dashboard/business', active: false, icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+      </svg>
+    )},
+  ] as { label: string; path: string; active: boolean; icon: React.ReactNode }[]).map(tab => (
+    <button
+      key={tab.label}
+      onClick={() => router.push(tab.path)}
+      style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px', background: 'none', border: 'none', cursor: 'pointer', color: tab.active ? '#00FF9F' : '#9A9A9F', padding: '8px 0' }}>
+      {tab.icon}
+      <span style={{ fontSize: '10px', fontWeight: tab.active ? 700 : 400 }}>{tab.label}</span>
+    </button>
+  ))}
+</div>
+
 {/* QUICK EMAIL MODAL */}
 {emailingPlayer && (
   <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
