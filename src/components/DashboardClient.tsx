@@ -485,7 +485,15 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                     <div style={{ fontSize: '10px', color: '#9A9A9F', marginTop: '2px' }}>{timeParts ? timeParts[1] : ''}</div>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{displayName}</div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                      {session.group_id
+                        ? <span onClick={() => router.push(`/dashboard/groups/${session.group_id}`)} style={{ color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)' }}>{session.groups?.name || 'Group'}</span>
+                        : sessionPlayers.length === 1
+                          ? <span onClick={() => router.push(`/dashboard/players/${sessionPlayers[0].id}`)} style={{ color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)' }}>{sessionPlayers[0].full_name}</span>
+                          : sessionPlayers.length > 1
+                            ? sessionPlayers.map((p, i) => <span key={p.id}><span onClick={() => router.push(`/dashboard/players/${p.id}`)} style={{ color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)' }}>{p.full_name}</span>{i < sessionPlayers.length - 1 ? ', ' : ''}</span>)
+                            : <span style={{ color: '#9A9A9F' }}>Session</span>}
+                    </div>
                     {session.title && <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{session.title}</div>}
                   </div>
                   <button
@@ -529,7 +537,15 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                         <div style={{ fontSize: '10px', color: '#9A9A9F', marginTop: '2px' }}>{dayAbbr}</div>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{displayName}</div>
+                        <div style={{ fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                          {session.group_id
+                            ? <span onClick={() => router.push(`/dashboard/groups/${session.group_id}`)} style={{ color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)' }}>{session.groups?.name || 'Group'}</span>
+                            : upcomingPlayers.length === 1
+                              ? <span onClick={() => router.push(`/dashboard/players/${upcomingPlayers[0].id}`)} style={{ color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)' }}>{upcomingPlayers[0].full_name}</span>
+                              : upcomingPlayers.length > 1
+                                ? upcomingPlayers.map((p, i) => <span key={p.id}><span onClick={() => router.push(`/dashboard/players/${p.id}`)} style={{ color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.3)' }}>{p.full_name}</span>{i < upcomingPlayers.length - 1 ? ', ' : ''}</span>)
+                                : <span style={{ color: '#9A9A9F' }}>Session</span>}
+                        </div>
                         {session.title && <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{session.title}</div>}
                       </div>
                       <button
