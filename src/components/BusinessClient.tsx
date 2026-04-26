@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 
@@ -15,7 +15,6 @@ const GREEN = '#1dce7c'
 
 export default function BusinessClient({ profile, players, sessions, attendance }: Props) {
   const router = useRouter()
-  const [_expanded] = useState(false)
 
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -205,18 +204,21 @@ export default function BusinessClient({ profile, players, sessions, attendance 
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { overflow-x: hidden; max-width: 100vw; background: #0E0E0F; }
+        .biz-bottom-nav { display: none; }
         @media (max-width: 640px) {
           .biz-2col { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           .biz-revenue-grid { grid-template-columns: 1fr !important; }
           .biz-header { flex-direction: column !important; gap: 12px !important; }
           .biz-hero-inner { flex-direction: column !important; gap: 16px !important; }
           .biz-ring { align-self: center; }
+          .biz-bottom-nav { display: flex !important; }
+          .biz-content { padding-bottom: 88px !important; }
         }
       `}</style>
 
       <NavBar trainerName={profile?.full_name} />
 
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px 48px', width: '100%' }}>
+      <div className="biz-content" style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px 48px', width: '100%' }}>
 
         {/* ── HEADER ── */}
         <div className="biz-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px' }}>
@@ -436,6 +438,41 @@ export default function BusinessClient({ profile, players, sessions, attendance 
         </div>
 
       </div>
+
+      {/* ── MOBILE BOTTOM NAV ── */}
+      <div className="biz-bottom-nav" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: '72px', background: '#0E0E0F', borderTop: '1px solid #2A2A2D', zIndex: 200, alignItems: 'stretch' }}>
+        {([
+          { label: 'Hub', path: '/dashboard', active: false, icon: (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          )},
+          { label: 'Players', path: '/dashboard/clients', active: false, icon: (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
+            </svg>
+          )},
+          { label: 'Sessions', path: '/dashboard/sessions/new', active: false, icon: (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1" /><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" /><line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" />
+            </svg>
+          )},
+          { label: 'Business', path: '/dashboard/business', active: true, icon: (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+            </svg>
+          )},
+        ] as { label: string; path: string; active: boolean; icon: React.ReactNode }[]).map(tab => (
+          <button
+            key={tab.label}
+            onClick={() => router.push(tab.path)}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px', background: 'none', border: 'none', cursor: 'pointer', color: tab.active ? GREEN : '#9A9A9F', padding: '8px 0' }}>
+            {tab.icon}
+            <span style={{ fontSize: '10px', fontWeight: tab.active ? 700 : 400 }}>{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
     </div>
   )
 }
