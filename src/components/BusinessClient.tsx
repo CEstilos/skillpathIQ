@@ -197,7 +197,7 @@ export default function BusinessClient({ profile, players, sessions, attendance 
   const revenueMonthly   = getMonthlyData('revenue')
 
   // SVG ring
-  const RING_R    = 36
+  const RING_R    = 54
   const RING_CIRC = 2 * Math.PI * RING_R
 
   return (
@@ -236,15 +236,33 @@ export default function BusinessClient({ profile, players, sessions, attendance 
         {/* ── CLIENT HEALTH ── */}
         <SectionLabel text="Client Health" />
         <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '24px', marginBottom: '28px' }}>
-          <div className="biz-hero-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
-            {/* Left: stats */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginBottom: '8px' }}>Retention Rate</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '4px' }}>
-                <span style={{ fontSize: '52px', fontWeight: 800, color: GREEN, lineHeight: 1 }}>
+          <div className="biz-hero-inner" style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
+            {/* Left: ring chart */}
+            <div className="biz-ring" style={{ flexShrink: 0 }}>
+              <svg width="140" height="140" viewBox="0 0 140 140">
+                <circle cx="70" cy="70" r={RING_R} fill="none" stroke="#2A2A2D" strokeWidth="11" />
+                <circle
+                  cx="70" cy="70" r={RING_R}
+                  fill="none"
+                  stroke={GREEN}
+                  strokeWidth="11"
+                  strokeLinecap="round"
+                  strokeDasharray={RING_CIRC}
+                  strokeDashoffset={RING_CIRC * (1 - (retentionRate ?? 0) / 100)}
+                  transform="rotate(-90 70 70)"
+                />
+                <text x="70" y="64" textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize="22" fontWeight="800">
                   {retentionRate !== null ? `${retentionRate}%` : '—'}
-                </span>
-              </div>
+                </text>
+                <text x="70" y="84" textAnchor="middle" dominantBaseline="middle" fill="#9A9A9F" fontSize="10">
+                  retention
+                </text>
+              </svg>
+            </div>
+
+            {/* Right: labels */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginBottom: '6px' }}>Retention Rate</div>
               <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '20px' }}>
                 {engagedTotal > 0
                   ? `Based on ${engagedTotal} clients with sessions`
@@ -263,26 +281,6 @@ export default function BusinessClient({ profile, players, sessions, attendance 
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Right: ring chart */}
-            <div className="biz-ring" style={{ flexShrink: 0 }}>
-              <svg width="96" height="96" viewBox="0 0 96 96">
-                <circle cx="48" cy="48" r={RING_R} fill="none" stroke="#2A2A2D" strokeWidth="9" />
-                <circle
-                  cx="48" cy="48" r={RING_R}
-                  fill="none"
-                  stroke={GREEN}
-                  strokeWidth="9"
-                  strokeLinecap="round"
-                  strokeDasharray={RING_CIRC}
-                  strokeDashoffset={RING_CIRC * (1 - (retentionRate ?? 0) / 100)}
-                  transform="rotate(-90 48 48)"
-                />
-                <text x="48" y="48" textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize="16" fontWeight="700">
-                  {retentionRate !== null ? `${retentionRate}%` : '—'}
-                </text>
-              </svg>
             </div>
           </div>
         </div>
