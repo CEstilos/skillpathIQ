@@ -291,7 +291,88 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
       </div>
     )
   }
- 
+
+  function RevenueSnapshot() {
+    const individualRate = (profile as any)?.individual_rate || 0
+    const hasRates = individualRate > 0
+    const monthlyPerClient = individualRate * 4
+
+    const newCount = players.filter(p => getStatus(p.id) === 'new').length
+    const activeRevenue = activeCount * monthlyPerClient
+    const atRiskRevenue = atRiskCount * monthlyPerClient
+    const lapsedRevenue = lapsedCount * monthlyPerClient
+    const newPotential = newCount * monthlyPerClient
+    const avgPerClient = activeCount > 0 ? Math.round(activeRevenue / activeCount) : 0
+
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const sessionsThisMonth = sessions.filter(s => {
+      const d = new Date(s.session_date)
+      return d >= startOfMonth && d <= now && s.player_id
+    })
+    const loggedRevenue = sessionsThisMonth.length * individualRate
+
+    const maxRevenue = Math.max(activeRevenue, atRiskRevenue, lapsedRevenue, newPotential, 1)
+
+    const rows = [
+      { label: 'Active', count: activeCount, color: '#00FF9F', revenue: activeRevenue, valueLabel: hasRates ? `$${activeRevenue.toLocaleString()}` : '—' },
+      { label: 'At Risk', count: atRiskCount, color: '#F5A623', revenue: atRiskRevenue, valueLabel: hasRates ? `$${atRiskRevenue.toLocaleString()}` : '—' },
+      { label: 'Lapsed', count: lapsedCount, color: '#E03131', revenue: lapsedRevenue, valueLabel: hasRates ? `$${lapsedRevenue.toLocaleString()} recoverable` : '—' },
+      { label: 'New', count: newCount, color: '#4A9EFF', revenue: newPotential, valueLabel: hasRates ? `−$${newPotential.toLocaleString()} potential` : '—' },
+    ]
+
+    return (
+      <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid #2A2A2D' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Revenue Snapshot</div>
+        </div>
+        <div style={{ padding: '14px 16px' }}>
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: '4px' }}>Monthly Active Revenue</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+              <div style={{ fontSize: '30px', fontWeight: 700, color: '#00FF9F', lineHeight: 1 }}>
+                {hasRates ? `$${activeRevenue.toLocaleString()}` : '—'}
+              </div>
+              {hasRates && <span style={{ fontSize: '14px', color: '#9A9A9F', fontWeight: 400 }}>/mo</span>}
+            </div>
+            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '4px' }}>
+              {hasRates
+                ? `${activeCount} active client${activeCount !== 1 ? 's' : ''} · avg $${avgPerClient}/client`
+                : 'Set your rates to unlock revenue tracking'}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+            {rows.map(row => (
+              <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: row.color, flexShrink: 0 }} />
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff', width: '48px', flexShrink: 0 }}>{row.label}</div>
+                <div style={{ fontSize: '11px', color: '#9A9A9F', width: '64px', flexShrink: 0 }}>{row.count} client{row.count !== 1 ? 's' : ''}</div>
+                <div style={{ flex: 1, height: '4px', background: '#2A2A2D', borderRadius: '2px', overflow: 'hidden' }}>
+                  {hasRates && <div style={{ height: '100%', width: `${(row.revenue / maxRevenue) * 100}%`, background: row.color, borderRadius: '2px' }} />}
+                </div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: row.label === 'New' ? '#4A9EFF' : row.label === 'Lapsed' ? '#E03131' : '#9A9A9F', textAlign: 'right' as const, minWidth: '80px', flexShrink: 0 }}>{row.valueLabel}</div>
+              </div>
+            ))}
+          </div>
+
+          {hasRates ? (
+            <div style={{ borderTop: '1px solid #2A2A2D', paddingTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Logged This Month</div>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff' }}>
+                ${loggedRevenue.toLocaleString()} across {sessionsThisMonth.length} session{sessionsThisMonth.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => router.push('/dashboard/settings')} style={{ width: '100%', background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', marginTop: '4px' }}>
+              Set rates to unlock →
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   async function submitOnboarding(skip = false) {
     setSavingOnboarding(true)
     const supabaseClient = createClient()
@@ -638,23 +719,9 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           </div>
         )}
 
-        {/* OVERVIEW */}
+        {/* REVENUE SNAPSHOT - MOBILE */}
         <div style={{ padding: '4px 16px 12px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Overview</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px 12px' }}>
-              <div style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{players.length}</div>
-              <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '4px' }}>Players</div>
-            </div>
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px 12px' }}>
-              <div style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{sessions.length}</div>
-              <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '4px' }}>Sessions logged</div>
-            </div>
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px 12px' }}>
-              <div style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{groups.length}</div>
-              <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '4px' }}>Active group{groups.length !== 1 ? 's' : ''}</div>
-            </div>
-          </div>
+          <RevenueSnapshot />
         </div>
 
       </div>
@@ -1125,38 +1192,8 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           {/* ===== RIGHT SIDEBAR ===== */}
           <div style={{ position: 'sticky', top: '76px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-            {/* RETENTION HEALTH */}
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
-              <div style={{ padding: '14px 16px', borderBottom: '1px solid #2A2A2D' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Retention Health</div>
-              </div>
-              <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                {[
-                  { label: 'Active', count: activeCount, color: '#00FF9F', desc: 'trained ≤14d' },
-                  { label: 'At Risk', count: atRiskCount, color: '#F5A623', desc: '15–30d ago' },
-                  { label: 'Lapsed', count: lapsedCount, color: '#E03131', desc: '30d+ ago' },
-                  { label: 'New', count: players.filter(p => getStatus(p.id) === 'new').length, color: '#4A9EFF', desc: 'no sessions yet' },
-                ].map(kpi => (
-                  <div key={kpi.label} style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderBottom: `3px solid ${kpi.color}`, borderRadius: '10px', padding: '12px' }}>
-                    <div style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{kpi.count}</div>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: kpi.color, marginTop: '4px' }}>{kpi.label}</div>
-                    <div style={{ fontSize: '10px', color: '#9A9A9F', marginTop: '2px' }}>{kpi.desc}</div>
-                  </div>
-                ))}
-              </div>
-              {((profile as any)?.individual_rate || (profile as any)?.group_rate) && (
-                <div style={{ margin: '0 16px 14px', padding: '12px', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '10px' }}>
-                  <div style={{ fontSize: '11px', color: '#9A9A9F', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Est. Monthly Revenue</div>
-                  <div style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff' }}>
-                    ${(
-                      (activeCount * ((profile as any)?.individual_rate || 0) * 4) +
-                      (groups.length * ((profile as any)?.group_rate || 0) * 4)
-                    ).toLocaleString()}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>{activeCount} active client{activeCount !== 1 ? 's' : ''}</div>
-                </div>
-              )}
-            </div>
+            {/* REVENUE SNAPSHOT */}
+            <RevenueSnapshot />
 
             {/* ACTION NEEDED */}
             {(unloggedSessions.length > 0 || players.filter(p => getStatus(p.id) === 'new').length > 0 || localSessionRequests.length > 0) && (
