@@ -532,13 +532,13 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
               onClick={() => router.push('/dashboard/players/new')}
-              style={{ flex: 1, background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '10px', padding: '14px 12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}>
+              style={{ flex: 1, background: '#1A1A1C', color: '#ffffff', border: '1px solid rgba(0,255,159,0.5)', borderRadius: '10px', padding: '14px 12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}>
               + Add Player
             </button>
             <button
               onClick={() => router.push('/dashboard/sessions/new')}
-              style={{ flex: 1, background: '#1A1A1C', color: '#ffffff', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px 12px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}>
-              📅 Schedule
+              style={{ flex: 1, background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '10px', padding: '14px 12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}>
+              + Session
             </button>
           </div>
         </div>
@@ -649,8 +649,8 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {unloggedSessions.length > 0 && (
                 <>
-                  <div style={{ background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.3)', borderRadius: '12px', padding: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '18px', flexShrink: 0 }}>⚠️</span>
+                  <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '18px', flexShrink: 0, filter: 'grayscale(1) brightness(0.7)' }}>⚠️</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{unloggedSessions.length} unlogged sessions</div>
                       <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>AI recaps unavailable until logged</div>
@@ -702,8 +702,8 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                 </>
               )}
               {mobileAtRiskCount > 0 && (
-                <div style={{ background: 'rgba(224,49,49,0.08)', border: '1px solid rgba(224,49,49,0.3)', borderRadius: '12px', padding: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '18px', flexShrink: 0 }}>🔴</span>
+                <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '18px', flexShrink: 0, filter: 'grayscale(1) brightness(0.6)' }}>🔴</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{mobileAtRiskCount} players lapsed</div>
                     <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>No session in 14+ days</div>
