@@ -61,6 +61,15 @@ export default function QuickLogPage() {
     const { data: playersData } = await supabase
       .from('players').select('*').in('id', allPlayerIds)
     setPlayers(playersData || [])
+
+    if (scheduledSessionId) {
+      const { data: scheduledSession } = await supabase
+        .from('sessions').select('session_date').eq('id', scheduledSessionId).single()
+      if (scheduledSession?.session_date) {
+        setSessionDate(scheduledSession.session_date)
+      }
+    }
+
     setDataLoading(false)
   }
 
