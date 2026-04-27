@@ -37,9 +37,7 @@ interface Props {
 export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions, allSessionPlayers, sessionLogs, unloggedSessions, sessionRequests }: Props) {
   const supabase = createClient()
   const router = useRouter()
-  const [activeFilter, setActiveFilter] = useState<string>('all')
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
 
   const [bannerDismissed, setBannerDismissed] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -195,12 +193,6 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
       setTimeout(() => setCopiedId(null), 2000)
     })
   }
-
-  const filteredPlayers = players.filter(p => {
-    const matchesFilter = activeFilter === 'all' ? true : activeFilter === 'individual' ? !p.group_id : p.group_id === activeFilter
-    const matchesSearch = search === '' || p.full_name.toLowerCase().includes(search.toLowerCase()) || p.parent_email?.toLowerCase().includes(search.toLowerCase())
-    return matchesFilter && matchesSearch
-  })
 
   const activeCount = players.filter(p => getStatus(p.id) === 'active').length
   const atRiskCount = players.filter(p => getStatus(p.id) === 'at-risk').length
@@ -1139,134 +1131,6 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
               )
             })()}
 
-            {/* MY GROUPS */}
-            {groups.length > 0 && (
-              <div>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginBottom: '12px' }}>My groups</div>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' as const }}>
-                  {groups.map(group => (
-                    <div key={group.id} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '12px', minWidth: '180px' }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(0,255,159,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
-                        {group.sport === 'basketball' ? '🏀' : group.sport === 'soccer' ? '⚽' : group.sport === 'football' ? '🏈' : group.sport === 'baseball' ? '⚾' : group.sport === 'tennis' ? '🎾' : group.sport === 'volleyball' ? '🏐' : group.sport === 'golf' ? '⛳' : '🏆'}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '2px' }}>{group.name}</div>
-                        <div style={{ fontSize: '12px', color: '#9A9A9F' }}>{players.filter(p => p.group_id === group.id).length} player{players.filter(p => p.group_id === group.id).length !== 1 ? 's' : ''} · {group.session_day || 'No day set'}</div>
-                      </div>
-                      <button onClick={() => router.push(`/dashboard/groups/${group.id}`)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#00FF9F', cursor: 'pointer', whiteSpace: 'nowrap' as const }}>Manage</button>
-                    </div>
-                  ))}
-                  <div onClick={() => router.push('/dashboard/groups/new')} style={{ background: 'transparent', border: '1px dashed #2A2A2D', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '140px', cursor: 'pointer', color: '#9A9A9F', fontSize: '13px', gap: '6px' }}>+ New group</div>
-                </div>
-              </div>
-            )}
-
-            {/* MY PLAYERS TABLE */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <h2 style={{ fontSize: '12px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: 0 }}>My players</h2>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <button onClick={() => router.push(`/dashboard/drills/new${activeFilter !== 'all' && activeFilter !== 'individual' ? `?group=${activeFilter}` : ''}`)} style={{ fontSize: '12px', color: '#00FF9F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>+ Assign drills</button>
-                  <button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '12px', color: '#9A9A9F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>View all →</button>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-                <button onClick={() => setActiveFilter('all')} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #2A2A2D', background: activeFilter === 'all' ? '#00FF9F' : 'transparent', color: activeFilter === 'all' ? '#0E0E0F' : '#9A9A9F', fontSize: '12px', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>All ({players.length})</button>
-                <button onClick={() => setActiveFilter('individual')} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #2A2A2D', background: activeFilter === 'individual' ? '#00FF9F' : 'transparent', color: activeFilter === 'individual' ? '#0E0E0F' : '#9A9A9F', fontSize: '12px', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>Individual ({players.filter(p => !p.group_id).length})</button>
-                {groups.map(g => (
-                  <button key={g.id} onClick={() => setActiveFilter(g.id)} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #2A2A2D', background: activeFilter === g.id ? '#00FF9F' : 'transparent', color: activeFilter === g.id ? '#0E0E0F' : '#9A9A9F', fontSize: '12px', fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>{g.name} ({players.filter(p => p.group_id === g.id).length})</button>
-                ))}
-              </div>
-              <div style={{ marginBottom: '12px' }}>
-                <input type="text" placeholder="Search players..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 14px', fontSize: '14px', color: '#ffffff', outline: 'none' }} />
-              </div>
-              <div className="player-card-grid" style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 1fr 1fr 1fr 1fr', padding: '8px 16px', borderBottom: '1px solid #2A2A2D', alignItems: 'center' }}>
-                  <div />
-                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em', paddingLeft: '12px' }}>Player</div>
-                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em', textAlign: 'center' as const }}>Group</div>
-                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em', textAlign: 'center' as const }}>Last Session</div>
-                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em', textAlign: 'center' as const }}>Drills</div>
-                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em', paddingLeft: '8px' }}>Actions</div>
-                </div>
-                {filteredPlayers.length === 0 ? (
-                  <div style={{ padding: '48px 20px', textAlign: 'center' as const }}>
-                    <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '16px' }}>{players.length === 0 ? 'No players yet' : 'No players in this filter'}</p>
-                    <button onClick={() => router.push('/dashboard/players/new')} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Add first player</button>
-                  </div>
-                ) : (
-                  filteredPlayers.map((player, i) => {
-                    const lastSession = getLastSession(player.id)
-                    const days = getDaysSince(lastSession?.session_date || null)
-                    const group = getGroup(player.group_id)
-                    const isLast = i === filteredPlayers.length - 1
-                    return (
-                      <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '36px 1fr 1fr 1fr 1fr 1fr', padding: '12px 16px', borderBottom: isLast ? 'none' : '1px solid #2A2A2D', alignItems: 'center' }}>
-                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F' }}>{getInitials(player.full_name)}</div>
-                        <div style={{ paddingLeft: '12px', minWidth: 0 }}>
-                          <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{player.full_name}</div>
-                        </div>
-                        <div style={{ textAlign: 'center' as const }}>
-                          {group ? <span style={{ fontSize: '12px', background: '#2A2A2D', padding: '3px 8px', borderRadius: '6px', color: '#9A9A9F', whiteSpace: 'nowrap' as const }}>{group.name}</span> : <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Individual</span>}
-                        </div>
-                        <div style={{ textAlign: 'center' as const }}>
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: days !== null && days > 30 ? '#E03131' : '#9A9A9F' }}>{formatDaysAgo(days)}</div>
-                        </div>
-                        <div style={{ textAlign: 'center' as const }}>
-                          {(() => {
-                            const counts = getDrillCounts(player)
-                            if (!counts) return <span style={{ fontSize: '13px', color: '#9A9A9F' }}>—</span>
-                            const pct = Math.round((counts.done / counts.total) * 100)
-                            return (
-                              <div>
-                                <div style={{ fontSize: '12px', fontWeight: 600, color: counts.done === counts.total ? '#00FF9F' : '#9A9A9F', marginBottom: '4px' }}>{counts.done}/{counts.total}</div>
-                                <div style={{ height: '3px', background: '#2A2A2D', borderRadius: '99px', overflow: 'hidden', margin: '0 auto', width: '50px' }}>
-                                  <div style={{ height: '100%', width: pct + '%', background: counts.done === counts.total ? '#00FF9F' : 'rgba(0,255,159,0.5)', borderRadius: '99px' }} />
-                                </div>
-                              </div>
-                            )
-                          })()}
-                        </div>
-                        <div style={{ display: 'flex', gap: '5px', paddingLeft: '8px' }}>
-                          <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '11px', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontWeight: 500 }}>+ Session</button>
-                          <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '11px', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontWeight: 500 }}>Log</button>
-                          {player.parent_email && (
-                            <button onClick={() => setEmailingPlayer(player)} style={{ fontSize: '11px', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', fontWeight: 500 }}>Email</button>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
-              <div className="player-cards" style={{ flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{filteredPlayers.length} player{filteredPlayers.length !== 1 ? 's' : ''}</span>
-                </div>
-                {filteredPlayers.map(player => {
-                  const lastSession = getLastSession(player.id)
-                  const days = getDaysSince(lastSession?.session_date || null)
-                  const group = getGroup(player.group_id)
-                  return (
-                    <div key={player.id} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>{getInitials(player.full_name)}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{player.full_name}</div>
-                        <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '1px' }}>{group ? group.name : 'Individual'}</div>
-                      </div>
-                      <div style={{ textAlign: 'center' as const, flexShrink: 0, minWidth: '40px' }}>
-                        <div style={{ fontSize: '9px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>Last</div>
-                        <div style={{ fontSize: '11px', fontWeight: 600, color: days !== null && days > 30 ? '#E03131' : '#ffffff' }}>{formatDaysAgo(days)}</div>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
-                        <button onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)} style={{ fontSize: '10px', padding: '4px 7px', borderRadius: '5px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontWeight: 500 }}>+ Session</button>
-                        <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ fontSize: '10px', padding: '4px 7px', borderRadius: '5px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' as const, fontWeight: 500 }}>Log</button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
 
           </div>
 
