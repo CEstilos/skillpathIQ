@@ -6,7 +6,7 @@ import NavBar from '@/components/NavBar'
 
 const NEW_COLOR = '#4A9EFF'
 
-interface Profile { id: string; full_name: string; individual_rate: number | null; group_rate: number | null }
+interface Profile { id: string; full_name: string; email: string; individual_rate: number | null; group_rate: number | null }
 interface Player {
   id: string; full_name: string; parent_email: string; parent_name?: string | null
   group_id: string | null; created_at: string; custom_rate: number | null
@@ -33,11 +33,66 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [emailingPlayer, setEmailingPlayer] = useState<Player | null>(null)
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBody, setEmailBody] = useState('')
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
 
   const now = new Date()
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
   const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
   const todayStr = now.toISOString().split('T')[0]
+
+  function openEmailModal(player: Player) {
+    setEmailingPlayer(player)
+    setEmailSubject('')
+    setEmailBody('')
+    setEmailSent(false)
+    setEmailError(null)
+  }
+
+  function closeEmailModal() {
+    setEmailingPlayer(null)
+    setEmailSubject('')
+    setEmailBody('')
+    setEmailSent(false)
+    setEmailError(null)
+  }
+
+  async function sendEmail() {
+    if (!emailingPlayer?.parent_email || !emailBody.trim()) return
+    setSendingEmail(true)
+    setEmailError(null)
+    const playerUrl = `${window.location.origin}/player?id=${emailingPlayer.id}`
+    try {
+      const res = await fetch('/api/send-player-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: emailingPlayer.parent_email,
+          subject: emailSubject.trim() || `Update from ${profile?.full_name || 'your trainer'}`,
+          body: emailBody,
+          playerName: emailingPlayer.full_name.split(' ')[0],
+          playerUrl,
+          trainerName: profile?.full_name || '',
+          trainerEmail: profile?.email || '',
+        }),
+      })
+      const data = await res.json()
+      setSendingEmail(false)
+      if (data.error) {
+        setEmailError('Failed to send. Please try again.')
+      } else {
+        setEmailSent(true)
+        setTimeout(closeEmailModal, 2000)
+      }
+    } catch {
+      setSendingEmail(false)
+      setEmailError('Failed to send. Please try again.')
+    }
+  }
 
   function getLastSession(playerId: string) {
     const ps = sessions.filter(s => s.player_id === playerId)
@@ -386,7 +441,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
               Parent: <span style={{ color: '#ffffff' }}>{parentDisplay}</span>
             </div>
             <button
-              onClick={() => window.open(`mailto:${player.parent_email}`, '_blank')}
+              onClick={() => openEmailModal(player)}
               style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer', flexShrink: 0, fontWeight: 500, whiteSpace: 'nowrap' as const }}>
               Send Email
             </button>
@@ -764,6 +819,74 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
         )}
 
       </div>
+
+      {/* ═══════════════════════════════════════
+          EMAIL COMPOSE MODAL
+      ═══════════════════════════════════════ */}
+      {emailingPlayer && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}
+          onClick={e => { if (e.target === e.currentTarget) closeEmailModal() }}>
+          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '480px' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '18px' }}>
+              <div>
+                <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>
+                  Email re: {emailingPlayer.full_name.split(' ')[0]}
+                </div>
+                <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '3px' }}>
+                  To: {emailingPlayer.parent_email}
+                </div>
+              </div>
+              <button
+                onClick={closeEmailModal}
+                style={{ background: 'none', border: 'none', color: '#9A9A9F', cursor: 'pointer', fontSize: '22px', lineHeight: 1, padding: '0 0 0 12px', flexShrink: 0 }}>
+                ×
+              </button>
+            </div>
+
+            {/* Fields */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <input
+                type="text"
+                placeholder={`Update from ${profile?.full_name || 'your trainer'}`}
+                value={emailSubject}
+                onChange={e => setEmailSubject(e.target.value)}
+                style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
+              />
+              <textarea
+                autoFocus
+                placeholder="Write your message..."
+                value={emailBody}
+                onChange={e => setEmailBody(e.target.value)}
+                rows={6}
+                style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', resize: 'vertical' as const, fontFamily: 'sans-serif' }}
+              />
+
+              {emailError && (
+                <div style={{ fontSize: '13px', color: '#E03131', padding: '8px 12px', background: 'rgba(224,49,49,0.08)', border: '1px solid rgba(224,49,49,0.2)', borderRadius: '8px' }}>
+                  {emailError}
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
+                <button
+                  onClick={closeEmailModal}
+                  style={{ flex: 1, background: 'transparent', color: '#9A9A9F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={sendEmail}
+                  disabled={sendingEmail || emailSent || !emailBody.trim()}
+                  style={{ flex: 2, background: emailSent ? 'rgba(0,255,159,0.15)' : emailBody.trim() ? '#00FF9F' : '#2A2A2D', color: emailSent ? '#00FF9F' : emailBody.trim() ? '#0E0E0F' : '#9A9A9F', border: emailSent ? '1px solid rgba(0,255,159,0.3)' : 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 700, cursor: emailBody.trim() && !sendingEmail && !emailSent ? 'pointer' : 'default', transition: 'background 0.15s' }}>
+                  {emailSent ? '✓ Email sent' : sendingEmail ? 'Sending...' : 'Send email'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══════════════════════════════════════
           MOBILE BOTTOM NAV
