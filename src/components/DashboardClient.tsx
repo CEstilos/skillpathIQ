@@ -181,6 +181,11 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     const weekDrills = drills.filter(d => d.drill_week_id === week.id)
     if (!weekDrills.length) return null
     const done = completions.filter(c => c.player_id === player.id && weekDrills.some(d => d.id === c.drill_id)).length
+    const pct = Math.round((done / weekDrills.length) * 100)
+    if (isNaN(pct)) {
+      console.warn(`[DrillEngagement] NaN pct for player ${player.id}: done=${done} total=${weekDrills.length}`)
+      return null
+    }
     return { done, total: weekDrills.length }
   }
   function copyPlayerLink(playerId: string) {
@@ -772,10 +777,10 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: '13px', fontWeight: 500, color: '#ffffff' }}>{item.player.full_name.split(' ')[0]}</div>
                             <div style={{ marginTop: '4px', height: '4px', borderRadius: '99px', background: '#2A2A2D', overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${item.pct}%`, background: item.pct < 40 ? '#E03131' : '#F5A623', borderRadius: '99px' }} />
+                              <div style={{ height: '100%', width: `${item.pct}%`, background: item.pct === 0 ? '#E03131' : '#F5A623', borderRadius: '99px' }} />
                             </div>
                           </div>
-                          <div style={{ fontSize: '12px', fontWeight: 700, color: item.pct < 40 ? '#E03131' : '#F5A623', flexShrink: 0 }}>{item.pct}%</div>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: item.pct === 0 ? '#E03131' : '#F5A623', flexShrink: 0 }}>{item.pct}%</div>
                           <button onClick={() => router.push(`/dashboard/players/${item.player.id}`)} style={{ fontSize: '11px', padding: '5px 10px', borderRadius: '7px', border: 'none', background: '#2A2A2D', color: '#ffffff', cursor: 'pointer', flexShrink: 0 }}>View</button>
                         </div>
                       ))}
@@ -1334,10 +1339,10 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{item.player.full_name.split(' ')[0]}</div>
                       <div style={{ marginTop: '5px', height: '4px', borderRadius: '99px', background: '#2A2A2D', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${item.pct}%`, background: item.pct < 40 ? '#E03131' : '#F5A623', borderRadius: '99px' }} />
+                        <div style={{ height: '100%', width: `${item.pct}%`, background: item.pct === 0 ? '#E03131' : '#F5A623', borderRadius: '99px' }} />
                       </div>
                     </div>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: item.pct < 40 ? '#E03131' : '#F5A623', flexShrink: 0 }}>{item.pct}%</div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: item.pct === 0 ? '#E03131' : '#F5A623', flexShrink: 0 }}>{item.pct}%</div>
                   </div>
                 ))}
                 {drillNudgeLoading && (

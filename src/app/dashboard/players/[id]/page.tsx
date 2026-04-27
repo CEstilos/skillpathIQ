@@ -47,7 +47,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
     .single() : { data: null }
 
   const { data: profile } = await supabase
-    .from('profiles').select('full_name').eq('id', user.id).single()
+    .from('profiles').select('full_name, email').eq('id', user.id).single()
 
   return (
     <PlayerProfileClient
@@ -58,6 +58,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
       completions={completions || []}
       group={group}
       trainerName={profile?.full_name || undefined}
+      trainerEmail={(profile as { full_name?: string; email?: string } | null)?.email || undefined}
     />
   )
 }

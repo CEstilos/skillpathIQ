@@ -317,7 +317,10 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
   // ── Desktop sub-components ────────────────────────────────────────────
   function StatColumns({ playerId, days, player }: { playerId: string; days: number | null; player: Player }) {
     const dc = getPlayerDrillCounts(player)
-    const drillColor = dc ? (dc.pct >= 70 ? '#1dce7c' : dc.pct >= 40 ? '#F5A623' : '#E03131') : '#9A9A9F'
+    if (dc !== null && (dc.pct === null || dc.pct === undefined || isNaN(dc.pct))) {
+      console.warn(`[DrillEngagement] invalid pct for player ${player.id}:`, dc)
+    }
+    const drillColor = dc ? (dc.pct >= 70 ? '#1dce7c' : dc.pct === 0 ? '#E03131' : '#F5A623') : '#9A9A9F'
     return (
       <div style={{ display: 'flex', gap: '20px', flexShrink: 0 }}>
         <div style={{ textAlign: 'center' as const }}>
@@ -470,7 +473,11 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
         {(() => {
           const dc = getPlayerDrillCounts(player)
           if (!dc) return null
-          const drillColor = dc.pct >= 70 ? '#1dce7c' : dc.pct >= 40 ? '#F5A623' : '#E03131'
+          if (dc.pct === null || dc.pct === undefined || isNaN(dc.pct)) {
+            console.warn(`[DrillEngagement] invalid pct for player ${player.id}:`, dc)
+            return null
+          }
+          const drillColor = dc.pct >= 70 ? '#1dce7c' : dc.pct === 0 ? '#E03131' : '#F5A623'
           return (
             <div style={{ padding: '8px 14px', borderTop: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ fontSize: '9px', color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em', flexShrink: 0 }}>Drills this week</div>

@@ -20,11 +20,12 @@ interface Props {
   completions: Completion[]
   group: Group | null
   trainerName?: string
+  trainerEmail?: string
 }
 
 const SKILL_LEVELS = ['beginner', 'intermediate', 'advanced', 'elite']
 
-export default function PlayerProfileClient({ player, sessions, drillWeeks, drills, completions, group, trainerName }: Props) {
+export default function PlayerProfileClient({ player, sessions, drillWeeks, drills, completions, group, trainerName, trainerEmail }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [linkShared, setLinkShared] = useState(false)
@@ -35,6 +36,12 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
   const [savedInfo, setSavedInfo] = useState(false)
   const [drillNudge, setDrillNudge] = useState<string | null>(null)
   const [drillNudgeLoading, setDrillNudgeLoading] = useState(false)
+  const [emailOpen, setEmailOpen] = useState(false)
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBody, setEmailBody] = useState('')
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
 
   useEffect(() => {
     if (drillWeeks.length === 0) return
@@ -84,6 +91,39 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
       navigator.clipboard.writeText(url)
       setLinkShared(true)
       setTimeout(() => setLinkShared(false), 2000)
+    }
+  }
+
+  async function sendEmail() {
+    if (!player.parent_email || !emailBody.trim()) return
+    setSendingEmail(true)
+    setEmailError(null)
+    const playerUrl = `${window.location.origin}/player?id=${player.id}`
+    try {
+      const res = await fetch('/api/send-player-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: player.parent_email,
+          subject: emailSubject.trim() || `Update from ${trainerName || 'your trainer'}`,
+          body: emailBody,
+          playerName: player.full_name.split(' ')[0],
+          playerUrl,
+          trainerName: trainerName || '',
+          trainerEmail: trainerEmail || '',
+        }),
+      })
+      const data = await res.json()
+      setSendingEmail(false)
+      if (data.error) {
+        setEmailError('Failed to send. Please try again.')
+      } else {
+        setEmailSent(true)
+        setTimeout(() => { setEmailOpen(false); setEmailSent(false); setEmailSubject(''); setEmailBody(''); setEmailError(null) }, 2000)
+      }
+    } catch {
+      setSendingEmail(false)
+      setEmailError('Failed to send. Please try again.')
     }
   }
 
@@ -163,6 +203,12 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
   const memberSince = formatDate(player.created_at)
   const age = getAge()
 
+  const totalDrillsAssigned = drills.length
+  const totalDrillsDone = completions.length
+  const allTimeCompletionRate = totalDrillsAssigned > 0
+    ? Math.round((totalDrillsDone / totalDrillsAssigned) * 100)
+    : null
+
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
       <style>{`
@@ -171,6 +217,7 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
         @media (max-width: 640px) {
           .profile-grid { grid-template-columns: 1fr !important; }
           .stat-row { grid-template-columns: repeat(2, 1fr) !important; }
+          .action-btns { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
 
@@ -187,7 +234,7 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
 
         {/* PLAYER HEADER */}
         <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '24px', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: '12px', marginBottom: '18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 700, color: '#00FF9F', flexShrink: 0 }}>
                 {getInitials(player.full_name)}
@@ -203,19 +250,31 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' as const }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, padding: '5px 12px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color }}>{statusStyle.label}</span>
-              <button
-                onClick={() => router.push(`/dashboard/players/${player.id}/log`)}
-                style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-                + Log session
-              </button>
-              <button
-                onClick={handleShareLink}
-                style={{ background: 'transparent', color: linkShared ? '#00FF9F' : '#9A9A9F', border: `1px solid ${linkShared ? '#00FF9F' : '#2A2A2D'}`, borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
-                {linkShared ? '✓ Link copied!' : 'Share drill link'}
-              </button>
-            </div>
+            <span style={{ fontSize: '12px', fontWeight: 600, padding: '5px 12px', borderRadius: '99px', background: statusStyle.bg, color: statusStyle.color }}>{statusStyle.label}</span>
+          </div>
+          {/* ACTION BUTTONS — 2×2 on mobile, single row on desktop */}
+          <div className="action-btns" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+            <button
+              onClick={() => router.push(`/dashboard/players/${player.id}/log`)}
+              style={{ padding: '9px 8px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
+              + Log Session
+            </button>
+            <button
+              onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)}
+              style={{ padding: '9px 8px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
+              Assign Drills
+            </button>
+            <button
+              onClick={() => { setEmailOpen(true); setEmailSubject(''); setEmailBody(''); setEmailSent(false); setEmailError(null) }}
+              disabled={!player.parent_email}
+              style={{ padding: '9px 8px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: player.parent_email ? '#ffffff' : '#555558', fontSize: '13px', fontWeight: 600, cursor: player.parent_email ? 'pointer' : 'default', whiteSpace: 'nowrap' as const }}>
+              Send Email
+            </button>
+            <button
+              onClick={handleShareLink}
+              style={{ padding: '9px 8px', borderRadius: '8px', border: `1px solid ${linkShared ? '#00FF9F' : '#2A2A2D'}`, background: 'transparent', color: linkShared ? '#00FF9F' : '#9A9A9F', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap' as const }}>
+              {linkShared ? '✓ Copied!' : 'Share Profile'}
+            </button>
           </div>
         </div>
 
@@ -296,7 +355,7 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
         </div>
 
         {/* STAT ROW */}
-        <div className="stat-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginBottom: '20px' }}>
+        <div className="stat-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '20px' }}>
           <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '18px' }}>
             <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Total sessions</div>
             <div style={{ fontFamily: 'monospace', fontSize: '32px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{sessions.length}</div>
@@ -310,9 +369,16 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
             {lastSession && <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>{formatDate(lastSession.session_date)}</div>}
           </div>
           <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '18px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Drill weeks</div>
-            <div style={{ fontFamily: 'monospace', fontSize: '32px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{drillWeeks.length}</div>
-            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>Assigned</div>
+            <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Drills Completed</div>
+            <div style={{ fontFamily: 'monospace', fontSize: '32px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{totalDrillsDone}</div>
+            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>Total completed</div>
+          </div>
+          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '18px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Completion Rate</div>
+            <div style={{ fontFamily: 'monospace', fontSize: '32px', fontWeight: 700, color: allTimeCompletionRate !== null ? '#ffffff' : '#9A9A9F', lineHeight: 1 }}>
+              {allTimeCompletionRate !== null ? `${allTimeCompletionRate}%` : '—'}
+            </div>
+            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>All time rate</div>
           </div>
         </div>
 
@@ -422,6 +488,59 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
           </div>
         </div>
       </div>
+
+      {/* EMAIL MODAL */}
+      {emailOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '480px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <div>
+                <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>Email {player.full_name.split(' ')[0]}&apos;s Parent</div>
+                <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{player.parent_email}</div>
+              </div>
+              <button onClick={() => setEmailOpen(false)} style={{ background: 'none', border: 'none', color: '#9A9A9F', cursor: 'pointer', fontSize: '20px', lineHeight: 1 }}>×</button>
+            </div>
+            {emailSent ? (
+              <div style={{ padding: '20px', textAlign: 'center' as const, color: '#00FF9F', fontWeight: 600 }}>✓ Email sent!</div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '6px' }}>Subject (optional)</div>
+                    <input
+                      type="text"
+                      placeholder={`Update from ${trainerName || 'your trainer'}`}
+                      value={emailSubject}
+                      onChange={e => setEmailSubject(e.target.value)}
+                      style={{ width: '100%', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '6px' }}>Message</div>
+                    <textarea
+                      rows={5}
+                      placeholder="Write your message here…"
+                      value={emailBody}
+                      onChange={e => setEmailBody(e.target.value)}
+                      style={{ width: '100%', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', resize: 'vertical' as const, fontFamily: 'sans-serif' }}
+                    />
+                  </div>
+                </div>
+                {emailError && <div style={{ fontSize: '13px', color: '#E03131', marginBottom: '12px' }}>{emailError}</div>}
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button onClick={() => setEmailOpen(false)} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
+                  <button
+                    onClick={sendEmail}
+                    disabled={sendingEmail || !emailBody.trim()}
+                    style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontSize: '13px', fontWeight: 700, cursor: sendingEmail || !emailBody.trim() ? 'default' : 'pointer', opacity: sendingEmail || !emailBody.trim() ? 0.6 : 1 }}>
+                    {sendingEmail ? 'Sending…' : 'Send Email'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
