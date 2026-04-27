@@ -15,6 +15,7 @@ interface Session {
   id: string; player_id: string | null; group_id?: string | null
   session_date: string; session_time?: string | null
   session_type: string; status?: string | null; rate_override: number | null
+  notes?: string | null; feedback?: string | null; drills_covered?: string | null
 }
 interface Group { id: string; name: string; sport: string }
 interface DrillWeek { id: string; player_id?: string | null; group_id?: string | null; week_start: string }
@@ -115,6 +116,7 @@ export default function ClientsPageClient({ profile, players, sessions, groups, 
     const upcoming = sessions.filter(s => {
       if (s.session_date < todayStr) return false
       if (s.status === 'cancelled' || s.status === 'logged') return false
+      if (s.notes || s.feedback || s.drills_covered) return false
       if (s.player_id === player.id) return true
       if (linkedSessionIds.has(s.id)) return true
       if (player.group_id && s.group_id === player.group_id) return true
