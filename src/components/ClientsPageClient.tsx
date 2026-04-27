@@ -17,15 +17,21 @@ interface Session {
   session_type: string; status?: string | null; rate_override: number | null
 }
 interface Group { id: string; name: string; sport: string }
+interface DrillWeek { id: string; player_id?: string | null; group_id?: string | null; week_start: string }
+interface Drill { id: string; drill_week_id: string }
+interface Completion { player_id: string; drill_id: string }
 
 interface Props {
   profile: Profile | null
   players: Player[]
   sessions: Session[]
   groups: Group[]
+  drillWeeks?: DrillWeek[]
+  drills?: Drill[]
+  completions?: Completion[]
 }
 
-export default function ClientsPageClient({ profile, players, sessions, groups }: Props) {
+export default function ClientsPageClient({ profile, players, sessions, groups, drillWeeks = [], drills = [], completions = [] }: Props) {
   const router = useRouter()
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null)
   const [aiMessages, setAiMessages] = useState<Record<string, string>>({})
@@ -192,6 +198,24 @@ export default function ClientsPageClient({ profile, players, sessions, groups }
     return groups.find(g => g.id === groupId) || null
   }
 
+  function getCurrentDrillWeekForPlayer(player: Player): DrillWeek | null {
+    const weeks = drillWeeks.filter(w =>
+      w.player_id === player.id || (player.group_id && w.group_id === player.group_id)
+    )
+    if (weeks.length === 0) return null
+    return weeks.sort((a, b) => b.week_start.localeCompare(a.week_start))[0]
+  }
+
+  function getPlayerDrillCounts(player: Player): { done: number; total: number; pct: number } | null {
+    const week = getCurrentDrillWeekForPlayer(player)
+    if (!week) return null
+    const weekDrills = drills.filter(d => d.drill_week_id === week.id)
+    if (weekDrills.length === 0) return null
+    const done = weekDrills.filter(d => completions.some(c => c.drill_id === d.id && c.player_id === player.id)).length
+    const pct = Math.round((done / weekDrills.length) * 100)
+    return { done, total: weekDrills.length, pct }
+  }
+
   function getFallbackMessage(player: Player) {
     const last = getLastSession(player.id)
     const days = last ? getDaysSince(last.session_date) : null
@@ -291,7 +315,9 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
   const insight = getInsight()
 
   // ── Desktop sub-components ────────────────────────────────────────────
-  function StatColumns({ playerId, days }: { playerId: string; days: number | null }) {
+  function StatColumns({ playerId, days, player }: { playerId: string; days: number | null; player: Player }) {
+    const dc = getPlayerDrillCounts(player)
+    const drillColor = dc ? (dc.pct >= 70 ? '#1dce7c' : dc.pct >= 40 ? '#F5A623' : '#E03131') : '#9A9A9F'
     return (
       <div style={{ display: 'flex', gap: '20px', flexShrink: 0 }}>
         <div style={{ textAlign: 'center' as const }}>
@@ -306,6 +332,12 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
           <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>Individual</div>
           <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{getIndividualSessionCount(playerId)}</div>
         </div>
+        {dc && (
+          <div style={{ textAlign: 'center' as const }}>
+            <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>Drills</div>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: drillColor }}>{dc.pct}%</div>
+          </div>
+        )}
       </div>
     )
   }
@@ -433,6 +465,22 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
             <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{sessionCount === 0 ? '0' : `${sessionCount} session${sessionCount !== 1 ? 's' : ''}`}</div>
           </div>
         </div>
+
+        {/* Drill engagement row */}
+        {(() => {
+          const dc = getPlayerDrillCounts(player)
+          if (!dc) return null
+          const drillColor = dc.pct >= 70 ? '#1dce7c' : dc.pct >= 40 ? '#F5A623' : '#E03131'
+          return (
+            <div style={{ padding: '8px 14px', borderTop: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ fontSize: '9px', color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em', flexShrink: 0 }}>Drills this week</div>
+              <div style={{ flex: 1, height: '4px', borderRadius: '99px', background: '#2A2A2D', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${dc.pct}%`, background: drillColor, borderRadius: '99px' }} />
+              </div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: drillColor, flexShrink: 0 }}>{dc.pct}%</div>
+            </div>
+          )
+        })()}
 
         {/* Parent + email */}
         {parentDisplay && (
@@ -713,7 +761,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
                         <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{player.full_name}</div>
                         <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{group ? group.name : 'Individual'}</div>
                       </div>
-                      <StatColumns playerId={player.id} days={days} />
+                      <StatColumns playerId={player.id} days={days} player={player} />
                       <ActionButtons player={player} accentColor="#F5A623" />
                     </div>
                     {expandedPlayer === player.id && <PlayerMessageBox player={player} accentColor="#F5A623" />}
@@ -746,7 +794,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
                         <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{player.full_name}</div>
                         <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{group ? group.name : 'Individual'} · {formatCurrency(monthlyRecovery)}/mo potential recovery</div>
                       </div>
-                      <StatColumns playerId={player.id} days={days} />
+                      <StatColumns playerId={player.id} days={days} player={player} />
                       <ActionButtons player={player} accentColor="#E03131" />
                     </div>
                     {expandedPlayer === player.id && <PlayerMessageBox player={player} accentColor="#E03131" />}
@@ -778,7 +826,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
                         <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{player.full_name}</div>
                         <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{group ? group.name : 'Individual'}</div>
                       </div>
-                      <StatColumns playerId={player.id} days={days} />
+                      <StatColumns playerId={player.id} days={days} player={player} />
                       <ActionButtons player={player} accentColor="#00FF9F" />
                     </div>
                     {expandedPlayer === player.id && <PlayerMessageBox player={player} accentColor="#00FF9F" />}
@@ -807,7 +855,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
                         <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{player.full_name}</div>
                         <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{group ? group.name : 'Individual'} · No sessions yet</div>
                       </div>
-                      <StatColumns playerId={player.id} days={null} />
+                      <StatColumns playerId={player.id} days={null} player={player} />
                       <ActionButtons player={player} accentColor="#9A9A9F" />
                     </div>
                     {expandedPlayer === player.id && <PlayerMessageBox player={player} accentColor="#9A9A9F" />}

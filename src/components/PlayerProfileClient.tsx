@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import NavBar from '@/components/NavBar'
 
@@ -19,11 +19,12 @@ interface Props {
   drills: Drill[]
   completions: Completion[]
   group: Group | null
+  trainerName?: string
 }
 
 const SKILL_LEVELS = ['beginner', 'intermediate', 'advanced', 'elite']
 
-export default function PlayerProfileClient({ player, sessions, drillWeeks, drills, completions, group }: Props) {
+export default function PlayerProfileClient({ player, sessions, drillWeeks, drills, completions, group, trainerName }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [linkShared, setLinkShared] = useState(false)
@@ -32,6 +33,40 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
   const [skillLevel, setSkillLevel] = useState(player.skill_level || 'intermediate')
   const [savingInfo, setSavingInfo] = useState(false)
   const [savedInfo, setSavedInfo] = useState(false)
+  const [drillNudge, setDrillNudge] = useState<string | null>(null)
+  const [drillNudgeLoading, setDrillNudgeLoading] = useState(false)
+
+  useEffect(() => {
+    if (drillWeeks.length === 0) return
+    const latestWeek = drillWeeks[0]
+    const weekDrills = drills.filter(d => d.drill_week_id === latestWeek.id)
+    if (weekDrills.length === 0) return
+    const done = weekDrills.filter(d => completions.some(c => c.drill_id === d.id && c.player_id === player.id)).length
+    const pct = Math.round((done / weekDrills.length) * 100)
+    if (pct >= 70) return
+    setDrillNudgeLoading(true)
+    const firstName = player.full_name.split(' ')[0]
+    fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 100,
+        messages: [{
+          role: 'user',
+          content: `You are a youth sports coach. ${firstName} has completed ${pct}% (${done}/${weekDrills.length}) of their assigned drills this week. Write one short, encouraging sentence to motivate them to finish. Address them by first name. No emojis. Return only the sentence.`,
+        }],
+      }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        const text = data.content?.find((b: { type: string; text: string }) => b.type === 'text')?.text?.trim()
+        setDrillNudge(text || null)
+      })
+      .catch(() => {})
+      .finally(() => setDrillNudgeLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function handleShareLink() {
     const url = `${window.location.origin}/player?id=${player.id}`
@@ -286,6 +321,14 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
           {/* DRILL WORK */}
           <div>
             <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Drill work</div>
+            {(drillNudge || drillNudgeLoading) && (
+              <div style={{ background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.3)', borderRadius: '10px', padding: '12px 14px', marginBottom: '12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <span style={{ fontSize: '14px', flexShrink: 0 }}>💡</span>
+                <div style={{ fontSize: '12px', color: '#9A9A9F', lineHeight: 1.5, fontStyle: drillNudgeLoading ? 'italic' : 'normal' }}>
+                  {drillNudgeLoading ? 'Getting coaching tip…' : drillNudge}
+                </div>
+              </div>
+            )}
             {drillWeeks.length === 0 ? (
               <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
                 <p style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '12px' }}>No drill work assigned yet</p>

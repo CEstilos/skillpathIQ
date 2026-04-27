@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import NavBar from '@/components/NavBar'
@@ -56,6 +56,9 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const [rescheduleTime, setRescheduleTime] = useState('')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [showUnlogged, setShowUnlogged] = useState(false)
+  const [showDrillAlert, setShowDrillAlert] = useState(false)
+  const [drillNudge, setDrillNudge] = useState<string | null>(null)
+  const [drillNudgeLoading, setDrillNudgeLoading] = useState(false)
   const [localSessionRequests, setLocalSessionRequests] = useState<SessionRequest[]>(sessionRequests)
   const [showAllUpcoming, setShowAllUpcoming] = useState(false)
   const [emailingPlayer, setEmailingPlayer] = useState<Player | null>(null)
@@ -202,8 +205,41 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     const days = getDaysSince(last?.session_date || null)
     return days !== null && days >= 14
   }).length
-  
-  
+
+  const lowEngagementPlayers = players
+    .map(p => {
+      const counts = getDrillCounts(p)
+      if (!counts) return null
+      const pct = Math.round((counts.done / counts.total) * 100)
+      return { player: p, pct, done: counts.done, total: counts.total }
+    })
+    .filter((x): x is { player: Player; pct: number; done: number; total: number } => x !== null && x.pct < 70)
+
+  useEffect(() => {
+    if (lowEngagementPlayers.length === 0) return
+    setDrillNudgeLoading(true)
+    const dataStr = lowEngagementPlayers
+      .map(item => `${item.player.full_name.split(' ')[0]}: ${item.pct}% (${item.done}/${item.total} drills)`)
+      .join(', ')
+    fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 120,
+        messages: [{ role: 'user', content: `You are a coaching assistant for a youth sports trainer. Given the following player drill engagement data, write a short, specific, actionable nudge (2 sentences max) that helps the trainer decide whether and how to follow up with these players before their next session. Be direct and practical. Do not use generic phrases like 'consider reaching out'. Data: ${dataStr}` }],
+      }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        const text = data.content?.find((b: { type: string; text: string }) => b.type === 'text')?.text?.trim()
+        setDrillNudge(text || null)
+      })
+      .catch(() => {})
+      .finally(() => setDrillNudgeLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   async function cancelSession(sessionId: string) {
     setActionLoading(sessionId + '_cancel')
     const supabaseClient = createClient()
@@ -643,7 +679,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
         </div>
 
         {/* ACTION NEEDED */}
-        {(unloggedSessions.length > 0 || mobileAtRiskCount > 0) && (
+        {(unloggedSessions.length > 0 || mobileAtRiskCount > 0 || lowEngagementPlayers.length > 0) && (
           <div style={{ padding: '4px 16px 12px' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Action Needed</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -714,6 +750,46 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                     Re-engage
                   </button>
                 </div>
+              )}
+              {lowEngagementPlayers.length > 0 && (
+                <>
+                  <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '18px', flexShrink: 0, filter: 'grayscale(1) brightness(0.7)' }}>📊</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>Low drill engagement</div>
+                      <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{lowEngagementPlayers.length} player{lowEngagementPlayers.length !== 1 ? 's' : ''} below 70% this week</div>
+                    </div>
+                    <button onClick={() => setShowDrillAlert(!showDrillAlert)} style={{ fontSize: '12px', padding: '7px 12px', borderRadius: '8px', border: '1px solid rgba(245,166,35,0.5)', background: 'transparent', color: '#F5A623', fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' as const }}>Review</button>
+                  </div>
+                  {showDrillAlert && (
+                    <div style={{ background: '#1A1A1C', border: '1px solid rgba(245,166,35,0.3)', borderRadius: '12px', overflow: 'hidden' }}>
+                      <div style={{ padding: '10px 14px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#F5A623', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Drill Engagement</span>
+                        <button onClick={() => setShowDrillAlert(false)} style={{ background: 'none', border: 'none', color: '#9A9A9F', cursor: 'pointer', fontSize: '16px' }}>×</button>
+                      </div>
+                      {lowEngagementPlayers.map((item, i) => (
+                        <div key={item.player.id} style={{ padding: '10px 14px', borderBottom: i < lowEngagementPlayers.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '13px', fontWeight: 500, color: '#ffffff' }}>{item.player.full_name.split(' ')[0]}</div>
+                            <div style={{ marginTop: '4px', height: '4px', borderRadius: '99px', background: '#2A2A2D', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${item.pct}%`, background: item.pct < 40 ? '#E03131' : '#F5A623', borderRadius: '99px' }} />
+                            </div>
+                          </div>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: item.pct < 40 ? '#E03131' : '#F5A623', flexShrink: 0 }}>{item.pct}%</div>
+                          <button onClick={() => router.push(`/dashboard/players/${item.player.id}`)} style={{ fontSize: '11px', padding: '5px 10px', borderRadius: '7px', border: 'none', background: '#2A2A2D', color: '#ffffff', cursor: 'pointer', flexShrink: 0 }}>View</button>
+                        </div>
+                      ))}
+                      {drillNudgeLoading && (
+                        <div style={{ padding: '10px 14px', fontSize: '12px', color: '#9A9A9F', fontStyle: 'italic' }}>Getting coaching tip…</div>
+                      )}
+                      {drillNudge && !drillNudgeLoading && (
+                        <div style={{ padding: '10px 14px', borderTop: '1px solid #2A2A2D', fontSize: '12px', color: '#9A9A9F', lineHeight: 1.5 }}>
+                          <span style={{ color: '#F5A623', fontWeight: 600 }}>Tip: </span>{drillNudge}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1196,7 +1272,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
             <RevenueSnapshot />
 
             {/* ACTION NEEDED */}
-            {(unloggedSessions.length > 0 || players.filter(p => getStatus(p.id) === 'new').length > 0 || localSessionRequests.length > 0) && (
+            {(unloggedSessions.length > 0 || players.filter(p => getStatus(p.id) === 'new').length > 0 || localSessionRequests.length > 0 || lowEngagementPlayers.length > 0) && (
               <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
                 <div style={{ padding: '14px 16px', borderBottom: '1px solid #2A2A2D' }}>
                   <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Action Needed</div>
@@ -1223,7 +1299,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                     </div>
                   )}
                   {localSessionRequests.length > 0 && (
-                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: lowEngagementPlayers.length > 0 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F', flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{localSessionRequests.length} session request{localSessionRequests.length !== 1 ? 's' : ''}</div>
@@ -1232,7 +1308,46 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                       <button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.3)', background: 'transparent', color: '#00FF9F', cursor: 'pointer', flexShrink: 0, fontWeight: 600 }}>View</button>
                     </div>
                   )}
+                  {lowEngagementPlayers.length > 0 && (
+                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F5A623', flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{lowEngagementPlayers.length} low drill engagement</div>
+                        <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>Below 70% completion this week</div>
+                      </div>
+                      <button onClick={() => setShowDrillAlert(!showDrillAlert)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(245,166,35,0.3)', background: 'transparent', color: '#F5A623', cursor: 'pointer', flexShrink: 0, fontWeight: 600 }}>Review</button>
+                    </div>
+                  )}
                 </div>
+              </div>
+            )}
+
+            {/* DRILL ENGAGEMENT */}
+            {(lowEngagementPlayers.length > 0 || drillNudgeLoading) && showDrillAlert && (
+              <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
+                <div style={{ padding: '14px 16px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Drill Engagement</div>
+                  <button onClick={() => setShowDrillAlert(false)} style={{ background: 'none', border: 'none', color: '#9A9A9F', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}>×</button>
+                </div>
+                {lowEngagementPlayers.map((item, i) => (
+                  <div key={item.player.id} onClick={() => router.push(`/dashboard/players/${item.player.id}`)} style={{ padding: '12px 16px', borderBottom: i < lowEngagementPlayers.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{item.player.full_name.split(' ')[0]}</div>
+                      <div style={{ marginTop: '5px', height: '4px', borderRadius: '99px', background: '#2A2A2D', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${item.pct}%`, background: item.pct < 40 ? '#E03131' : '#F5A623', borderRadius: '99px' }} />
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: item.pct < 40 ? '#E03131' : '#F5A623', flexShrink: 0 }}>{item.pct}%</div>
+                  </div>
+                ))}
+                {drillNudgeLoading && (
+                  <div style={{ padding: '12px 16px', fontSize: '12px', color: '#9A9A9F', fontStyle: 'italic', borderTop: lowEngagementPlayers.length > 0 ? '1px solid #2A2A2D' : 'none' }}>Getting coaching tip…</div>
+                )}
+                {drillNudge && !drillNudgeLoading && (
+                  <div style={{ padding: '12px 16px', borderTop: '1px solid #2A2A2D', fontSize: '12px', color: '#9A9A9F', lineHeight: 1.5 }}>
+                    <span style={{ color: '#F5A623', fontWeight: 600 }}>Tip: </span>{drillNudge}
+                  </div>
+                )}
               </div>
             )}
 

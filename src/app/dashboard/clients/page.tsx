@@ -21,12 +21,26 @@ export default async function ClientsPage() {
   const { data: groups } = await supabase
     .from('groups').select('*').eq('trainer_id', user.id)
 
+  const { data: drillWeeks } = await supabase
+    .from('drill_weeks').select('*').eq('trainer_id', user.id)
+    .order('week_start', { ascending: false })
+
+  const { data: drills } = await supabase
+    .from('drills').select('*').eq('trainer_id', user.id)
+
+  const { data: completions } = await supabase
+    .from('completions').select('*')
+    .in('player_id', players?.map(p => p.id) || [])
+
   return (
     <ClientsPageClient
       profile={profile}
       players={players || []}
       sessions={sessions || []}
       groups={groups || []}
+      drillWeeks={drillWeeks || []}
+      drills={drills || []}
+      completions={completions || []}
     />
   )
 }
