@@ -208,6 +208,7 @@ Return ONLY valid JSON, no markdown:
         drills_covered: selectedSkills.join(', '),
         notes,
         feedback: recap?.parentSummary || null,
+        status: 'logged',
       })
 
       if (assignDrills && drillWeekTitle.trim()) {
