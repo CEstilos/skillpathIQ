@@ -162,14 +162,6 @@ export default function ClientsPageClient({ profile, players, sessions, groups, 
     return sessions.filter(s => s.player_id === playerId).length
   }
 
-  function getGroupSessionCount(playerId: string) {
-    return sessions.filter(s => s.player_id === playerId && s.session_type === 'group').length
-  }
-
-  function getIndividualSessionCount(playerId: string) {
-    return sessions.filter(s => s.player_id === playerId && s.session_type === 'individual').length
-  }
-
   function getMonthlyRecoveryRevenue(player: Player) {
     const playerSessions = sessions.filter(s => s.player_id === player.id)
     if (playerSessions.length === 0) return 0
@@ -321,112 +313,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
   }
   const insight = getInsight()
 
-  // ── Desktop sub-components ────────────────────────────────────────────
-  function StatColumns({ playerId, days, player }: { playerId: string; days: number | null; player: Player }) {
-    const dc = getPlayerDrillCounts(player)
-    if (dc !== null && (dc.pct === null || dc.pct === undefined || isNaN(dc.pct))) {
-      console.warn(`[DrillEngagement] invalid pct for player ${player.id}:`, dc)
-    }
-    const drillColor = dc ? (dc.pct >= 70 ? '#1dce7c' : dc.pct === 0 ? '#E03131' : '#F5A623') : '#9A9A9F'
-    return (
-      <div style={{ display: 'flex', gap: '20px', flexShrink: 0 }}>
-        <div style={{ textAlign: 'center' as const }}>
-          <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>Last session</div>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{days !== null ? formatDaysAgo(days) : '—'}</div>
-        </div>
-        <div style={{ textAlign: 'center' as const }}>
-          <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>Group</div>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{getGroupSessionCount(playerId)}</div>
-        </div>
-        <div style={{ textAlign: 'center' as const }}>
-          <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>Individual</div>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{getIndividualSessionCount(playerId)}</div>
-        </div>
-        {dc && (
-          <div style={{ textAlign: 'center' as const }}>
-            <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>Drills</div>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: drillColor }}>{dc.pct}%</div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  function ActionButtons({ player, accentColor }: { player: Player; accentColor: string }) {
-    const isExpanded = expandedPlayer === player.id
-    return (
-      <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-        <button
-          onClick={() => router.push(`/dashboard/sessions/new?player=${player.id}`)}
-          style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(0,255,159,0.4)', background: '#1A1A1C', color: '#9A9A9F', cursor: 'pointer', fontWeight: 500 }}>
-          Schedule
-        </button>
-        <button
-          onClick={() => setExpandedPlayer(isExpanded ? null : player.id)}
-          style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: `1px solid ${accentColor}50`, background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
-          {isExpanded ? '▲ Hide' : 'Re-engage'}
-        </button>
-      </div>
-    )
-  }
-
-  function PlayerMessageBox({ player, accentColor }: { player: Player; accentColor: string }) {
-    const message = aiMessages[player.id]
-    const loading = aiLoading[player.id]
-    const isCopied = copiedId === player.id
-    return (
-      <div style={{ padding: '0 20px 16px', borderTop: '1px solid #2A2A2D' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '14px 0 10px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Re-engagement message</div>
-          <button
-            onClick={() => generateAiMessage(player)}
-            disabled={loading}
-            style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: `1px solid ${accentColor}`, background: 'transparent', color: accentColor, cursor: loading ? 'default' : 'pointer', fontWeight: 600, opacity: loading ? 0.6 : 1 }}>
-            {loading ? 'Generating...' : message ? '↺ Regenerate' : '✦ Generate with AI'}
-          </button>
-        </div>
-        {!message && !loading && (
-          <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: '10px', fontStyle: 'italic' }}>
-            Click &ldquo;Generate with AI&rdquo; to create a personalized message based on {player.full_name.split(' ')[0]}&apos;s history
-          </div>
-        )}
-        {loading && (
-          <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: accentColor, animation: 'pulse 1s infinite' }} />
-              Writing a personalized message...
-            </div>
-          </div>
-        )}
-        {message && !loading && (
-          <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', color: '#ffffff', lineHeight: 1.6, marginBottom: '10px', border: `1px solid ${accentColor}30` }}>
-            {message}
-          </div>
-        )}
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {message && (
-            <button
-              onClick={() => copyMessage(player.id, message)}
-              style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: isCopied ? '#00FF9F' : accentColor, color: '#0E0E0F', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
-              {isCopied ? '✓ Copied!' : 'Copy message'}
-            </button>
-          )}
-          <button
-            onClick={() => router.push(`/dashboard/players/${player.id}/log`)}
-            style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer' }}>
-            Log session
-          </button>
-          <button
-            onClick={() => router.push(`/dashboard/players/${player.id}`)}
-            style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
-            View profile
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // ── Mobile player card renderer ───────────────────────────────────────
+  // ── Player card renderer ─────────────────────────────────────────────
   function renderMobileCard(player: Player, accentColor: string, statusLabel: string, canReengage: boolean) {
     const last = getLastSession(player.id)
     const days = last ? getDaysSince(last.session_date) : null
@@ -593,16 +480,15 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { overflow-x: hidden; max-width: 100vw; background: #0E0E0F; }
-        .mobile-players { display: none; }
         .mobile-bottom-nav-clients { display: none; }
+        .kpi-grid { grid-template-columns: repeat(4, 1fr); }
+        .players-pad { padding-bottom: 24px; }
         @media (max-width: 640px) {
           .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .desktop-players { display: none !important; }
-          .mobile-players { display: flex !important; flex-direction: column; }
           .mobile-bottom-nav-clients { display: flex !important; }
+          .players-pad { padding-bottom: 88px !important; }
         }
         @media (min-width: 641px) {
-          .mobile-players { display: none !important; }
           .mobile-bottom-nav-clients { display: none !important; }
         }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
@@ -612,9 +498,9 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
       <NavBar trainerName={profile?.full_name} />
 
       {/* ═══════════════════════════════════════
-          MOBILE LAYOUT
+          PLAYER CARDS LAYOUT
       ═══════════════════════════════════════ */}
-      <div className="mobile-players" style={{ flexDirection: 'column', paddingBottom: '88px' }}>
+      <div className="players-pad" style={{ display: 'flex', flexDirection: 'column', maxWidth: '720px', margin: '0 auto', width: '100%' }}>
 
         {/* Header */}
         <div style={{ padding: '20px 16px 8px' }}>
@@ -657,7 +543,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
         </div>
 
         {/* KPI cards */}
-        <div style={{ padding: '0 16px 16px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+        <div className="kpi-grid" style={{ padding: '0 16px 16px', display: 'grid', gap: '10px' }}>
           {[
             { label: 'Active', count: activePlayers.length, sub: `${formatCurrency(totalActiveMonthly)}/mo revenue`, color: '#00FF9F' },
             { label: 'At Risk', count: atRiskPlayers.length, sub: `${formatCurrency(totalAtRiskRevenue)} at risk`, color: '#F5A623' },
@@ -715,168 +601,6 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
                 Add first player
               </button>
             )}
-          </div>
-        )}
-
-      </div>
-
-      {/* ═══════════════════════════════════════
-          DESKTOP LAYOUT
-      ═══════════════════════════════════════ */}
-      <div className="desktop-players" style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px', width: '100%' }}>
-
-        <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '4px' }}>My Players</h1>
-          <p style={{ fontSize: '14px', color: '#9A9A9F' }}>{players.length} total clients · Focus on reengagement to protect your revenue</p>
-        </div>
-
-        {/* KPI ROW */}
-        <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '28px' }}>
-          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '18px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Active</div>
-            <div style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{activePlayers.length}</div>
-            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>{formatCurrency(totalActiveMonthly)}/mo est. revenue</div>
-          </div>
-          <div style={{ background: '#1A1A1C', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '12px', padding: '18px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 600, color: '#F5A623', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>At risk</div>
-            <div style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{atRiskPlayers.length}</div>
-            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>{formatCurrency(totalAtRiskRevenue)} at risk</div>
-          </div>
-          <div style={{ background: '#1A1A1C', border: '1px solid rgba(224,49,49,0.2)', borderRadius: '12px', padding: '18px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 600, color: '#E03131', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Lapsed</div>
-            <div style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{lapsedPlayers.length}</div>
-            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>{formatCurrency(totalLapsedRevenue)}/mo recoverable</div>
-          </div>
-          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '18px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>New</div>
-            <div style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>{newPlayers.length}</div>
-            <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '6px' }}>No sessions yet</div>
-          </div>
-        </div>
-
-        {/* AT RISK */}
-        {atRiskPlayers.length > 0 && (
-          <div style={{ marginBottom: '28px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F5A623' }} />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#F5A623', textTransform: 'uppercase', letterSpacing: '0.08em' }}>At risk — act now</span>
-              <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Haven&apos;t trained in 30–60 days</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {atRiskPlayers.map(player => {
-                const last = getLastSession(player.id)
-                const days = last ? getDaysSince(last.session_date) : null
-                const group = getGroup(player.group_id)
-                return (
-                  <div key={player.id} style={{ background: '#1A1A1C', border: '1px solid rgba(245,166,35,0.25)', borderRadius: '12px', overflow: 'hidden' }}>
-                    <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' as const }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(245,166,35,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600, color: '#F5A623', flexShrink: 0 }}>{getInitials(player.full_name)}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{player.full_name}</div>
-                        <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{group ? group.name : 'Individual'}</div>
-                      </div>
-                      <StatColumns playerId={player.id} days={days} player={player} />
-                      <ActionButtons player={player} accentColor="#F5A623" />
-                    </div>
-                    {expandedPlayer === player.id && <PlayerMessageBox player={player} accentColor="#F5A623" />}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* LAPSED */}
-        {lapsedPlayers.length > 0 && (
-          <div style={{ marginBottom: '28px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#E03131' }} />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#E03131', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Lapsed — revenue lost</span>
-              <span style={{ fontSize: '12px', color: '#9A9A9F' }}>No sessions in 60+ days</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {lapsedPlayers.map(player => {
-                const last = getLastSession(player.id)
-                const days = last ? getDaysSince(last.session_date) : null
-                const monthlyRecovery = getMonthlyRecoveryRevenue(player)
-                const group = getGroup(player.group_id)
-                return (
-                  <div key={player.id} style={{ background: '#1A1A1C', border: '1px solid rgba(224,49,49,0.25)', borderRadius: '12px', overflow: 'hidden' }}>
-                    <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' as const }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(224,49,49,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600, color: '#E03131', flexShrink: 0 }}>{getInitials(player.full_name)}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{player.full_name}</div>
-                        <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{group ? group.name : 'Individual'} · {formatCurrency(monthlyRecovery)}/mo potential recovery</div>
-                      </div>
-                      <StatColumns playerId={player.id} days={days} player={player} />
-                      <ActionButtons player={player} accentColor="#E03131" />
-                    </div>
-                    {expandedPlayer === player.id && <PlayerMessageBox player={player} accentColor="#E03131" />}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ACTIVE */}
-        {activePlayers.length > 0 && (
-          <div style={{ marginBottom: '28px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F' }} />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Active clients</span>
-              <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Trained in the last 30 days</span>
-            </div>
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
-              {activePlayers.map((player, i) => {
-                const last = getLastSession(player.id)
-                const days = last ? getDaysSince(last.session_date) : null
-                const group = getGroup(player.group_id)
-                return (
-                  <div key={player.id} style={{ overflow: 'hidden' }}>
-                    <div style={{ padding: '14px 20px', borderBottom: expandedPlayer === player.id || i < activePlayers.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' as const }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>{getInitials(player.full_name)}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{player.full_name}</div>
-                        <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{group ? group.name : 'Individual'}</div>
-                      </div>
-                      <StatColumns playerId={player.id} days={days} player={player} />
-                      <ActionButtons player={player} accentColor="#00FF9F" />
-                    </div>
-                    {expandedPlayer === player.id && <PlayerMessageBox player={player} accentColor="#00FF9F" />}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* NEW */}
-        {newPlayers.length > 0 && (
-          <div style={{ marginBottom: '28px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9A9A9F' }} />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>New — no sessions yet</span>
-            </div>
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
-              {newPlayers.map((player, i) => {
-                const group = getGroup(player.group_id)
-                return (
-                  <div key={player.id} style={{ overflow: 'hidden' }}>
-                    <div style={{ padding: '14px 20px', borderBottom: expandedPlayer === player.id || i < newPlayers.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' as const }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#2A2A2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#9A9A9F', flexShrink: 0 }}>{getInitials(player.full_name)}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div onClick={() => router.push(`/dashboard/players/${player.id}`)} style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{player.full_name}</div>
-                        <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{group ? group.name : 'Individual'} · No sessions yet</div>
-                      </div>
-                      <StatColumns playerId={player.id} days={null} player={player} />
-                      <ActionButtons player={player} accentColor="#9A9A9F" />
-                    </div>
-                    {expandedPlayer === player.id && <PlayerMessageBox player={player} accentColor="#9A9A9F" />}
-                  </div>
-                )
-              })}
-            </div>
           </div>
         )}
 
