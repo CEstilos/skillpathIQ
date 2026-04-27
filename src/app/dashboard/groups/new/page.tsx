@@ -9,6 +9,7 @@ export default function NewGroupPage() {
   const supabase = createClient()
   const router = useRouter()
   const [name, setName] = useState('')
+  const [location, setLocation] = useState('')
   const [sport, setSport] = useState('basketball')
   const [sessionDay, setSessionDay] = useState('')
   const [sessionTime, setSessionTime] = useState('')
@@ -24,12 +25,13 @@ export default function NewGroupPage() {
     const { error } = await supabase.from('groups').insert({
       trainer_id: user.id,
       name,
+      location: location.trim() || null,
       sport,
       session_day: sessionDay,
       session_time: sessionTime,
     })
     if (error) { setError(error.message); setLoading(false); return }
-    router.push('/dashboard')
+    router.push('/dashboard/groups')
   }
 
   return (
@@ -50,6 +52,10 @@ export default function NewGroupPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Group name</label>
             <input style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }} type="text" placeholder="e.g. Monday Group, Elite 6th Grade" value={name} onChange={e => setName(e.target.value)} required />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Location</label>
+            <input style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }} type="text" placeholder="e.g. Springfield Sports Center, Gym B" value={location} onChange={e => setLocation(e.target.value)} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '13px', color: '#a0a0a8', fontWeight: 500 }}>Sport</label>

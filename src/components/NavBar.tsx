@@ -18,11 +18,13 @@ export default function NavBar({ trainerName }: { trainerName?: string }) {
   const links = [
     { label: 'Training Hub', path: '/dashboard' },
     { label: 'My Players', path: '/dashboard/clients' },
+    { label: 'My Groups', path: '/dashboard/groups' },
     { label: 'My Numbers', path: '/dashboard/business' },
     { label: 'Settings', path: '/dashboard/settings' },
   ]
 
   function isActive(path: string) {
+    if (path === '/dashboard/groups') return pathname === path || pathname.startsWith('/dashboard/groups/')
     return pathname === path
   }
 
