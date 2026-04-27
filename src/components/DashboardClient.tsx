@@ -823,13 +823,13 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
               onClick={() => setBroadcastEmailOpen(!broadcastEmailOpen)}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: '1px solid rgba(0,255,159,0.4)', borderRadius: '8px', cursor: 'pointer', padding: '8px 12px', fontSize: '13px', color: '#00FF9F', fontWeight: 600 }}>
-              ✉ Email all
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.5)', borderRadius: '8px', cursor: 'pointer', padding: '8px 12px', fontSize: '13px', color: '#ffffff', fontWeight: 600 }}>
+              ✉ Email All Athletes
             </button>
-            <button onClick={() => router.push('/dashboard/sessions/new')} style={{ background: 'transparent', color: '#ffffff', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
-              + Schedule session
+            <button onClick={() => router.push('/dashboard/sessions/new')} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
+              + Schedule Session
             </button>
-            <button onClick={() => router.push('/dashboard/players/new')} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
+            <button onClick={() => router.push('/dashboard/players/new')} style={{ background: '#1A1A1C', color: '#ffffff', border: '1px solid rgba(0,255,159,0.5)', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
               + Add player
             </button>
           </div>
@@ -1273,9 +1273,6 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           {/* ===== RIGHT SIDEBAR ===== */}
           <div style={{ position: 'sticky', top: '76px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-            {/* REVENUE SNAPSHOT */}
-            <RevenueSnapshot />
-
             {/* ACTION NEEDED */}
             {(unloggedSessions.length > 0 || players.filter(p => getStatus(p.id) === 'new').length > 0 || localSessionRequests.length > 0 || lowEngagementPlayers.length > 0) && (
               <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
@@ -1327,6 +1324,9 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
               </div>
             )}
 
+            {/* REVENUE SNAPSHOT */}
+            <RevenueSnapshot />
+
             {/* DRILL ENGAGEMENT */}
             {(lowEngagementPlayers.length > 0 || drillNudgeLoading) && showDrillAlert && (
               <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
@@ -1355,27 +1355,6 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                 )}
               </div>
             )}
-
-            {/* QUICK NAV */}
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
-              <div style={{ padding: '14px 16px', borderBottom: '1px solid #2A2A2D' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Quick Access</div>
-              </div>
-              {[
-                { label: 'My Players', sub: `${players.length} player${players.length !== 1 ? 's' : ''}`, path: '/dashboard/clients' },
-                { label: 'My Groups', sub: `${groups.length} group${groups.length !== 1 ? 's' : ''}`, path: '/dashboard/groups' },
-                { label: 'Business Stats', sub: 'Revenue & metrics', path: '/dashboard/business' },
-                { label: 'Settings', sub: 'Profile & rates', path: '/dashboard/settings' },
-              ].map((item, i, arr) => (
-                <div key={item.label} onClick={() => router.push(item.path)} style={{ padding: '12px 16px', borderBottom: i < arr.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{item.label}</div>
-                    <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>{item.sub}</div>
-                  </div>
-                  <span style={{ color: '#9A9A9F', fontSize: '14px' }}>→</span>
-                </div>
-              ))}
-            </div>
 
           </div>
 
