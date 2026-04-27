@@ -104,7 +104,7 @@ export default function ClientsPageClient({ profile, players, sessions, groups, 
   }
 
   function getLastSession(playerId: string) {
-    const ps = sessions.filter(s => s.player_id === playerId)
+    const ps = sessions.filter(s => s.player_id === playerId && s.session_date <= todayStr && s.status !== 'cancelled')
     return ps.length ? ps[0] : null
   }
 

@@ -16,6 +16,7 @@ export default async function ClientsPage() {
 
   const { data: sessions } = await supabase
     .from('sessions').select('*').eq('trainer_id', user.id)
+    .neq('status', 'cancelled')
     .order('session_date', { ascending: false })
 
   const { data: groups } = await supabase
