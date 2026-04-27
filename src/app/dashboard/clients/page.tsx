@@ -21,6 +21,9 @@ export default async function ClientsPage() {
   const { data: groups } = await supabase
     .from('groups').select('*').eq('trainer_id', user.id)
 
+  const { data: sessionPlayers } = await supabase
+    .from('session_players').select('session_id, player_id')
+
   const { data: drillWeeks } = await supabase
     .from('drill_weeks').select('*').eq('trainer_id', user.id)
     .order('week_start', { ascending: false })
@@ -38,6 +41,7 @@ export default async function ClientsPage() {
       players={players || []}
       sessions={sessions || []}
       groups={groups || []}
+      sessionPlayers={sessionPlayers || []}
       drillWeeks={drillWeeks || []}
       drills={drills || []}
       completions={completions || []}

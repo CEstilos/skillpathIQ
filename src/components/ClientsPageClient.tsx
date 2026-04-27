@@ -21,17 +21,20 @@ interface DrillWeek { id: string; player_id?: string | null; group_id?: string |
 interface Drill { id: string; drill_week_id: string }
 interface Completion { player_id: string; drill_id: string }
 
+interface SessionPlayer { session_id: string; player_id: string }
+
 interface Props {
   profile: Profile | null
   players: Player[]
   sessions: Session[]
   groups: Group[]
+  sessionPlayers?: SessionPlayer[]
   drillWeeks?: DrillWeek[]
   drills?: Drill[]
   completions?: Completion[]
 }
 
-export default function ClientsPageClient({ profile, players, sessions, groups, drillWeeks = [], drills = [], completions = [] }: Props) {
+export default function ClientsPageClient({ profile, players, sessions, groups, sessionPlayers = [], drillWeeks = [], drills = [], completions = [] }: Props) {
   const router = useRouter()
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null)
   const [aiMessages, setAiMessages] = useState<Record<string, string>>({})
@@ -106,10 +109,14 @@ export default function ClientsPageClient({ profile, players, sessions, groups, 
   }
 
   function getNextSession(player: Player) {
+    const linkedSessionIds = new Set(
+      sessionPlayers.filter(sp => sp.player_id === player.id).map(sp => sp.session_id)
+    )
     const upcoming = sessions.filter(s => {
       if (s.session_date < todayStr) return false
       if (s.status === 'cancelled' || s.status === 'logged') return false
       if (s.player_id === player.id) return true
+      if (linkedSessionIds.has(s.id)) return true
       if (player.group_id && s.group_id === player.group_id) return true
       return false
     })
