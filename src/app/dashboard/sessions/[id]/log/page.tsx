@@ -57,7 +57,7 @@ const [editingEmail, setEditingEmail] = useState<string | null>(null)
 
     if (sessionData?.group_id) {
       const { data: playersData } = await supabase
-        .from('players').select('*').eq('group_id', sessionData.group_id)
+        .from('players').select('*').eq('group_id', sessionData.group_id).eq('archived', false)
       setPlayers(playersData || [])
       setAttendance(playersData?.map((p: Player) => p.id) || [])
       setPlayerNotes(playersData?.map((p: Player) => ({ playerId: p.id, note: '' })) || [])

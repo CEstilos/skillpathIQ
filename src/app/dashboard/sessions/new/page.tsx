@@ -34,7 +34,7 @@ function NewSessionForm() {
     if (!user) { router.push('/auth/login'); return }
     const { data: groupsData } = await supabase.from('groups').select('*').eq('trainer_id', user.id)
     setGroups(groupsData || [])
-    const { data: playersData } = await supabase.from('players').select('*').eq('trainer_id', user.id)
+    const { data: playersData } = await supabase.from('players').select('*').eq('trainer_id', user.id).eq('archived', false)
     setPlayers(playersData || [])
     if (groupsData?.[0]) setSelectedGroup(groupsData[0].id)
     if (preselectedPlayer) {

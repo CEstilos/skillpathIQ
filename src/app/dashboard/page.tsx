@@ -12,7 +12,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     .from('profiles').select('*').eq('id', user.id).single()
 
   const { data: players } = await supabase
-    .from('players').select('*').eq('trainer_id', user.id)
+    .from('players').select('*').eq('trainer_id', user.id).eq('archived', false)
     .order('created_at', { ascending: false })
 
   const { data: groups } = await supabase

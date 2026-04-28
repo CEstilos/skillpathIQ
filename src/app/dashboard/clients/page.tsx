@@ -11,8 +11,12 @@ export default async function ClientsPage() {
     .from('profiles').select('*').eq('id', user.id).single()
 
   const { data: players } = await supabase
-    .from('players').select('*').eq('trainer_id', user.id)
+    .from('players').select('*').eq('trainer_id', user.id).eq('archived', false)
     .order('created_at', { ascending: false })
+
+  const { data: archivedPlayers } = await supabase
+    .from('players').select('*').eq('trainer_id', user.id).eq('archived', true)
+    .order('archived_at', { ascending: false })
 
   const { data: sessions } = await supabase
     .from('sessions').select('*').eq('trainer_id', user.id)
@@ -40,6 +44,7 @@ export default async function ClientsPage() {
     <ClientsPageClient
       profile={profile}
       players={players || []}
+      archivedPlayers={archivedPlayers || []}
       sessions={sessions || []}
       groups={groups || []}
       sessionPlayers={sessionPlayers || []}

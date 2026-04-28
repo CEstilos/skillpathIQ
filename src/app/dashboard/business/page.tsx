@@ -11,7 +11,7 @@ export default async function BusinessPage() {
     .from('profiles').select('*').eq('id', user.id).single()
 
   const { data: players } = await supabase
-    .from('players').select('*').eq('trainer_id', user.id)
+    .from('players').select('*').eq('trainer_id', user.id).eq('archived', false)
 
   const { data: sessions } = await supabase
     .from('sessions').select('*').eq('trainer_id', user.id)

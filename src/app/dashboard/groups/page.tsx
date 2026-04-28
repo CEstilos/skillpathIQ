@@ -16,7 +16,7 @@ export default async function GroupsPage() {
 
   const { data: players } = await supabase
     .from('players').select('id, full_name, group_id, parent_email')
-    .eq('trainer_id', user.id)
+    .eq('trainer_id', user.id).eq('archived', false)
 
   const { data: sessions } = await supabase
     .from('sessions').select('id, group_id, session_date, session_time, status, title, rescheduled_date')

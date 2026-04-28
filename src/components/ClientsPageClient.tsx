@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase'
 import NavBar from '@/components/NavBar'
 
 const NEW_COLOR = '#4A9EFF'
@@ -10,6 +11,7 @@ interface Profile { id: string; full_name: string; email: string; individual_rat
 interface Player {
   id: string; full_name: string; parent_email: string; parent_name?: string | null
   group_id: string | null; created_at: string; custom_rate: number | null
+  archived: boolean; archived_at: string | null
 }
 interface Session {
   id: string; player_id: string | null; group_id?: string | null
@@ -27,6 +29,7 @@ interface SessionPlayer { session_id: string; player_id: string }
 interface Props {
   profile: Profile | null
   players: Player[]
+  archivedPlayers?: Player[]
   sessions: Session[]
   groups: Group[]
   sessionPlayers?: SessionPlayer[]
@@ -35,8 +38,9 @@ interface Props {
   completions?: Completion[]
 }
 
-export default function ClientsPageClient({ profile, players, sessions, groups, sessionPlayers = [], drillWeeks = [], drills = [], completions = [] }: Props) {
+export default function ClientsPageClient({ profile, players, archivedPlayers = [], sessions, groups, sessionPlayers = [], drillWeeks = [], drills = [], completions = [] }: Props) {
   const router = useRouter()
+  const supabase = React.useMemo(() => createClient(), [])
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null)
   const [aiMessages, setAiMessages] = useState<Record<string, string>>({})
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({})
@@ -49,6 +53,10 @@ export default function ClientsPageClient({ profile, players, sessions, groups, 
   const [sendingEmail, setSendingEmail] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
+  const [archivedExpanded, setArchivedExpanded] = useState(false)
+  const [localArchivedPlayers, setLocalArchivedPlayers] = useState<Player[]>(archivedPlayers)
+  const [localPlayers, setLocalPlayers] = useState<Player[]>(players)
+  const [toast, setToast] = useState<string | null>(null)
 
   const now = new Date()
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
@@ -102,6 +110,25 @@ export default function ClientsPageClient({ profile, players, sessions, groups, 
       setSendingEmail(false)
       setEmailError('Failed to send. Please try again.')
     }
+  }
+
+  function showToast(msg: string) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  async function handleArchivePlayer(player: Player) {
+    await supabase.from('players').update({ archived: true, archived_at: new Date().toISOString() }).eq('id', player.id)
+    setLocalPlayers(prev => prev.filter(p => p.id !== player.id))
+    setLocalArchivedPlayers(prev => [{ ...player, archived: true, archived_at: new Date().toISOString() }, ...prev])
+    showToast('Player archived')
+  }
+
+  async function handleReactivatePlayer(player: Player) {
+    await supabase.from('players').update({ archived: false, archived_at: null }).eq('id', player.id)
+    setLocalArchivedPlayers(prev => prev.filter(p => p.id !== player.id))
+    setLocalPlayers(prev => [{ ...player, archived: false, archived_at: null }, ...prev])
+    showToast('Player reactivated')
   }
 
   function getLastSession(playerId: string) {
@@ -281,10 +308,10 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  const activePlayers = players.filter(p => getStatus(p.id) === 'active')
-  const atRiskPlayers = players.filter(p => getStatus(p.id) === 'at-risk')
-  const lapsedPlayers = players.filter(p => getStatus(p.id) === 'lapsed')
-  const newPlayers = players.filter(p => getStatus(p.id) === 'new')
+  const activePlayers = localPlayers.filter(p => getStatus(p.id) === 'active')
+  const atRiskPlayers = localPlayers.filter(p => getStatus(p.id) === 'at-risk')
+  const lapsedPlayers = localPlayers.filter(p => getStatus(p.id) === 'lapsed')
+  const newPlayers = localPlayers.filter(p => getStatus(p.id) === 'new')
 
   const totalAtRiskRevenue = atRiskPlayers.reduce((sum, p) => sum + getPlayerRate(p), 0)
   const totalLapsedRevenue = lapsedPlayers.reduce((sum, p) => sum + getMonthlyRecoveryRevenue(p), 0)
@@ -304,7 +331,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
   const visibleNew = (statusFilter === 'all' || statusFilter === 'new') ? filteredBySearch(newPlayers) : []
 
   function getInsight() {
-    if (players.length === 0) return null
+    if (localPlayers.length === 0) return null
     if (atRiskPlayers.length === 0 && lapsedPlayers.length === 0) {
       return { text: 'All clients active — strong retention this month', color: '#00FF9F', symbol: '✦' }
     }
@@ -410,6 +437,15 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
             onClick={() => router.push(`/dashboard/players/${player.id}`)}
             style={{ padding: '10px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#ffffff', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
             Profile
+          </button>
+        </div>
+
+        {/* Archive */}
+        <div style={{ padding: '0 14px 10px', borderTop: 'none' }}>
+          <button
+            onClick={() => handleArchivePlayer(player)}
+            style={{ fontSize: '11px', color: '#555558', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
+            Archive player
           </button>
         </div>
 
@@ -596,13 +632,116 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
         {visibleNew.length === 0 && visibleAtRisk.length === 0 && visibleLapsed.length === 0 && visibleActive.length === 0 && (
           <div style={{ padding: '40px 16px', textAlign: 'center' }}>
             <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '16px' }}>
-              {players.length === 0 ? 'No players yet' : 'No players match your search'}
+              {localPlayers.length === 0 ? 'No players yet' : 'No players match your search'}
             </p>
-            {players.length === 0 && (
+            {localPlayers.length === 0 && (
               <button onClick={() => router.push('/dashboard/players/new')} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
                 Add first player
               </button>
             )}
+          </div>
+        )}
+
+        {/* ARCHIVED PLAYERS */}
+        {localArchivedPlayers.length > 0 && (
+          <div style={{ padding: '0 16px 24px' }}>
+            <button
+              onClick={() => setArchivedExpanded(v => !v)}
+              style={{ width: '100%', padding: '12px 16px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: archivedExpanded ? '12px' : '0' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#9A9A9F' }}>
+                Archived players ({localArchivedPlayers.length})
+              </span>
+              <span style={{ fontSize: '12px', color: '#555558' }}>{archivedExpanded ? '▲ Hide' : '▼ View'}</span>
+            </button>
+
+            {archivedExpanded && localArchivedPlayers.map(player => {
+              const archivedDate = player.archived_at
+                ? new Date(player.archived_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                : null
+              const message = aiMessages[player.id]
+              const loading = aiLoading[player.id]
+              const isCopied = copiedId === player.id
+              const isExpanded = expandedPlayer === player.id
+              return (
+                <div key={player.id} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden', marginBottom: '10px', opacity: 0.65 }}>
+                  {/* Header */}
+                  <div style={{ padding: '14px 14px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(154,154,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: '#9A9A9F', flexShrink: 0 }}>
+                      {getInitials(player.full_name)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#9A9A9F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                        {player.full_name}
+                      </div>
+                      {archivedDate && (
+                        <div style={{ fontSize: '11px', color: '#555558', marginTop: '2px' }}>Archived {archivedDate}</div>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '99px', border: '1px solid #2A2A2D', color: '#555558', flexShrink: 0 }}>
+                      Archived
+                    </div>
+                  </div>
+
+                  {/* Reactivate */}
+                  <div style={{ padding: '10px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', borderTop: '1px solid #2A2A2D' }}>
+                    <button
+                      onClick={() => handleReactivatePlayer(player)}
+                      style={{ padding: '10px 8px', borderRadius: '8px', border: '1px solid rgba(0,255,159,0.3)', background: 'rgba(0,255,159,0.06)', color: '#00FF9F', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+                      Reactivate
+                    </button>
+                    <button
+                      onClick={() => router.push(`/dashboard/players/${player.id}`)}
+                      style={{ padding: '10px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+                      Profile
+                    </button>
+                  </div>
+
+                  {/* Re-engage */}
+                  <div style={{ padding: '0 14px 10px' }}>
+                    <button
+                      onClick={() => setExpandedPlayer(isExpanded ? null : player.id)}
+                      style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid rgba(154,154,159,0.2)', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
+                      {isExpanded ? '▲ Hide re-engage message' : '✦ Generate re-engage message'}
+                    </button>
+                  </div>
+                  {isExpanded && (
+                    <div style={{ padding: '0 14px 14px', borderTop: '1px solid #2A2A2D' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '12px 0 8px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Re-engagement message</div>
+                        <button
+                          onClick={() => generateAiMessage(player)}
+                          disabled={loading}
+                          style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #9A9A9F', background: 'transparent', color: '#9A9A9F', cursor: loading ? 'default' : 'pointer', fontWeight: 600, opacity: loading ? 0.6 : 1 }}>
+                          {loading ? 'Generating...' : message ? '↺ Regenerate' : '✦ AI generate'}
+                        </button>
+                      </div>
+                      {!message && !loading && (
+                        <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: '8px', fontStyle: 'italic' }}>
+                          Tap &ldquo;AI generate&rdquo; to write a personalized re-engagement message
+                        </div>
+                      )}
+                      {loading && (
+                        <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: '8px' }}>
+                          Writing a personalized message...
+                        </div>
+                      )}
+                      {message && !loading && (
+                        <>
+                          <div style={{ background: '#0E0E0F', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: '#ffffff', lineHeight: 1.6, marginBottom: '8px', border: '1px solid rgba(154,154,159,0.2)' }}>
+                            {message}
+                          </div>
+                          <button
+                            onClick={() => copyMessage(player.id, message)}
+                            style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: isCopied ? '#00FF9F' : '#2A2A2D', color: isCopied ? '#0E0E0F' : '#ffffff', fontWeight: 600, cursor: 'pointer' }}>
+                            {isCopied ? '✓ Copied!' : 'Copy message'}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 
@@ -711,6 +850,13 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
           </button>
         ))}
       </div>
+
+      {/* TOAST */}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: '88px', left: '50%', transform: 'translateX(-50%)', background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.3)', borderRadius: '10px', padding: '12px 20px', fontSize: '14px', color: '#00FF9F', fontWeight: 500, zIndex: 2000, whiteSpace: 'nowrap' as const }}>
+          ✓ {toast}
+        </div>
+      )}
 
     </div>
   )

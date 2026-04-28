@@ -16,12 +16,12 @@ export default async function GroupDetailPage({ params }: { params: { id: string
     .from('profiles').select('full_name, email').eq('id', user.id).single()
 
   const { data: players } = await supabase
-    .from('players').select('*').eq('group_id', params.id)
+    .from('players').select('*').eq('group_id', params.id).eq('archived', false)
     .order('full_name', { ascending: true })
 
   const { data: allPlayers } = await supabase
     .from('players').select('id, full_name, group_id, parent_email, avatar_initials')
-    .eq('trainer_id', user.id).order('full_name', { ascending: true })
+    .eq('trainer_id', user.id).eq('archived', false).order('full_name', { ascending: true })
 
   const { data: sessions } = await supabase
     .from('sessions').select('id, title, session_date, session_time, status, group_id, rescheduled_date')

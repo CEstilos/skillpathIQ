@@ -63,7 +63,7 @@ const categories = CATEGORIES_BY_SPORT[sport] || DEFAULT_CATEGORIES
     async function loadData() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data: playersData } = await supabase.from('players').select('*').eq('trainer_id', user.id).order('full_name')
+      const { data: playersData } = await supabase.from('players').select('*').eq('trainer_id', user.id).eq('archived', false).order('full_name')
       const { data: groupsData } = await supabase.from('groups').select('*').eq('trainer_id', user.id)
       setPlayers(playersData || [])
       setGroups(groupsData || [])

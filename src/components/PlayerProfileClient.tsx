@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import NavBar from '@/components/NavBar'
 
-interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; created_at: string; custom_rate: number | null; birth_year: number | null; skill_level: string | null }
+interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; created_at: string; custom_rate: number | null; birth_year: number | null; skill_level: string | null; archived: boolean; archived_at: string | null }
 interface Session { id: string; player_id: string; session_date: string; session_type: string; notes: string | null }
 interface DrillWeek { id: string; title: string; week_start: string; player_id: string | null; group_id: string | null }
 interface Drill { id: string; title: string; reps: string; description: string; drill_week_id: string; sort_order: number }
@@ -42,6 +42,9 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
   const [sendingEmail, setSendingEmail] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [archiving, setArchiving] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
 
   useEffect(() => {
     if (drillWeeks.length === 0) return
@@ -137,6 +140,19 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
     setSavedInfo(true)
     setEditingInfo(false)
     setTimeout(() => setSavedInfo(false), 2000)
+  }
+
+  async function handleArchive() {
+    setArchiving(true)
+    await supabase.from('players').update({ archived: true, archived_at: new Date().toISOString() }).eq('id', player.id)
+    setArchiving(false)
+    setArchiveOpen(false)
+    router.push('/dashboard/clients')
+  }
+
+  function showToast(msg: string) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
   }
 
   function getAge() {
@@ -274,6 +290,13 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
               onClick={handleShareLink}
               style={{ padding: '9px 8px', borderRadius: '8px', border: `1px solid ${linkShared ? '#00FF9F' : '#2A2A2D'}`, background: 'transparent', color: linkShared ? '#00FF9F' : '#9A9A9F', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap' as const }}>
               {linkShared ? '✓ Copied!' : 'Share Profile'}
+            </button>
+          </div>
+          <div style={{ marginTop: '8px' }}>
+            <button
+              onClick={() => setArchiveOpen(true)}
+              style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(224,49,49,0.3)', background: 'transparent', color: '#9A9A9F', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>
+              Archive player
             </button>
           </div>
         </div>
@@ -539,6 +562,34 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ARCHIVE CONFIRMATION MODAL */}
+      {archiveOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}
+          onClick={e => { if (e.target === e.currentTarget) setArchiveOpen(false) }}>
+          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '400px' }}>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', marginBottom: '10px' }}>Archive {player.full_name.split(' ')[0]}?</div>
+            <p style={{ fontSize: '14px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: '20px' }}>
+              They won&apos;t appear in your active roster or retention metrics. You can reactivate them any time.
+            </p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => setArchiveOpen(false)} style={{ flex: 1, padding: '11px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleArchive} disabled={archiving} style={{ flex: 1, padding: '11px', borderRadius: '8px', border: '1px solid rgba(224,49,49,0.4)', background: 'rgba(224,49,49,0.08)', color: '#E03131', fontSize: '14px', fontWeight: 700, cursor: archiving ? 'default' : 'pointer', opacity: archiving ? 0.7 : 1 }}>
+                {archiving ? 'Archiving…' : 'Archive player'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOAST */}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.3)', borderRadius: '10px', padding: '12px 20px', fontSize: '14px', color: '#00FF9F', fontWeight: 500, zIndex: 2000, whiteSpace: 'nowrap' as const }}>
+          ✓ {toast}
         </div>
       )}
     </div>

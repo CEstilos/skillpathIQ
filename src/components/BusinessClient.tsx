@@ -30,19 +30,21 @@ export default function BusinessClient({ profile, players, sessions, attendance 
     return players.filter(p => { const d = new Date(p.created_at); return d >= from && d <= to }).length
   }
 
+  const activePlayerIds = new Set(players.map(p => p.id))
+
   function getUniquePlayerCount(from: Date, to: Date) {
-    return new Set(sessions.filter(s => sd(s) >= from && sd(s) <= to && s.player_id).map(s => s.player_id)).size
+    return new Set(sessions.filter(s => sd(s) >= from && sd(s) <= to && s.player_id && activePlayerIds.has(s.player_id)).map(s => s.player_id)).size
   }
 
   function getAtRiskCount() {
-    const activeIds = new Set(sessions.filter(s => sd(s) >= thirtyDaysAgo && s.player_id).map(s => s.player_id))
-    const recentIds = new Set(sessions.filter(s => sd(s) >= sixtyDaysAgo && sd(s) < thirtyDaysAgo && s.player_id).map(s => s.player_id))
-    return [...recentIds].filter(id => !activeIds.has(id)).length
+    const recentActiveIds = new Set(sessions.filter(s => sd(s) >= thirtyDaysAgo && s.player_id && activePlayerIds.has(s.player_id)).map(s => s.player_id))
+    const prevRecentIds = new Set(sessions.filter(s => sd(s) >= sixtyDaysAgo && sd(s) < thirtyDaysAgo && s.player_id && activePlayerIds.has(s.player_id)).map(s => s.player_id))
+    return [...prevRecentIds].filter(id => !recentActiveIds.has(id)).length
   }
 
   function getLapsedCount() {
-    const allIds = new Set(sessions.filter(s => s.player_id).map(s => s.player_id))
-    const recentIds = new Set(sessions.filter(s => sd(s) >= sixtyDaysAgo && s.player_id).map(s => s.player_id))
+    const allIds = new Set(sessions.filter(s => s.player_id && activePlayerIds.has(s.player_id)).map(s => s.player_id))
+    const recentIds = new Set(sessions.filter(s => sd(s) >= sixtyDaysAgo && s.player_id && activePlayerIds.has(s.player_id)).map(s => s.player_id))
     return [...allIds].filter(id => !recentIds.has(id)).length
   }
 
