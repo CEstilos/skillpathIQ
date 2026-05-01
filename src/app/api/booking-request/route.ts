@@ -19,6 +19,7 @@ function emailHtml(body: string, footer: string) {
 }
 
 export async function POST(request: Request) {
+  try {
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -115,4 +116,8 @@ export async function POST(request: Request) {
   }).catch(() => {})
 
   return NextResponse.json({ success: true })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }
