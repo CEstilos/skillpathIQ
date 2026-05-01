@@ -18,6 +18,22 @@ interface SessionRequest { id: string; player_id: string; note: string | null; r
 
 interface SessionLog { session_id: string }
 
+interface BookingRequest {
+  id: string
+  trainer_id: string
+  parent_name: string
+  parent_email: string
+  parent_phone: string | null
+  player_name: string
+  player_age: number | null
+  player_position: string | null
+  player_goals: string | null
+  preferred_session_type: string
+  message: string | null
+  status: string
+  created_at: string
+}
+
 interface Props {
   profile: Profile | null
   players: Player[]
@@ -32,9 +48,10 @@ interface Props {
   sessionLogs: SessionLog[]
   unloggedSessions: ScheduledSession[]
   sessionRequests: SessionRequest[]
+  bookingRequests: BookingRequest[]
 }
 
-export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions, allSessionPlayers, sessionLogs, unloggedSessions, sessionRequests }: Props) {
+export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions, allSessionPlayers, sessionLogs, unloggedSessions, sessionRequests, bookingRequests }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -58,6 +75,10 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const [drillNudge, setDrillNudge] = useState<string | null>(null)
   const [drillNudgeLoading, setDrillNudgeLoading] = useState(false)
   const [localSessionRequests, setLocalSessionRequests] = useState<SessionRequest[]>(sessionRequests)
+  const [localBookingRequests, setLocalBookingRequests] = useState<BookingRequest[]>(bookingRequests)
+  const [bookingHistoryOpen, setBookingHistoryOpen] = useState(false)
+  const [decliningBooking, setDecliningBooking] = useState<string | null>(null)
+  const [dashToast, setDashToast] = useState<string | null>(null)
   const [showAllUpcoming, setShowAllUpcoming] = useState(false)
   const [emailingPlayer, setEmailingPlayer] = useState<Player | null>(null)
   const [quickEmailSubject, setQuickEmailSubject] = useState('')
@@ -421,6 +442,54 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   }
 
  
+  function showDashToast(msg: string) {
+    setDashToast(msg)
+    setTimeout(() => setDashToast(null), 3000)
+  }
+
+  async function handleAcceptBooking(req: BookingRequest) {
+    const supabaseClient = createClient()
+    await supabaseClient.from('booking_requests').update({ status: 'accepted' }).eq('id', req.id)
+    const initials = req.player_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    await supabaseClient.from('players').insert({
+      trainer_id: profile!.id,
+      full_name: req.player_name,
+      parent_email: req.parent_email,
+      contact_type: 'parent',
+      avatar_initials: initials,
+      archived: false,
+    })
+    setLocalBookingRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'accepted' } : r))
+    showDashToast('Player added to your roster')
+    await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: req.parent_email,
+        subject: `${profile?.full_name} accepted your session request`,
+        body: `Hi ${req.parent_name},\n\nGreat news! ${profile?.full_name} has accepted your session request for ${req.player_name}. They'll be in touch soon to confirm your first session.\n\nLooking forward to working together!`,
+      }),
+    }).catch(() => {})
+  }
+
+  async function handleDeclineBooking(req: BookingRequest, notify: boolean) {
+    const supabaseClient = createClient()
+    await supabaseClient.from('booking_requests').update({ status: 'declined' }).eq('id', req.id)
+    setLocalBookingRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'declined' } : r))
+    showDashToast('Request declined')
+    if (notify) {
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: req.parent_email,
+          subject: `Session request update from ${profile?.full_name}`,
+          body: `Hi ${req.parent_name},\n\nThank you for reaching out about ${req.player_name}. Unfortunately, we're not able to take on new clients at this time.\n\nWe appreciate your interest and wish you all the best.`,
+        }),
+      }).catch(() => {})
+    }
+  }
+
   async function dismissRequest(requestId: string) {
     setDismissingRequest(requestId)
     const supabaseClient = createClient()
@@ -792,6 +861,46 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           </div>
         )}
 
+        {/* BOOKING REQUESTS - MOBILE */}
+        {localBookingRequests.filter(r => r.status === 'pending').length > 0 && (
+          <div style={{ padding: '4px 16px 12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Booking Requests</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {localBookingRequests.filter(r => r.status === 'pending').map(req => (
+                <div key={req.id} style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', padding: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
+                      {req.player_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</div>
+                      <div style={{ fontSize: '12px', color: '#9A9A9F' }}>
+                        {req.parent_name} · {req.preferred_session_type === 'group' ? 'Group' : '1-on-1'}
+                      </div>
+                    </div>
+                  </div>
+                  {(req.player_goals || req.message) && (
+                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '10px', lineHeight: 1.4 }}>
+                      {req.player_goals || req.message}
+                    </div>
+                  )}
+                  {decliningBooking === req.id ? (
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button onClick={() => { handleDeclineBooking(req, true); setDecliningBooking(null) }} style={{ flex: 1, fontSize: '12px', padding: '8px', borderRadius: '8px', border: '1px solid rgba(224,49,49,0.3)', background: 'transparent', color: '#E03131', cursor: 'pointer', fontWeight: 600 }}>Decline + notify</button>
+                      <button onClick={() => { handleDeclineBooking(req, false); setDecliningBooking(null) }} style={{ flex: 1, fontSize: '12px', padding: '8px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Silently</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => handleAcceptBooking(req)} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>Accept</button>
+                      <button onClick={() => setDecliningBooking(req.id)} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Decline</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* REVENUE SNAPSHOT - MOBILE */}
         <div style={{ padding: '4px 16px 12px' }}>
           <RevenueSnapshot />
@@ -1031,6 +1140,76 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
               </div>
             )}
 
+            {/* BOOKING REQUESTS */}
+            {localBookingRequests.filter(r => r.status === 'pending').length > 0 && (
+              <div style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F' }} />
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>
+                    New booking request{localBookingRequests.filter(r => r.status === 'pending').length !== 1 ? 's' : ''} ({localBookingRequests.filter(r => r.status === 'pending').length})
+                  </span>
+                </div>
+                {localBookingRequests.filter(r => r.status === 'pending').map((req, i, arr) => (
+                  <div key={req.id} style={{ padding: '16px', borderBottom: i < arr.length - 1 ? '1px solid #2A2A2D' : 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
+                        {req.player_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</div>
+                        <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '1px' }}>
+                          {req.parent_name} · {req.preferred_session_type === 'group' ? 'Group' : '1-on-1'}{req.player_age ? ` · Age ${req.player_age}` : ''}
+                        </div>
+                        {(req.player_position || req.player_goals || req.message) && (
+                          <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            {req.player_position && <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Position: {req.player_position}</div>}
+                            {req.player_goals && <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Goals: {req.player_goals}</div>}
+                            {req.message && <div style={{ fontSize: '12px', color: '#9A9A9F', fontStyle: 'italic' }}>&ldquo;{req.message}&rdquo;</div>}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '11px', color: '#555558', marginTop: '4px' }}>
+                          {new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          {req.parent_email && <> · {req.parent_email}</>}
+                          {req.parent_phone && <> · {req.parent_phone}</>}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+                        <button onClick={() => handleAcceptBooking(req)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>Accept</button>
+                        <button onClick={() => setDecliningBooking(decliningBooking === req.id ? null : req.id)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Decline</button>
+                      </div>
+                    </div>
+                    {decliningBooking === req.id && (
+                      <div style={{ marginTop: '10px', padding: '12px', background: '#0E0E0F', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' as const }}>
+                        <span style={{ fontSize: '13px', color: '#9A9A9F' }}>Notify parent by email?</span>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={() => { handleDeclineBooking(req, true); setDecliningBooking(null) }} style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(224,49,49,0.3)', background: 'transparent', color: '#E03131', cursor: 'pointer', fontWeight: 600 }}>Decline + notify</button>
+                          <button onClick={() => { handleDeclineBooking(req, false); setDecliningBooking(null) }} style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Decline silently</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {localBookingRequests.filter(r => r.status !== 'pending').length > 0 && (
+                  <div style={{ borderTop: '1px solid #2A2A2D' }}>
+                    <button onClick={() => setBookingHistoryOpen(!bookingHistoryOpen)} style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: '#9A9A9F', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>
+                      {bookingHistoryOpen ? '▾' : '▸'} History ({localBookingRequests.filter(r => r.status !== 'pending').length})
+                    </button>
+                    {bookingHistoryOpen && localBookingRequests.filter(r => r.status !== 'pending').map((req, i, arr) => (
+                      <div key={req.id} style={{ padding: '10px 16px', borderTop: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', gap: '10px', opacity: 0.65 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</div>
+                          <div style={{ fontSize: '11px', color: '#9A9A9F' }}>{req.parent_name}</div>
+                        </div>
+                        <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '99px', fontWeight: 600, background: req.status === 'accepted' ? 'rgba(0,255,159,0.1)' : 'rgba(224,49,49,0.1)', color: req.status === 'accepted' ? '#00FF9F' : '#E03131' }}>
+                          {req.status === 'accepted' ? 'Accepted' : 'Declined'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* UNLOGGED SESSIONS PANEL */}
             {showUnlogged && unloggedSessions.length > 0 && (
               <div style={{ background: '#1A1A1C', border: '1px solid rgba(224,49,49,0.3)', borderRadius: '12px', overflow: 'hidden' }}>
@@ -1138,7 +1317,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           <div style={{ position: 'sticky', top: '76px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
             {/* ACTION NEEDED */}
-            {(unloggedSessions.length > 0 || players.filter(p => getStatus(p.id) === 'new').length > 0 || localSessionRequests.length > 0 || lowEngagementPlayers.length > 0) && (
+            {(unloggedSessions.length > 0 || players.filter(p => getStatus(p.id) === 'new').length > 0 || localSessionRequests.length > 0 || localBookingRequests.filter(r => r.status === 'pending').length > 0 || lowEngagementPlayers.length > 0) && (
               <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
                 <div style={{ padding: '14px 16px', borderBottom: '1px solid #2A2A2D' }}>
                   <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Action Needed</div>
@@ -1165,13 +1344,22 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                     </div>
                   )}
                   {localSessionRequests.length > 0 && (
-                    <div style={{ padding: '12px 16px', borderBottom: lowEngagementPlayers.length > 0 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: (localBookingRequests.filter(r => r.status === 'pending').length > 0 || lowEngagementPlayers.length > 0) ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F', flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{localSessionRequests.length} session request{localSessionRequests.length !== 1 ? 's' : ''}</div>
                         <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>Players waiting for a response</div>
                       </div>
                       <button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.3)', background: 'transparent', color: '#00FF9F', cursor: 'pointer', flexShrink: 0, fontWeight: 600 }}>View</button>
+                    </div>
+                  )}
+                  {localBookingRequests.filter(r => r.status === 'pending').length > 0 && (
+                    <div style={{ padding: '12px 16px', borderBottom: lowEngagementPlayers.length > 0 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F', flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{localBookingRequests.filter(r => r.status === 'pending').length} booking request{localBookingRequests.filter(r => r.status === 'pending').length !== 1 ? 's' : ''}</div>
+                        <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>New players want to train with you</div>
+                      </div>
                     </div>
                   )}
                   {lowEngagementPlayers.length > 0 && (
@@ -1366,6 +1554,13 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     </button>
   ))}
 </div>
+
+{/* DASH TOAST */}
+{dashToast && (
+  <div style={{ position: 'fixed', bottom: '88px', left: '50%', transform: 'translateX(-50%)', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '12px 20px', fontSize: '14px', color: '#ffffff', fontWeight: 600, zIndex: 3000, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', whiteSpace: 'nowrap' as const }}>
+    {dashToast}
+  </div>
+)}
 
 {/* QUICK EMAIL MODAL */}
 {emailingPlayer && (

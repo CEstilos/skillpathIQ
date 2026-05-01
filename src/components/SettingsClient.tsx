@@ -12,6 +12,12 @@ interface Profile {
   individual_rate: number | null
   group_rate: number | null
   welcome_message: string | null
+  username: string | null
+  bio: string | null
+  sport: string | null
+  location: string | null
+  profile_photo_url: string | null
+  public_profile_enabled: boolean | null
 }
 
 export default function SettingsClient({ profile }: { profile: Profile | null }) {
@@ -28,8 +34,18 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
   const [passwordSaved, setPasswordSaved] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [welcomeMessage, setWelcomeMessage] = useState(profile?.welcome_message || '')
-const [welcomeSaved, setWelcomeSaved] = useState(false)
-const [welcomeLoading, setWelcomeLoading] = useState(false)
+  const [welcomeSaved, setWelcomeSaved] = useState(false)
+  const [welcomeLoading, setWelcomeLoading] = useState(false)
+
+  const [username, setUsername] = useState(profile?.username || '')
+  const [bio, setBio] = useState(profile?.bio || '')
+  const [sport, setSport] = useState(profile?.sport || '')
+  const [location, setLocation] = useState(profile?.location || '')
+  const [publicProfileEnabled, setPublicProfileEnabled] = useState(profile?.public_profile_enabled ?? false)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileSaved, setProfileSaved] = useState(false)
+  const [profileError, setProfileError] = useState<string | null>(null)
+  const [copiedProfileUrl, setCopiedProfileUrl] = useState(false)
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -74,6 +90,37 @@ const [welcomeLoading, setWelcomeLoading] = useState(false)
     setWelcomeSaved(true)
     setTimeout(() => setWelcomeSaved(false), 2000)
   }
+
+  async function handleSavePublicProfile() {
+    setProfileError(null)
+    const trimmed = username.trim().toLowerCase()
+    if (!trimmed) { setProfileError('Username is required'); return }
+    if (!/^[a-z0-9_-]+$/.test(trimmed)) { setProfileError('Username can only contain letters, numbers, hyphens, and underscores'); return }
+    setProfileSaving(true)
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        username: trimmed,
+        bio: bio.trim() || null,
+        sport: sport.trim() || null,
+        location: location.trim() || null,
+        public_profile_enabled: publicProfileEnabled,
+      })
+      .eq('id', profile?.id)
+    setProfileSaving(false)
+    if (error) {
+      if (error.message.includes('unique') || error.code === '23505') {
+        setProfileError('That username is already taken')
+      } else {
+        setProfileError(error.message)
+      }
+      return
+    }
+    setProfileSaved(true)
+    setTimeout(() => setProfileSaved(false), 2500)
+  }
+
+  const profileUrl = username.trim() ? `https://skillpathiq.com/t/${username.trim().toLowerCase()}` : null
 
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
@@ -163,6 +210,99 @@ const [welcomeLoading, setWelcomeLoading] = useState(false)
                 {welcomeSaved ? '✓ Saved!' : welcomeLoading ? 'Saving...' : 'Save welcome message'}
               </button>
             </div>
+            {/* PUBLIC PROFILE */}
+            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Public profile</div>
+                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Let parents find and book you at your personal link</div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Username <span style={{ color: '#E03131' }}>*</span></label>
+                <div style={{ display: 'flex', alignItems: 'center', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', overflow: 'hidden' }}>
+                  <span style={{ padding: '11px 12px', fontSize: '13px', color: '#555558', borderRight: '1px solid #2A2A2D', whiteSpace: 'nowrap' as const }}>skillpathiq.com/t/</span>
+                  <input
+                    style={{ flex: 1, background: 'transparent', border: 'none', padding: '11px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', minWidth: 0 }}
+                    type="text"
+                    placeholder="yourname"
+                    value={username}
+                    onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                  />
+                </div>
+                <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Letters, numbers, hyphens, underscores only</span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Bio <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
+                <textarea
+                  value={bio}
+                  onChange={e => setBio(e.target.value)}
+                  placeholder="Tell parents about your experience, coaching style, or specialties..."
+                  rows={3}
+                  style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', resize: 'vertical' as const, fontFamily: 'sans-serif', lineHeight: 1.6 }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Sport <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
+                  <input
+                    style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
+                    type="text"
+                    placeholder="Basketball"
+                    value={sport}
+                    onChange={e => setSport(e.target.value)}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Location <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
+                  <input
+                    style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
+                    type="text"
+                    placeholder="Chicago, IL"
+                    value={location}
+                    onChange={e => setLocation(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#0E0E0F', borderRadius: '8px', border: '1px solid #2A2A2D' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>Enable public profile</div>
+                  <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>Parents can find and book you via your link</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPublicProfileEnabled(!publicProfileEnabled)}
+                  style={{ width: '44px', height: '24px', borderRadius: '12px', border: 'none', background: publicProfileEnabled ? '#00FF9F' : '#2A2A2D', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
+                  <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#ffffff', position: 'absolute', top: '3px', left: publicProfileEnabled ? '23px' : '3px', transition: 'left 0.2s' }} />
+                </button>
+              </div>
+
+              {profileUrl && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 14px' }}>
+                  <span style={{ flex: 1, fontSize: '13px', color: '#00FF9F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{profileUrl}</span>
+                  <button
+                    type="button"
+                    onClick={() => { navigator.clipboard.writeText(profileUrl); setCopiedProfileUrl(true); setTimeout(() => setCopiedProfileUrl(false), 2000) }}
+                    style={{ fontSize: '12px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: copiedProfileUrl ? '#00FF9F' : '#9A9A9F', cursor: 'pointer', flexShrink: 0, fontWeight: 600 }}>
+                    {copiedProfileUrl ? '✓ Copied' : 'Copy'}
+                  </button>
+                  <a href={profileUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', flexShrink: 0, fontWeight: 600, textDecoration: 'none' }}>Preview</a>
+                </div>
+              )}
+
+              {profileError && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px', margin: 0 }}>{profileError}</p>}
+
+              <button
+                type="button"
+                onClick={handleSavePublicProfile}
+                disabled={profileSaving}
+                style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+                {profileSaved ? '✓ Saved!' : profileSaving ? 'Saving...' : 'Save public profile'}
+              </button>
+            </div>
+
             <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Change password</div>
 

@@ -1,0 +1,39 @@
+import { createClient } from '@supabase/supabase-js'
+import TrainerProfileClient from '@/components/TrainerProfileClient'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  { auth: { persistSession: false } }
+)
+
+export default async function TrainerProfilePage({ params }: { params: { username: string } }) {
+  const { data: trainer } = await supabase
+    .from('profiles')
+    .select('id, full_name, bio, sport, location, profile_photo_url, public_profile_enabled, individual_rate, group_rate')
+    .eq('username', params.username)
+    .single()
+
+  if (!trainer) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0E0E0F', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', padding: '24px' }}>
+        <div style={{ fontSize: '14px', color: '#9A9A9F', textAlign: 'center' }}>
+          <div style={{ fontSize: '32px', marginBottom: '12px' }}>404</div>
+          This trainer profile doesn&apos;t exist.
+        </div>
+      </div>
+    )
+  }
+
+  if (!trainer.public_profile_enabled) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0E0E0F', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', padding: '24px' }}>
+        <div style={{ fontSize: '14px', color: '#9A9A9F', textAlign: 'center' }}>
+          This profile is not currently available.
+        </div>
+      </div>
+    )
+  }
+
+  return <TrainerProfileClient trainer={trainer} />
+}
