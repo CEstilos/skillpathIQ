@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 
-interface Profile { id: string; full_name: string; email: string; primary_sport?: string; onboarding_completed?: boolean }
+interface Profile { id: string; full_name: string; email: string; primary_sport?: string; onboarding_completed?: boolean; username?: string | null; public_profile_enabled?: boolean | null }
 interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; trainer_id: string; created_at: string }
 interface Group { id: string; name: string; sport: string; session_day: string; session_time: string }
 interface Session { id: string; player_id: string; session_date: string; notes: string | null }
@@ -55,6 +55,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const supabase = createClient()
   const router = useRouter()
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [copiedLink, setCopiedLink] = useState(false)
 
   const [bannerDismissed, setBannerDismissed] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -620,7 +621,35 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
 
         {/* HEADER */}
         <div style={{ padding: '20px 16px 8px' }}>
-          <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', margin: 0 }}>Training Hub</h1>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', margin: 0 }}>Training Hub</h1>
+            {profile?.username ? (
+              <button
+                onClick={() => {
+                  const url = `https://skillpathiq.com/t/${profile.username}`
+                  if (navigator.share) {
+                    navigator.share({ title: `Book a session with ${profile.full_name}`, url })
+                  } else {
+                    navigator.clipboard.writeText(url)
+                    setCopiedLink(true)
+                    setTimeout(() => setCopiedLink(false), 2000)
+                  }
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,255,159,0.1)', border: '1px solid rgba(0,255,159,0.3)', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', color: '#00FF9F', fontWeight: 600, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' as const }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                </svg>
+                {copiedLink ? 'Copied!' : 'Share link'}
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push('/dashboard/settings')}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'transparent', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', color: '#9A9A9F', fontWeight: 600, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' as const }}>
+                Share link
+              </button>
+            )}
+          </div>
           <p style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '4px' }}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
             {players.length > 0 && <> &nbsp;&middot;&nbsp; {players.length} player{players.length !== 1 ? 's' : ''}</>}
@@ -922,6 +951,27 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {profile?.username ? (
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`https://skillpathiq.com/t/${profile.username}`)
+                  setCopiedLink(true)
+                  setTimeout(() => setCopiedLink(false), 2000)
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,255,159,0.08)', border: '1px solid rgba(0,255,159,0.35)', borderRadius: '8px', cursor: 'pointer', padding: '8px 12px', fontSize: '13px', color: '#00FF9F', fontWeight: 600, whiteSpace: 'nowrap' as const }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                </svg>
+                {copiedLink ? '✓ Copied!' : 'Share my link'}
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push('/dashboard/settings')}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '8px', cursor: 'pointer', padding: '8px 12px', fontSize: '13px', color: '#9A9A9F', fontWeight: 600, whiteSpace: 'nowrap' as const }}>
+                Share my link
+              </button>
+            )}
             <button
               onClick={() => setBroadcastEmailOpen(!broadcastEmailOpen)}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.5)', borderRadius: '8px', cursor: 'pointer', padding: '8px 12px', fontSize: '13px', color: '#ffffff', fontWeight: 600 }}>
