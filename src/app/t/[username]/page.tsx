@@ -37,5 +37,18 @@ export default async function TrainerProfilePage({ params }: { params: Promise<{
     )
   }
 
-  return <TrainerProfileClient trainer={trainer} />
+  const [{ data: availabilityWindows }, { data: sessionDurations }] = await Promise.all([
+    supabase
+      .from('trainer_availability_windows')
+      .select('id, day_of_week, start_time, end_time, session_type, display_label, sort_order')
+      .eq('trainer_id', trainer.id)
+      .order('sort_order', { ascending: true }),
+    supabase
+      .from('trainer_session_durations')
+      .select('id, duration_minutes, label')
+      .eq('trainer_id', trainer.id)
+      .order('duration_minutes', { ascending: true }),
+  ])
+
+  return <TrainerProfileClient trainer={trainer} availabilityWindows={availabilityWindows || []} sessionDurations={sessionDurations || []} />
 }

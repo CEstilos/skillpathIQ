@@ -32,6 +32,8 @@ interface BookingRequest {
   message: string | null
   status: string
   created_at: string
+  preferred_availability_text: string | null
+  preferred_duration_id: string | null
 }
 
 interface Props {
@@ -904,7 +906,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</div>
                       <div style={{ fontSize: '12px', color: '#9A9A9F' }}>
-                        {req.parent_name} · {req.preferred_session_type === 'group' ? 'Group' : '1-on-1'}
+                        {req.parent_name} · {req.preferred_session_type === 'group' ? 'Group' : '1-on-1'}{req.player_age ? ` · Age ${req.player_age}` : ''}
                       </div>
                     </div>
                   </div>
@@ -1210,10 +1212,11 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                         <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '1px' }}>
                           {req.parent_name} · {req.preferred_session_type === 'group' ? 'Group' : '1-on-1'}{req.player_age ? ` · Age ${req.player_age}` : ''}
                         </div>
-                        {(req.player_position || req.player_goals || req.message) && (
+                        {(req.player_position || req.player_goals || req.message || req.preferred_availability_text) && (
                           <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             {req.player_position && <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Position: {req.player_position}</div>}
                             {req.player_goals && <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Goals: {req.player_goals}</div>}
+                            {req.preferred_availability_text && <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Preferred times: {req.preferred_availability_text}</div>}
                             {req.message && <div style={{ fontSize: '12px', color: '#9A9A9F', fontStyle: 'italic' }}>&ldquo;{req.message}&rdquo;</div>}
                           </div>
                         )}

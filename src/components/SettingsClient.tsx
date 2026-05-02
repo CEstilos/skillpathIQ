@@ -1,9 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import NavBar from '@/components/NavBar'
+
+const DAY_ORDER = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+
+function formatTime(t: string) {
+  const [h, m] = t.split(':').map(Number)
+  const ampm = h >= 12 ? 'pm' : 'am'
+  const hour = h > 12 ? h - 12 : h === 0 ? 12 : h
+  return `${hour}:${m.toString().padStart(2,'0')} ${ampm}`
+}
+
+function sortWindows(windows: AvailabilityWindow[]) {
+  return [...windows].sort((a, b) => {
+    const di = DAY_ORDER.indexOf(a.day_of_week) - DAY_ORDER.indexOf(b.day_of_week)
+    if (di !== 0) return di
+    return a.start_time.localeCompare(b.start_time)
+  })
+}
 
 interface Profile {
   id: string
@@ -18,6 +35,21 @@ interface Profile {
   location: string | null
   profile_photo_url: string | null
   public_profile_enabled: boolean | null
+}
+
+interface AvailabilityWindow {
+  id: string
+  day_of_week: string
+  start_time: string
+  end_time: string
+  session_type: string
+  display_label: string | null
+  sort_order: number
+}
+interface SessionDuration {
+  id: string
+  duration_minutes: number
+  label: string
 }
 
 export default function SettingsClient({ profile }: { profile: Profile | null }) {
@@ -46,6 +78,110 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
   const [profileSaved, setProfileSaved] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [copiedProfileUrl, setCopiedProfileUrl] = useState(false)
+
+  const [durations, setDurations] = useState<SessionDuration[]>([])
+  const [windows, setWindows] = useState<AvailabilityWindow[]>([])
+  const [newDurationLabel, setNewDurationLabel] = useState('')
+  const [addingDuration, setAddingDuration] = useState(false)
+  const [durationError, setDurationError] = useState<string | null>(null)
+  const [windowFormOpen, setWindowFormOpen] = useState(false)
+  const [editingWindowId, setEditingWindowId] = useState<string | null>(null)
+  const [windowForm, setWindowForm] = useState({
+    day_of_week: 'monday',
+    start_time: '',
+    end_time: '',
+    session_type: 'both',
+    display_label: '',
+  })
+  const [savingWindow, setSavingWindow] = useState(false)
+  const [windowError, setWindowError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!profile?.id) return
+    supabase.from('trainer_availability_windows').select('*').eq('trainer_id', profile.id).order('sort_order')
+      .then(({ data }) => setWindows(data || []))
+    supabase.from('trainer_session_durations').select('*').eq('trainer_id', profile.id).order('duration_minutes')
+      .then(({ data }) => setDurations(data || []))
+  }, [profile?.id])
+
+  async function handleAddDuration() {
+    if (!newDurationLabel.trim()) return
+    if (durations.length >= 5) { setDurationError('Maximum 5 durations'); return }
+    setAddingDuration(true)
+    setDurationError(null)
+    const { data, error } = await supabase.from('trainer_session_durations').insert({
+      trainer_id: profile!.id,
+      duration_minutes: parseInt(newDurationLabel) || 0,
+      label: newDurationLabel.trim(),
+    }).select().single()
+    setAddingDuration(false)
+    if (error) { setDurationError(error.message); return }
+    setDurations(prev => [...prev, data])
+    setNewDurationLabel('')
+  }
+
+  async function handleDeleteDuration(id: string) {
+    await supabase.from('trainer_session_durations').delete().eq('id', id)
+    setDurations(prev => prev.filter(d => d.id !== id))
+  }
+
+  function openAddWindow() {
+    setEditingWindowId(null)
+    setWindowForm({ day_of_week: 'monday', start_time: '', end_time: '', session_type: 'both', display_label: '' })
+    setWindowError(null)
+    setWindowFormOpen(true)
+  }
+
+  function openEditWindow(w: AvailabilityWindow) {
+    setEditingWindowId(w.id)
+    setWindowForm({
+      day_of_week: w.day_of_week,
+      start_time: w.start_time.slice(0, 5),
+      end_time: w.end_time.slice(0, 5),
+      session_type: w.session_type,
+      display_label: w.display_label || '',
+    })
+    setWindowError(null)
+    setWindowFormOpen(true)
+  }
+
+  async function handleSaveWindow() {
+    if (!windowForm.start_time || !windowForm.end_time) { setWindowError('Start and end time are required'); return }
+    setSavingWindow(true)
+    setWindowError(null)
+    if (editingWindowId) {
+      const { data, error } = await supabase.from('trainer_availability_windows').update({
+        day_of_week: windowForm.day_of_week,
+        start_time: windowForm.start_time,
+        end_time: windowForm.end_time,
+        session_type: windowForm.session_type,
+        display_label: windowForm.display_label.trim() || null,
+      }).eq('id', editingWindowId).select().single()
+      setSavingWindow(false)
+      if (error) { setWindowError(error.message); return }
+      setWindows(prev => prev.map(w => w.id === editingWindowId ? data : w))
+    } else {
+      const { data, error } = await supabase.from('trainer_availability_windows').insert({
+        trainer_id: profile!.id,
+        day_of_week: windowForm.day_of_week,
+        start_time: windowForm.start_time,
+        end_time: windowForm.end_time,
+        session_type: windowForm.session_type,
+        display_label: windowForm.display_label.trim() || null,
+        sort_order: windows.length,
+      }).select().single()
+      setSavingWindow(false)
+      if (error) { setWindowError(error.message); return }
+      setWindows(prev => [...prev, data])
+    }
+    setWindowFormOpen(false)
+    setEditingWindowId(null)
+  }
+
+  async function handleDeleteWindow(id: string) {
+    await supabase.from('trainer_availability_windows').delete().eq('id', id)
+    setWindows(prev => prev.filter(w => w.id !== id))
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -301,6 +437,140 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                 style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
                 {profileSaved ? '✓ Saved!' : profileSaving ? 'Saving...' : 'Save public profile'}
               </button>
+            </div>
+
+            {/* AVAILABILITY */}
+            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Availability</div>
+                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Shown on your public profile to help parents choose a time</div>
+              </div>
+
+              {/* SESSION DURATIONS */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Session Durations</div>
+                {durations.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {durations.map(d => (
+                      <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '99px', padding: '5px 12px' }}>
+                        <span style={{ fontSize: '13px', color: '#ffffff' }}>{d.label}</span>
+                        <button onClick={() => handleDeleteDuration(d.id)} style={{ background: 'none', border: 'none', color: '#9A9A9F', cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: '0' }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {durations.length < 5 && (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder='e.g. "60 min" or "1 hour"'
+                      value={newDurationLabel}
+                      onChange={e => setNewDurationLabel(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddDuration())}
+                      style={{ flex: 1, background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 12px', fontSize: '14px', color: '#ffffff', outline: 'none' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddDuration}
+                      disabled={addingDuration || !newDurationLabel.trim()}
+                      style={{ background: newDurationLabel.trim() ? '#00FF9F' : '#2A2A2D', color: newDurationLabel.trim() ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: 700, cursor: newDurationLabel.trim() ? 'pointer' : 'default' }}>
+                      {addingDuration ? '...' : 'Add'}
+                    </button>
+                  </div>
+                )}
+                {durationError && <p style={{ fontSize: '12px', color: '#E03131', margin: 0 }}>{durationError}</p>}
+              </div>
+
+              {/* AVAILABILITY WINDOWS */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Availability Windows</div>
+                  {!windowFormOpen && (
+                    <button type="button" onClick={openAddWindow} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.3)', background: 'transparent', color: '#00FF9F', cursor: 'pointer', fontWeight: 600 }}>+ Add</button>
+                  )}
+                </div>
+
+                {sortWindows(windows).map(w => (
+                  editingWindowId === w.id && windowFormOpen ? null : (
+                    <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: '#0E0E0F', borderRadius: '8px', border: '1px solid #2A2A2D' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'capitalize' }}>{w.day_of_week}</span>
+                          <span style={{ fontSize: '12px', color: '#9A9A9F' }}>{formatTime(w.start_time)} – {formatTime(w.end_time)}</span>
+                          <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '99px', fontWeight: 600, background: w.session_type === 'individual' ? 'rgba(74,158,255,0.15)' : w.session_type === 'group' ? 'rgba(245,166,35,0.15)' : 'rgba(0,255,159,0.12)', color: w.session_type === 'individual' ? '#4A9EFF' : w.session_type === 'group' ? '#F5A623' : '#00FF9F' }}>
+                            {w.session_type === 'individual' ? 'Individual' : w.session_type === 'group' ? 'Group' : 'Both'}
+                          </span>
+                          {w.display_label && <span style={{ fontSize: '12px', color: '#9A9A9F', fontStyle: 'italic' }}>{w.display_label}</span>}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                        <button type="button" onClick={() => openEditWindow(w)} style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Edit</button>
+                        <button type="button" onClick={() => handleDeleteWindow(w.id)} style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(224,49,49,0.3)', background: 'transparent', color: '#E03131', cursor: 'pointer' }}>Delete</button>
+                      </div>
+                    </div>
+                  )
+                ))}
+
+                {windowFormOpen && (
+                  <div style={{ background: '#0E0E0F', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{editingWindowId ? 'Edit window' : 'Add window'}</div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Day</label>
+                        <select
+                          value={windowForm.day_of_week}
+                          onChange={e => setWindowForm(prev => ({ ...prev, day_of_week: e.target.value }))}
+                          style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
+                          {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(d => (
+                            <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Session type</label>
+                        <select
+                          value={windowForm.session_type}
+                          onChange={e => setWindowForm(prev => ({ ...prev, session_type: e.target.value }))}
+                          style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
+                          <option value="both">Both</option>
+                          <option value="individual">Individual</option>
+                          <option value="group">Group</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Start time</label>
+                        <input type="time" value={windowForm.start_time} onChange={e => setWindowForm(prev => ({ ...prev, start_time: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>End time</label>
+                        <input type="time" value={windowForm.end_time} onChange={e => setWindowForm(prev => ({ ...prev, end_time: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Label <span style={{ color: '#555558', fontWeight: 400 }}>(optional)</span></label>
+                      <input type="text" placeholder='e.g. "Group training only"' value={windowForm.display_label} onChange={e => setWindowForm(prev => ({ ...prev, display_label: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
+                    </div>
+
+                    {windowError && <p style={{ fontSize: '12px', color: '#E03131', margin: 0 }}>{windowError}</p>}
+
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button type="button" onClick={handleSaveWindow} disabled={savingWindow} style={{ flex: 1, background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                        {savingWindow ? 'Saving...' : editingWindowId ? 'Save changes' : 'Add window'}
+                      </button>
+                      <button type="button" onClick={() => { setWindowFormOpen(false); setEditingWindowId(null) }} style={{ flex: 1, background: 'transparent', color: '#9A9A9F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {windows.length === 0 && !windowFormOpen && (
+                  <div style={{ fontSize: '12px', color: '#555558', textAlign: 'center', padding: '12px 0' }}>No availability windows added yet</div>
+                )}
+              </div>
             </div>
 
             <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>

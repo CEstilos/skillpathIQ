@@ -4,6 +4,23 @@ import { useState } from 'react'
 
 const GREEN = '#00FF9F'
 
+const DAY_ORDER = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+
+function formatTime(t: string) {
+  const [h, m] = t.split(':').map(Number)
+  const ampm = h >= 12 ? 'pm' : 'am'
+  const hour = h > 12 ? h - 12 : h === 0 ? 12 : h
+  return `${hour}:${m.toString().padStart(2,'0')} ${ampm}`
+}
+
+function sortWindows(windows: AvailabilityWindow[]) {
+  return [...windows].sort((a, b) => {
+    const di = DAY_ORDER.indexOf(a.day_of_week) - DAY_ORDER.indexOf(b.day_of_week)
+    if (di !== 0) return di
+    return a.start_time.localeCompare(b.start_time)
+  })
+}
+
 interface Trainer {
   id: string
   full_name: string
@@ -15,7 +32,31 @@ interface Trainer {
   group_rate: number | null
 }
 
-export default function TrainerProfileClient({ trainer }: { trainer: Trainer }) {
+interface AvailabilityWindow {
+  id: string
+  day_of_week: string
+  start_time: string
+  end_time: string
+  session_type: string
+  display_label: string | null
+  sort_order: number
+}
+
+interface SessionDuration {
+  id: string
+  duration_minutes: number
+  label: string
+}
+
+export default function TrainerProfileClient({
+  trainer,
+  availabilityWindows,
+  sessionDurations,
+}: {
+  trainer: Trainer
+  availabilityWindows: AvailabilityWindow[]
+  sessionDurations: SessionDuration[]
+}) {
   const [form, setForm] = useState({
     parentName: '',
     parentEmail: '',
@@ -27,6 +68,8 @@ export default function TrainerProfileClient({ trainer }: { trainer: Trainer }) 
     sessionType: 'individual' as 'individual' | 'group',
     message: '',
   })
+  const [selectedWindowIds, setSelectedWindowIds] = useState<string[]>([])
+  const [selectedDurationId, setSelectedDurationId] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,14 +82,34 @@ export default function TrainerProfileClient({ trainer }: { trainer: Trainer }) 
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
+  function toggleWindow(id: string) {
+    setSelectedWindowIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.parentName.trim() || !form.parentEmail.trim() || !form.playerName.trim()) {
       setError('Please fill in all required fields.')
       return
     }
+    if (!form.playerAge || parseInt(form.playerAge) < 1) {
+      setError('Player age is required')
+      return
+    }
+    if (!form.parentPhone.trim()) {
+      setError('Phone number is required')
+      return
+    }
+    if (availabilityWindows.length > 0 && selectedWindowIds.length === 0) {
+      setError('Please select at least one availability window')
+      return
+    }
     setLoading(true)
     setError(null)
+
+    const selectedDuration = sessionDurations.find(d => d.id === selectedDurationId)
 
     try {
       const res = await fetch('/api/booking-request', {
@@ -64,6 +127,14 @@ export default function TrainerProfileClient({ trainer }: { trainer: Trainer }) 
           player_goals: form.playerGoals.trim() || null,
           preferred_session_type: form.sessionType,
           message: form.message.trim() || null,
+          availability_window_id: selectedWindowIds[0] || null,
+          preferred_availability_text: selectedWindowIds.map(id => {
+            const w = availabilityWindows.find(w => w.id === id)
+            if (!w) return ''
+            return `${w.day_of_week.charAt(0).toUpperCase() + w.day_of_week.slice(1)} ${formatTime(w.start_time)}–${formatTime(w.end_time)}`
+          }).filter(Boolean).join(', '),
+          preferred_duration_id: selectedDurationId || null,
+          preferred_duration_label: selectedDuration?.label || null,
         }),
       })
       const data = await res.json()
@@ -98,6 +169,25 @@ export default function TrainerProfileClient({ trainer }: { trainer: Trainer }) 
     color: '#9A9A9F',
     marginBottom: '6px',
     display: 'block' as const,
+  }
+
+  // Group windows by day for the availability display section
+  const groupedWindows = DAY_ORDER.reduce<Record<string, AvailabilityWindow[]>>((acc, day) => {
+    const dayWindows = sortWindows(availabilityWindows).filter(w => w.day_of_week === day)
+    if (dayWindows.length > 0) acc[day] = dayWindows
+    return acc
+  }, {})
+
+  function sessionTypeBadgeStyle(sessionType: string) {
+    if (sessionType === 'individual') return { background: 'rgba(74,158,255,0.15)', color: '#4A9EFF' }
+    if (sessionType === 'group') return { background: 'rgba(245,166,35,0.15)', color: '#F5A623' }
+    return { background: 'rgba(0,255,159,0.12)', color: '#00FF9F' }
+  }
+
+  function sessionTypeLabel(sessionType: string) {
+    if (sessionType === 'individual') return 'Individual'
+    if (sessionType === 'group') return 'Group'
+    return 'Both'
   }
 
   return (
@@ -154,6 +244,45 @@ export default function TrainerProfileClient({ trainer }: { trainer: Trainer }) 
           </div>
         )}
 
+        {/* AVAILABILITY */}
+        {availabilityWindows.length > 0 && (
+          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', padding: '18px 20px', marginBottom: '28px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px' }}>Availability</div>
+
+            {Object.entries(groupedWindows).map(([day, windows]) => (
+              <div key={day} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff', textTransform: 'capitalize', minWidth: '90px', paddingTop: '1px' }}>{day}</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {windows.map(w => {
+                    const badge = sessionTypeBadgeStyle(w.session_type)
+                    return (
+                      <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '13px', color: '#9A9A9F' }}>{formatTime(w.start_time)}–{formatTime(w.end_time)}</span>
+                        <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '99px', fontWeight: 600, background: badge.background, color: badge.color }}>
+                          {sessionTypeLabel(w.session_type)}
+                        </span>
+                        {w.display_label && <span style={{ fontSize: '12px', color: '#9A9A9F', fontStyle: 'italic' }}>{w.display_label}</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {sessionDurations.length > 0 && (
+              <div style={{ borderTop: '1px solid #2A2A2D', paddingTop: '12px', marginTop: '12px' }}>
+                <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Session lengths: </span>
+                <span style={{ fontSize: '12px', color: '#ffffff' }}>
+                  {sessionDurations.map(d => d.label).join(' · ')}
+                </span>
+              </div>
+            )}
+            <div style={{ marginTop: '12px', fontSize: '11px', color: '#555558', fontStyle: 'italic' }}>
+              Availability shown is a general guide. Your preferred times will be confirmed by the trainer.
+            </div>
+          </div>
+        )}
+
         {/* BOOKING FORM */}
         {submitted ? (
           <div style={{ background: 'rgba(0,255,159,0.06)', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '16px', padding: '32px 24px', textAlign: 'center' }}>
@@ -182,8 +311,8 @@ export default function TrainerProfileClient({ trainer }: { trainer: Trainer }) 
                 <input style={inputStyle} type="email" placeholder="jane@email.com" value={form.parentEmail} onChange={e => set('parentEmail', e.target.value)} required />
               </div>
               <div>
-                <label style={labelStyle}>Phone number <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
-                <input style={inputStyle} type="tel" placeholder="(555) 000-0000" value={form.parentPhone} onChange={e => set('parentPhone', e.target.value)} />
+                <label style={labelStyle}>Phone number <span style={{ color: '#E03131' }}>*</span></label>
+                <input style={inputStyle} type="tel" placeholder="(555) 000-0000" value={form.parentPhone} onChange={e => set('parentPhone', e.target.value)} required />
               </div>
             </div>
 
@@ -196,8 +325,8 @@ export default function TrainerProfileClient({ trainer }: { trainer: Trainer }) 
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={labelStyle}>Age <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
-                  <input style={inputStyle} type="number" min="4" max="25" placeholder="12" value={form.playerAge} onChange={e => set('playerAge', e.target.value)} />
+                  <label style={labelStyle}>Age <span style={{ color: '#E03131' }}>*</span></label>
+                  <input style={inputStyle} type="number" min="4" max="25" placeholder="12" value={form.playerAge} onChange={e => set('playerAge', e.target.value)} required />
                 </div>
                 <div>
                   <label style={labelStyle}>Position <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
@@ -239,6 +368,78 @@ export default function TrainerProfileClient({ trainer }: { trainer: Trainer }) 
                   </button>
                 ))}
               </div>
+
+              {/* AVAILABILITY WINDOW SELECTION */}
+              {availabilityWindows.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: '#9A9A9F', display: 'block' }}>When works best for you? <span style={{ color: '#E03131' }}>*</span></label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {sortWindows(availabilityWindows).map(w => {
+                      const selected = selectedWindowIds.includes(w.id)
+                      const badge = sessionTypeBadgeStyle(w.session_type)
+                      return (
+                        <button
+                          key={w.id}
+                          type="button"
+                          onClick={() => toggleWindow(w.id)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '12px 14px',
+                            minHeight: '44px',
+                            borderRadius: '10px',
+                            border: selected ? '1px solid rgba(0,255,159,0.45)' : '1px solid #2A2A2D',
+                            background: selected ? 'rgba(0,255,159,0.07)' : 'transparent',
+                            cursor: 'pointer',
+                            textAlign: 'left' as const,
+                            width: '100%',
+                          }}>
+                          <div style={{ width: '16px', height: '16px', borderRadius: '4px', border: selected ? '2px solid #00FF9F' : '2px solid #2A2A2D', background: selected ? '#00FF9F' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {selected && <span style={{ fontSize: '10px', color: '#0E0E0F', fontWeight: 700 }}>✓</span>}
+                          </div>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'capitalize', minWidth: '80px' }}>{w.day_of_week}</span>
+                          <span style={{ fontSize: '13px', color: '#9A9A9F' }}>{formatTime(w.start_time)}–{formatTime(w.end_time)}</span>
+                          <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '99px', fontWeight: 600, background: badge.background, color: badge.color, marginLeft: 'auto' }}>
+                            {sessionTypeLabel(w.session_type)}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* SESSION DURATION SELECTION */}
+              {sessionDurations.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: '#9A9A9F', display: 'block' }}>Preferred session length <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {sessionDurations.map(d => {
+                      const selected = selectedDurationId === d.id
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => setSelectedDurationId(selected ? '' : d.id)}
+                          style={{
+                            padding: '9px 16px',
+                            borderRadius: '99px',
+                            border: selected ? '1px solid rgba(0,255,159,0.45)' : '1px solid #2A2A2D',
+                            background: selected ? 'rgba(0,255,159,0.08)' : 'transparent',
+                            color: selected ? GREEN : '#9A9A9F',
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}>
+                          {d.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label style={labelStyle}>Anything else? <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
                 <textarea

@@ -33,9 +33,10 @@ export async function POST(request: Request) {
     parent_name, parent_email, parent_phone,
     player_name, player_age, player_position, player_goals,
     preferred_session_type, message,
+    availability_window_id, preferred_availability_text, preferred_duration_id, preferred_duration_label,
   } = body
 
-  if (!trainer_id || !parent_name || !parent_email || !player_name) {
+  if (!trainer_id || !parent_name || !parent_email || !player_name || !player_age) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
@@ -64,6 +65,9 @@ export async function POST(request: Request) {
       player_goals: player_goals || null,
       preferred_session_type: preferred_session_type || 'individual',
       message: message || null,
+      availability_window_id: availability_window_id || null,
+      preferred_availability_text: preferred_availability_text || null,
+      preferred_duration_id: preferred_duration_id || null,
     })
 
   if (insertError) {
@@ -83,6 +87,8 @@ export async function POST(request: Request) {
     player_position ? `  Position: ${player_position}` : null,
     `  Session type: ${preferred_session_type === 'group' ? 'Group' : '1-on-1'}`,
     player_goals ? `  Goals: ${player_goals}` : null,
+    preferred_availability_text ? `  Preferred times: ${preferred_availability_text}` : null,
+    preferred_duration_label ? `  Session length: ${preferred_duration_label}` : null,
     parent_phone ? `  Phone: ${parent_phone}` : null,
     message ? `  Message: ${message}` : null,
     ``,
