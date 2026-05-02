@@ -1,17 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
 import TrainerProfileClient from '@/components/TrainerProfileClient'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  { auth: { persistSession: false } }
-)
+export default async function TrainerProfilePage({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = await params
 
-export default async function TrainerProfilePage({ params }: { params: { username: string } }) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false } }
+  )
+
   const { data: trainer } = await supabase
     .from('profiles')
     .select('id, full_name, bio, sport, location, profile_photo_url, public_profile_enabled, individual_rate, group_rate')
-    .eq('username', params.username)
+    .eq('username', username)
     .single()
 
   if (!trainer) {
