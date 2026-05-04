@@ -21,6 +21,8 @@ interface SessionLog { session_id: string }
 interface BookingRequest {
   id: string
   trainer_id: string
+  request_type: string
+  player_id: string | null
   parent_name: string
   parent_email: string
   parent_phone: string | null
@@ -453,24 +455,30 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   async function handleAcceptBooking(req: BookingRequest) {
     const supabaseClient = createClient()
     await supabaseClient.from('booking_requests').update({ status: 'accepted' }).eq('id', req.id)
-    const initials = req.player_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-    await supabaseClient.from('players').insert({
-      trainer_id: profile!.id,
-      full_name: req.player_name,
-      parent_email: req.parent_email,
-      contact_type: 'parent',
-      avatar_initials: initials,
-      archived: false,
-    })
     setLocalBookingRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'accepted' } : r))
-    showDashToast('Player added to your roster')
+
+    if (req.request_type === 'returning_player') {
+      showDashToast('Session request accepted')
+    } else {
+      const initials = req.player_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+      await supabaseClient.from('players').insert({
+        trainer_id: profile!.id,
+        full_name: req.player_name,
+        parent_email: req.parent_email,
+        contact_type: 'parent',
+        avatar_initials: initials,
+        archived: false,
+      })
+      showDashToast('Player added to your roster')
+    }
+
     await fetch('/api/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: req.parent_email,
         subject: `${profile?.full_name} accepted your session request`,
-        body: `Hi ${req.parent_name},\n\nGreat news! ${profile?.full_name} has accepted your session request for ${req.player_name}. They'll be in touch soon to confirm your first session.\n\nLooking forward to working together!`,
+        body: `Hi ${req.parent_name},\n\nGreat news! ${profile?.full_name} has accepted your session request for ${req.player_name}. They'll be in touch soon to confirm.\n\nLooking forward to it!`,
       }),
     }).catch(() => {})
   }
@@ -714,15 +722,31 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                       {req.player_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        {req.request_type === 'returning_player' && req.player_id
+                          ? <span onClick={() => router.push(`/dashboard/players/${req.player_id}`)} style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.25)' }}>{req.player_name}</span>
+                          : <span style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</span>
+                        }
+                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '99px', letterSpacing: '0.04em',
+                          background: req.request_type === 'returning_player' ? 'rgba(0,255,159,0.12)' : 'rgba(154,154,159,0.12)',
+                          color: req.request_type === 'returning_player' ? '#00FF9F' : '#9A9A9F',
+                        }}>
+                          {req.request_type === 'returning_player' ? 'Returning' : 'New Player'}
+                        </span>
+                      </div>
                       <div style={{ fontSize: '12px', color: '#9A9A9F' }}>
                         {req.parent_name} · {req.preferred_session_type === 'group' ? 'Group' : '1-on-1'}{req.player_age ? ` · Age ${req.player_age}` : ''}
                       </div>
                     </div>
                   </div>
-                  {(req.player_goals || req.message) && (
+                  {req.request_type !== 'returning_player' && (req.player_goals || req.message) && (
                     <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '10px', lineHeight: 1.4 }}>
                       {req.player_goals || req.message}
+                    </div>
+                  )}
+                  {req.request_type === 'returning_player' && req.message && (
+                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '10px', lineHeight: 1.4 }}>
+                      {req.message}
                     </div>
                   )}
                   {decliningBooking === req.id ? (
@@ -1234,14 +1258,25 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                         {req.player_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          {req.request_type === 'returning_player' && req.player_id
+                            ? <span onClick={() => router.push(`/dashboard/players/${req.player_id}`)} style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.25)' }}>{req.player_name}</span>
+                            : <span style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</span>
+                          }
+                          <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '99px', letterSpacing: '0.04em',
+                            background: req.request_type === 'returning_player' ? 'rgba(0,255,159,0.12)' : 'rgba(154,154,159,0.12)',
+                            color: req.request_type === 'returning_player' ? '#00FF9F' : '#9A9A9F',
+                          }}>
+                            {req.request_type === 'returning_player' ? 'Returning' : 'New Player'}
+                          </span>
+                        </div>
                         <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '1px' }}>
                           {req.parent_name} · {req.preferred_session_type === 'group' ? 'Group' : '1-on-1'}{req.player_age ? ` · Age ${req.player_age}` : ''}
                         </div>
-                        {(req.player_position || req.player_goals || req.message || req.preferred_availability_text) && (
+                        {(req.request_type !== 'returning_player' && (req.player_position || req.player_goals) || req.message || req.preferred_availability_text) && (
                           <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            {req.player_position && <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Position: {req.player_position}</div>}
-                            {req.player_goals && <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Goals: {req.player_goals}</div>}
+                            {req.request_type !== 'returning_player' && req.player_position && <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Position: {req.player_position}</div>}
+                            {req.request_type !== 'returning_player' && req.player_goals && <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Goals: {req.player_goals}</div>}
                             {req.preferred_availability_text && <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Preferred times: {req.preferred_availability_text}</div>}
                             {req.message && <div style={{ fontSize: '12px', color: '#9A9A9F', fontStyle: 'italic' }}>&ldquo;{req.message}&rdquo;</div>}
                           </div>
@@ -1273,10 +1308,18 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                     <button onClick={() => setBookingHistoryOpen(!bookingHistoryOpen)} style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: '#9A9A9F', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>
                       {bookingHistoryOpen ? '▾' : '▸'} History ({localBookingRequests.filter(r => r.status !== 'pending').length})
                     </button>
-                    {bookingHistoryOpen && localBookingRequests.filter(r => r.status !== 'pending').map((req, i, arr) => (
+                    {bookingHistoryOpen && localBookingRequests.filter(r => r.status !== 'pending').map((req) => (
                       <div key={req.id} style={{ padding: '10px 16px', borderTop: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', gap: '10px', opacity: 0.65 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</span>
+                            <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 5px', borderRadius: '99px',
+                              background: req.request_type === 'returning_player' ? 'rgba(0,255,159,0.12)' : 'rgba(154,154,159,0.12)',
+                              color: req.request_type === 'returning_player' ? '#00FF9F' : '#9A9A9F',
+                            }}>
+                              {req.request_type === 'returning_player' ? 'Returning' : 'New'}
+                            </span>
+                          </div>
                           <div style={{ fontSize: '11px', color: '#9A9A9F' }}>{req.parent_name}</div>
                         </div>
                         <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '99px', fontWeight: 600, background: req.status === 'accepted' ? 'rgba(0,255,159,0.1)' : 'rgba(224,49,49,0.1)', color: req.status === 'accepted' ? '#00FF9F' : '#E03131' }}>
