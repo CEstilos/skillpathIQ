@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import NavBar from '@/components/NavBar'
+import { generateSlots } from '@/lib/generateSlots'
 
 const DAY_ORDER = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
 
@@ -12,6 +13,11 @@ function formatTime(t: string) {
   const ampm = h >= 12 ? 'pm' : 'am'
   const hour = h > 12 ? h - 12 : h === 0 ? 12 : h
   return `${hour}:${m.toString().padStart(2,'0')} ${ampm}`
+}
+
+function formatBlackoutDate(d: string) {
+  const date = new Date(d + 'T00:00:00')
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
 function sortWindows(windows: AvailabilityWindow[]) {
@@ -45,11 +51,21 @@ interface AvailabilityWindow {
   session_type: string
   display_label: string | null
   sort_order: number
+  duration_minutes: number
+  buffer_minutes: number
+  max_capacity: number | null
 }
+
 interface SessionDuration {
   id: string
   duration_minutes: number
   label: string
+}
+
+interface BlackoutDate {
+  id: string
+  blackout_date: string
+  note: string | null
 }
 
 export default function SettingsClient({ profile }: { profile: Profile | null }) {
@@ -81,6 +97,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
 
   const [durations, setDurations] = useState<SessionDuration[]>([])
   const [windows, setWindows] = useState<AvailabilityWindow[]>([])
+  const [blackouts, setBlackouts] = useState<BlackoutDate[]>([])
   const [newDurationLabel, setNewDurationLabel] = useState('')
   const [addingDuration, setAddingDuration] = useState(false)
   const [durationError, setDurationError] = useState<string | null>(null)
@@ -92,9 +109,19 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
     end_time: '',
     session_type: 'both',
     display_label: '',
+    duration_id: '',
+    buffer_minutes: '0',
+    max_capacity: '',
   })
   const [savingWindow, setSavingWindow] = useState(false)
   const [windowError, setWindowError] = useState<string | null>(null)
+
+  const [newBlackoutDate, setNewBlackoutDate] = useState('')
+  const [newBlackoutNote, setNewBlackoutNote] = useState('')
+  const [addingBlackout, setAddingBlackout] = useState(false)
+  const [blackoutError, setBlackoutError] = useState<string | null>(null)
+
+  const today = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
     if (!profile?.id) return
@@ -102,6 +129,9 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
       .then(({ data }) => setWindows(data || []))
     supabase.from('trainer_session_durations').select('*').eq('trainer_id', profile.id).order('duration_minutes')
       .then(({ data }) => setDurations(data || []))
+    supabase.from('trainer_blackout_dates').select('*').eq('trainer_id', profile.id)
+      .gte('blackout_date', today).order('blackout_date')
+      .then(({ data }) => setBlackouts(data || []))
   }, [profile?.id])
 
   async function handleAddDuration() {
@@ -127,19 +157,32 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
 
   function openAddWindow() {
     setEditingWindowId(null)
-    setWindowForm({ day_of_week: 'monday', start_time: '', end_time: '', session_type: 'both', display_label: '' })
+    setWindowForm({
+      day_of_week: 'monday',
+      start_time: '',
+      end_time: '',
+      session_type: 'both',
+      display_label: '',
+      duration_id: durations[0]?.id || '',
+      buffer_minutes: '0',
+      max_capacity: '',
+    })
     setWindowError(null)
     setWindowFormOpen(true)
   }
 
   function openEditWindow(w: AvailabilityWindow) {
     setEditingWindowId(w.id)
+    const matchingDuration = durations.find(d => d.duration_minutes === w.duration_minutes)
     setWindowForm({
       day_of_week: w.day_of_week,
       start_time: w.start_time.slice(0, 5),
       end_time: w.end_time.slice(0, 5),
       session_type: w.session_type,
       display_label: w.display_label || '',
+      duration_id: matchingDuration?.id || durations[0]?.id || '',
+      buffer_minutes: w.buffer_minutes.toString(),
+      max_capacity: w.max_capacity?.toString() || '',
     })
     setWindowError(null)
     setWindowFormOpen(true)
@@ -147,27 +190,35 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
 
   async function handleSaveWindow() {
     if (!windowForm.start_time || !windowForm.end_time) { setWindowError('Start and end time are required'); return }
+    if (!windowForm.duration_id) { setWindowError('Select a session duration'); return }
+    const selectedDuration = durations.find(d => d.id === windowForm.duration_id)
+    if (!selectedDuration) { setWindowError('Selected duration not found'); return }
+    const bufferMins = parseInt(windowForm.buffer_minutes) || 0
+    const maxCap = (windowForm.session_type !== 'individual' && windowForm.max_capacity)
+      ? parseInt(windowForm.max_capacity) || null
+      : null
+
     setSavingWindow(true)
     setWindowError(null)
+    const payload = {
+      day_of_week: windowForm.day_of_week,
+      start_time: windowForm.start_time,
+      end_time: windowForm.end_time,
+      session_type: windowForm.session_type,
+      display_label: windowForm.display_label.trim() || null,
+      duration_minutes: selectedDuration.duration_minutes,
+      buffer_minutes: bufferMins,
+      max_capacity: maxCap,
+    }
     if (editingWindowId) {
-      const { data, error } = await supabase.from('trainer_availability_windows').update({
-        day_of_week: windowForm.day_of_week,
-        start_time: windowForm.start_time,
-        end_time: windowForm.end_time,
-        session_type: windowForm.session_type,
-        display_label: windowForm.display_label.trim() || null,
-      }).eq('id', editingWindowId).select().single()
+      const { data, error } = await supabase.from('trainer_availability_windows').update(payload).eq('id', editingWindowId).select().single()
       setSavingWindow(false)
       if (error) { setWindowError(error.message); return }
       setWindows(prev => prev.map(w => w.id === editingWindowId ? data : w))
     } else {
       const { data, error } = await supabase.from('trainer_availability_windows').insert({
         trainer_id: profile!.id,
-        day_of_week: windowForm.day_of_week,
-        start_time: windowForm.start_time,
-        end_time: windowForm.end_time,
-        session_type: windowForm.session_type,
-        display_label: windowForm.display_label.trim() || null,
+        ...payload,
         sort_order: windows.length,
       }).select().single()
       setSavingWindow(false)
@@ -181,6 +232,30 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
   async function handleDeleteWindow(id: string) {
     await supabase.from('trainer_availability_windows').delete().eq('id', id)
     setWindows(prev => prev.filter(w => w.id !== id))
+  }
+
+  async function handleAddBlackout() {
+    if (!newBlackoutDate) return
+    setAddingBlackout(true)
+    setBlackoutError(null)
+    const { data, error } = await supabase.from('trainer_blackout_dates').insert({
+      trainer_id: profile!.id,
+      blackout_date: newBlackoutDate,
+      note: newBlackoutNote.trim() || null,
+    }).select().single()
+    setAddingBlackout(false)
+    if (error) {
+      setBlackoutError(error.code === '23505' ? 'That date is already blocked' : error.message)
+      return
+    }
+    setBlackouts(prev => [...prev, data].sort((a, b) => a.blackout_date.localeCompare(b.blackout_date)))
+    setNewBlackoutDate('')
+    setNewBlackoutNote('')
+  }
+
+  async function handleDeleteBlackout(id: string) {
+    await supabase.from('trainer_blackout_dates').delete().eq('id', id)
+    setBlackouts(prev => prev.filter(b => b.id !== id))
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -269,7 +344,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
 
       <div style={{ maxWidth: '560px', margin: '0 auto', padding: '20px 16px', width: '100%' }}>
 
-      
+
           <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '8px' }}>Settings</h1>
           <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '32px' }}>Set your default session rates for revenue tracking</p>
 
@@ -490,9 +565,12 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                   )}
                 </div>
 
-                {sortWindows(windows).map(w => (
-                  editingWindowId === w.id && windowFormOpen ? null : (
-                    <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: '#0E0E0F', borderRadius: '8px', border: '1px solid #2A2A2D' }}>
+                {sortWindows(windows).map(w => {
+                  const slots = generateSlots(w.start_time.slice(0,5), w.end_time.slice(0,5), w.duration_minutes, w.buffer_minutes)
+                  const slotPreview = slots.slice(0, 5).map(formatTime).join(' · ')
+                  const extra = slots.length > 5 ? ` +${slots.length - 5} more` : ''
+                  return editingWindowId === w.id && windowFormOpen ? null : (
+                    <div key={w.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', background: '#0E0E0F', borderRadius: '8px', border: '1px solid #2A2A2D' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'capitalize' }}>{w.day_of_week}</span>
@@ -502,6 +580,11 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                           </span>
                           {w.display_label && <span style={{ fontSize: '12px', color: '#9A9A9F', fontStyle: 'italic' }}>{w.display_label}</span>}
                         </div>
+                        {slots.length > 0 && (
+                          <div style={{ fontSize: '11px', color: '#555558', marginTop: '4px' }}>
+                            {slotPreview}{extra}
+                          </div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                         <button type="button" onClick={() => openEditWindow(w)} style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Edit</button>
@@ -509,7 +592,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                       </div>
                     </div>
                   )
-                ))}
+                })}
 
                 {windowFormOpen && (
                   <div style={{ background: '#0E0E0F', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -551,6 +634,49 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                       </div>
                     </div>
 
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Session duration <span style={{ color: '#E03131' }}>*</span></label>
+                        {durations.length === 0 ? (
+                          <div style={{ fontSize: '12px', color: '#9A9A9F', padding: '9px 10px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px' }}>Add session durations above first</div>
+                        ) : (
+                          <select
+                            value={windowForm.duration_id}
+                            onChange={e => setWindowForm(prev => ({ ...prev, duration_id: e.target.value }))}
+                            style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
+                            {durations.map(d => (
+                              <option key={d.id} value={d.id}>{d.label}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Buffer between slots</label>
+                        <select
+                          value={windowForm.buffer_minutes}
+                          onChange={e => setWindowForm(prev => ({ ...prev, buffer_minutes: e.target.value }))}
+                          style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
+                          <option value="0">None</option>
+                          <option value="15">15 min</option>
+                          <option value="30">30 min</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {windowForm.session_type !== 'individual' && (
+                      <div>
+                        <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Max group capacity <span style={{ color: '#555558', fontWeight: 400 }}>(optional)</span></label>
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="e.g. 8"
+                          value={windowForm.max_capacity}
+                          onChange={e => setWindowForm(prev => ({ ...prev, max_capacity: e.target.value }))}
+                          style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}
+                        />
+                      </div>
+                    )}
+
                     <div>
                       <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Label <span style={{ color: '#555558', fontWeight: 400 }}>(optional)</span></label>
                       <input type="text" placeholder='e.g. "Group training only"' value={windowForm.display_label} onChange={e => setWindowForm(prev => ({ ...prev, display_label: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
@@ -559,7 +685,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                     {windowError && <p style={{ fontSize: '12px', color: '#E03131', margin: 0 }}>{windowError}</p>}
 
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button type="button" onClick={handleSaveWindow} disabled={savingWindow} style={{ flex: 1, background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                      <button type="button" onClick={handleSaveWindow} disabled={savingWindow || durations.length === 0} style={{ flex: 1, background: durations.length > 0 ? '#00FF9F' : '#2A2A2D', color: durations.length > 0 ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '13px', fontWeight: 700, cursor: durations.length > 0 ? 'pointer' : 'default' }}>
                         {savingWindow ? 'Saving...' : editingWindowId ? 'Save changes' : 'Add window'}
                       </button>
                       <button type="button" onClick={() => { setWindowFormOpen(false); setEditingWindowId(null) }} style={{ flex: 1, background: 'transparent', color: '#9A9A9F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
@@ -570,6 +696,49 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                 {windows.length === 0 && !windowFormOpen && (
                   <div style={{ fontSize: '12px', color: '#555558', textAlign: 'center', padding: '12px 0' }}>No availability windows added yet</div>
                 )}
+              </div>
+
+              {/* BLACKOUT DATES */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Blackout Dates</div>
+                <div style={{ fontSize: '12px', color: '#555558' }}>Mark dates when you&apos;re unavailable — those days won&apos;t appear on your profile</div>
+
+                {blackouts.map(b => (
+                  <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', background: '#0E0E0F', borderRadius: '8px', border: '1px solid #2A2A2D' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: '13px', color: '#ffffff', fontWeight: 500 }}>{formatBlackoutDate(b.blackout_date)}</span>
+                      {b.note && <span style={{ fontSize: '12px', color: '#9A9A9F', marginLeft: '8px' }}>{b.note}</span>}
+                    </div>
+                    <button type="button" onClick={() => handleDeleteBlackout(b.id)} style={{ background: 'none', border: 'none', color: '#9A9A9F', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0', flexShrink: 0 }}>×</button>
+                  </div>
+                ))}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="date"
+                      min={today}
+                      value={newBlackoutDate}
+                      onChange={e => setNewBlackoutDate(e.target.value)}
+                      style={{ flex: 1, background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: newBlackoutDate ? '#ffffff' : '#555558', outline: 'none', colorScheme: 'dark' }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Note (optional)"
+                      value={newBlackoutNote}
+                      onChange={e => setNewBlackoutNote(e.target.value)}
+                      style={{ flex: 1, background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: '#ffffff', outline: 'none' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddBlackout}
+                      disabled={addingBlackout || !newBlackoutDate}
+                      style={{ background: newBlackoutDate ? '#00FF9F' : '#2A2A2D', color: newBlackoutDate ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', fontWeight: 700, cursor: newBlackoutDate ? 'pointer' : 'default', flexShrink: 0 }}>
+                      {addingBlackout ? '...' : 'Block'}
+                    </button>
+                  </div>
+                  {blackoutError && <p style={{ fontSize: '12px', color: '#E03131', margin: 0 }}>{blackoutError}</p>}
+                </div>
               </div>
             </div>
 
@@ -620,6 +789,6 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
           </form>
         </div>
       </div>
-  
+
   )
 }

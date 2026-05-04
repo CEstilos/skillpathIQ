@@ -33,7 +33,7 @@ interface BookingRequest {
   status: string
   created_at: string
   preferred_availability_text: string | null
-  preferred_duration_id: string | null
+  preferred_slots: Array<{ rank: number; window_id: string; slot_time: string }> | null
 }
 
 interface Props {

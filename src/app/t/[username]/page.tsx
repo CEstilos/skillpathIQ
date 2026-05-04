@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import TrainerProfileClient from '@/components/TrainerProfileClient'
 
+const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+
 export default async function TrainerProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params
 
@@ -37,10 +39,12 @@ export default async function TrainerProfilePage({ params }: { params: Promise<{
     )
   }
 
-  const [{ data: availabilityWindows }, { data: sessionDurations }] = await Promise.all([
+  const today = new Date().toISOString().split('T')[0]
+
+  const [{ data: rawWindows }, { data: sessionDurations }, { data: rawBlackouts }] = await Promise.all([
     supabase
       .from('trainer_availability_windows')
-      .select('id, day_of_week, start_time, end_time, session_type, display_label, sort_order')
+      .select('id, day_of_week, start_time, end_time, session_type, display_label, sort_order, duration_minutes, buffer_minutes, max_capacity')
       .eq('trainer_id', trainer.id)
       .order('sort_order', { ascending: true }),
     supabase
@@ -48,7 +52,27 @@ export default async function TrainerProfilePage({ params }: { params: Promise<{
       .select('id, duration_minutes, label')
       .eq('trainer_id', trainer.id)
       .order('duration_minutes', { ascending: true }),
+    supabase
+      .from('trainer_blackout_dates')
+      .select('blackout_date')
+      .eq('trainer_id', trainer.id)
+      .gte('blackout_date', today)
+      .order('blackout_date', { ascending: true }),
   ])
 
-  return <TrainerProfileClient trainer={trainer} availabilityWindows={availabilityWindows || []} sessionDurations={sessionDurations || []} />
+  // Filter windows whose day-of-week is entirely blacked out by an upcoming date
+  const blackoutDaySet = new Set(
+    (rawBlackouts || []).map(b => DAY_NAMES[new Date(b.blackout_date + 'T00:00:00').getDay()])
+  )
+  const availabilityWindows = (rawWindows || []).filter(w => !blackoutDaySet.has(w.day_of_week))
+  const upcomingBlackouts = (rawBlackouts || []).map(b => b.blackout_date)
+
+  return (
+    <TrainerProfileClient
+      trainer={trainer}
+      availabilityWindows={availabilityWindows}
+      sessionDurations={sessionDurations || []}
+      upcomingBlackouts={upcomingBlackouts}
+    />
+  )
 }
