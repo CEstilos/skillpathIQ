@@ -676,6 +676,72 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           </div>
         </div>
 
+        {/* SESSION REQUESTS - MOBILE */}
+        {localSessionRequests.length > 0 && (
+          <div style={{ padding: '4px 16px 12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Session Requests</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {localSessionRequests.map(req => (
+                <div key={req.id} style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', padding: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
+                      {req.players?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{req.players?.full_name}</div>
+                      {req.note && <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>{req.note}</div>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={async () => { setLocalSessionRequests(prev => prev.filter(r => r.id !== req.id)); const supabaseClient = createClient(); supabaseClient.from('session_requests').update({ status: 'dismissed' }).eq('id', req.id).then(() => {}); router.push(`/dashboard/sessions/new?player=${req.player_id}`) }} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>Schedule</button>
+                    <button onClick={() => dismissRequest(req.id)} disabled={dismissingRequest === req.id} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>{dismissingRequest === req.id ? '...' : 'Dismiss'}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* BOOKING REQUESTS - MOBILE */}
+        {localBookingRequests.filter(r => r.status === 'pending').length > 0 && (
+          <div style={{ padding: '4px 16px 12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Booking Requests</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {localBookingRequests.filter(r => r.status === 'pending').map(req => (
+                <div key={req.id} style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', padding: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
+                      {req.player_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</div>
+                      <div style={{ fontSize: '12px', color: '#9A9A9F' }}>
+                        {req.parent_name} · {req.preferred_session_type === 'group' ? 'Group' : '1-on-1'}{req.player_age ? ` · Age ${req.player_age}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  {(req.player_goals || req.message) && (
+                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '10px', lineHeight: 1.4 }}>
+                      {req.player_goals || req.message}
+                    </div>
+                  )}
+                  {decliningBooking === req.id ? (
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button onClick={() => { handleDeclineBooking(req, true); setDecliningBooking(null) }} style={{ flex: 1, fontSize: '12px', padding: '8px', borderRadius: '8px', border: '1px solid rgba(224,49,49,0.3)', background: 'transparent', color: '#E03131', cursor: 'pointer', fontWeight: 600 }}>Decline + notify</button>
+                      <button onClick={() => { handleDeclineBooking(req, false); setDecliningBooking(null) }} style={{ flex: 1, fontSize: '12px', padding: '8px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Silently</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => handleAcceptBooking(req)} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>Accept</button>
+                      <button onClick={() => setDecliningBooking(req.id)} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Decline</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* TODAY'S SESSIONS */}
         <div style={{ padding: '4px 16px 12px' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Today&apos;s Sessions</div>
@@ -888,46 +954,6 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                   )}
                 </>
               )}
-            </div>
-          </div>
-        )}
-
-        {/* BOOKING REQUESTS - MOBILE */}
-        {localBookingRequests.filter(r => r.status === 'pending').length > 0 && (
-          <div style={{ padding: '4px 16px 12px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Booking Requests</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {localBookingRequests.filter(r => r.status === 'pending').map(req => (
-                <div key={req.id} style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', padding: '14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
-                      {req.player_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</div>
-                      <div style={{ fontSize: '12px', color: '#9A9A9F' }}>
-                        {req.parent_name} · {req.preferred_session_type === 'group' ? 'Group' : '1-on-1'}{req.player_age ? ` · Age ${req.player_age}` : ''}
-                      </div>
-                    </div>
-                  </div>
-                  {(req.player_goals || req.message) && (
-                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '10px', lineHeight: 1.4 }}>
-                      {req.player_goals || req.message}
-                    </div>
-                  )}
-                  {decliningBooking === req.id ? (
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button onClick={() => { handleDeclineBooking(req, true); setDecliningBooking(null) }} style={{ flex: 1, fontSize: '12px', padding: '8px', borderRadius: '8px', border: '1px solid rgba(224,49,49,0.3)', background: 'transparent', color: '#E03131', cursor: 'pointer', fontWeight: 600 }}>Decline + notify</button>
-                      <button onClick={() => { handleDeclineBooking(req, false); setDecliningBooking(null) }} style={{ flex: 1, fontSize: '12px', padding: '8px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Silently</button>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => handleAcceptBooking(req)} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>Accept</button>
-                      <button onClick={() => setDecliningBooking(req.id)} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Decline</button>
-                    </div>
-                  )}
-                </div>
-              ))}
             </div>
           </div>
         )}
