@@ -14,7 +14,7 @@ export default async function TrainerProfilePage({ params }: { params: Promise<{
 
   const { data: trainer } = await supabase
     .from('profiles')
-    .select('id, full_name, bio, sport, location, profile_photo_url, public_profile_enabled, individual_rate, group_rate')
+    .select('id, full_name, bio, sport, location, profile_photo_url, public_profile_enabled, individual_rate, group_rate, scheduling_mode, calendly_url')
     .eq('username', username)
     .single()
 
@@ -73,6 +73,8 @@ export default async function TrainerProfilePage({ params }: { params: Promise<{
       availabilityWindows={availabilityWindows}
       sessionDurations={sessionDurations || []}
       upcomingBlackouts={upcomingBlackouts}
+      schedulingMode={(trainer.scheduling_mode as 'skillpathiq' | 'calendly' | 'both') || 'skillpathiq'}
+      calendlyUrl={trainer.calendly_url || null}
     />
   )
 }

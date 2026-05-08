@@ -41,6 +41,8 @@ interface Profile {
   location: string | null
   profile_photo_url: string | null
   public_profile_enabled: boolean | null
+  calendly_url: string | null
+  scheduling_mode: string | null
 }
 
 interface AvailabilityWindow {
@@ -94,6 +96,16 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
   const [profileSaved, setProfileSaved] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [copiedProfileUrl, setCopiedProfileUrl] = useState(false)
+
+  const [schedulingMode, setSchedulingMode] = useState<'skillpathiq' | 'calendly' | 'both'>(
+    (profile?.scheduling_mode as 'skillpathiq' | 'calendly' | 'both') || 'skillpathiq'
+  )
+  const [calendlyUrl, setCalendlyUrl] = useState(profile?.calendly_url || '')
+  const [savedCalendlyUrl, setSavedCalendlyUrl] = useState(profile?.calendly_url || '')
+  const [calendlyError, setCalendlyError] = useState<string | null>(null)
+  const [calendlySaving, setCalendlySaving] = useState(false)
+  const [calendlySaved, setCalendlySaved] = useState(false)
+  const [copiedIntakeUrl, setCopiedIntakeUrl] = useState(false)
 
   const [durations, setDurations] = useState<SessionDuration[]>([])
   const [windows, setWindows] = useState<AvailabilityWindow[]>([])
@@ -333,6 +345,26 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
 
   const profileUrl = username.trim() ? `https://skillpathiq.com/t/${username.trim().toLowerCase()}` : null
 
+  async function handleSaveScheduling() {
+    setCalendlyError(null)
+    if (schedulingMode !== 'skillpathiq') {
+      if (!calendlyUrl.trim().startsWith('https://calendly.com/')) {
+        setCalendlyError('URL must start with https://calendly.com/')
+        return
+      }
+    }
+    setCalendlySaving(true)
+    const { error } = await supabase.from('profiles').update({
+      scheduling_mode: schedulingMode,
+      calendly_url: schedulingMode !== 'skillpathiq' ? calendlyUrl.trim() : null,
+    }).eq('id', profile?.id)
+    setCalendlySaving(false)
+    if (error) { setCalendlyError(error.message); return }
+    setSavedCalendlyUrl(schedulingMode !== 'skillpathiq' ? calendlyUrl.trim() : '')
+    setCalendlySaved(true)
+    setTimeout(() => setCalendlySaved(false), 2500)
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
       <style>{`
@@ -511,6 +543,100 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                 disabled={profileSaving}
                 style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
                 {profileSaved ? '✓ Saved!' : profileSaving ? 'Saving...' : 'Save public profile'}
+              </button>
+            </div>
+
+            {/* SCHEDULING */}
+            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Scheduling</div>
+                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Choose how parents book sessions with you</div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500, display: 'block' as const, marginBottom: '8px' }}>Booking method</label>
+                <div style={{ display: 'flex', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', overflow: 'hidden' }}>
+                  {([
+                    { value: 'skillpathiq', label: 'SkillPathIQ' },
+                    { value: 'calendly', label: 'Calendly' },
+                    { value: 'both', label: 'Both' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => { setSchedulingMode(opt.value); setCalendlyError(null) }}
+                      style={{
+                        flex: 1, padding: '9px 8px', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                        background: schedulingMode === opt.value ? '#00FF9F' : 'transparent',
+                        color: schedulingMode === opt.value ? '#0E0E0F' : '#9A9A9F',
+                        transition: 'all 0.15s',
+                      }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {schedulingMode !== 'skillpathiq' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Your Calendly link <span style={{ color: '#E03131' }}>*</span></label>
+                  <input
+                    type="url"
+                    placeholder="https://calendly.com/yourname"
+                    value={calendlyUrl}
+                    onChange={e => setCalendlyUrl(e.target.value)}
+                    style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
+                  />
+                  {calendlyError && <p style={{ fontSize: '12px', color: '#E03131', margin: 0 }}>{calendlyError}</p>}
+                </div>
+              )}
+
+              {schedulingMode !== 'skillpathiq' && savedCalendlyUrl.startsWith('https://calendly.com/') && username.trim() && (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Post-booking intake link</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 14px' }}>
+                      <span style={{ flex: 1, fontSize: '13px', color: '#00FF9F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                        {`https://skillpathiq.com/intake/${username.trim().toLowerCase()}`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`https://skillpathiq.com/intake/${username.trim().toLowerCase()}`)
+                          setCopiedIntakeUrl(true)
+                          setTimeout(() => setCopiedIntakeUrl(false), 2000)
+                        }}
+                        style={{ fontSize: '12px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: copiedIntakeUrl ? '#00FF9F' : '#9A9A9F', cursor: 'pointer', flexShrink: 0, fontWeight: 600 }}>
+                        {copiedIntakeUrl ? '✓ Copied' : 'Copy'}
+                      </button>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#555558', margin: 0 }}>
+                      Paste this link into Calendly as your confirmation redirect URL. After a parent books via Calendly, they&apos;ll be sent here to complete their player profile.
+                    </p>
+                  </div>
+
+                  <div style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '14px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', marginBottom: '10px' }}>How to set this up in Calendly:</div>
+                    <ol style={{ paddingLeft: '16px', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {[
+                        'Open your Calendly event type',
+                        'Go to Confirmation Page settings',
+                        "Select 'Redirect to an external site'",
+                        'Paste the link above',
+                      ].map((step, i) => (
+                        <li key={i} style={{ fontSize: '12px', color: '#555558' }}>{step}</li>
+                      ))}
+                    </ol>
+                  </div>
+                </>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSaveScheduling}
+                disabled={calendlySaving}
+                style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+                {calendlySaved ? '✓ Saved!' : calendlySaving ? 'Saving...' : 'Save scheduling'}
               </button>
             </div>
 

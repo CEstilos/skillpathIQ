@@ -66,11 +66,15 @@ export default function TrainerProfileClient({
   availabilityWindows,
   sessionDurations,
   upcomingBlackouts,
+  schedulingMode = 'skillpathiq',
+  calendlyUrl,
 }: {
   trainer: Trainer
   availabilityWindows: AvailabilityWindow[]
   sessionDurations: SessionDuration[]
   upcomingBlackouts: string[]
+  schedulingMode?: 'skillpathiq' | 'calendly' | 'both'
+  calendlyUrl?: string | null
 }) {
   const [form, setForm] = useState({
     parentName: '',
@@ -262,8 +266,22 @@ export default function TrainerProfileClient({
           </div>
         )}
 
+        {/* CALENDLY ONLY — book button */}
+        {schedulingMode === 'calendly' && calendlyUrl && (
+          <div style={{ marginBottom: '28px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+            <a
+              href={calendlyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'block', width: '100%', background: GREEN, color: '#0E0E0F', border: 'none', borderRadius: '12px', padding: '16px', fontSize: '16px', fontWeight: 700, cursor: 'pointer', textAlign: 'center', textDecoration: 'none' }}>
+              Book a Session
+            </a>
+            <p style={{ fontSize: '13px', color: '#555558', margin: 0 }}>You&apos;ll be redirected to Calendly to choose a time.</p>
+          </div>
+        )}
+
         {/* AVAILABILITY DISPLAY */}
-        {availabilityWindows.length > 0 && (
+        {schedulingMode !== 'calendly' && availabilityWindows.length > 0 && (
           <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', padding: '18px 20px', marginBottom: '28px' }}>
             <div style={{ fontSize: '12px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px' }}>Availability</div>
 
@@ -316,7 +334,7 @@ export default function TrainerProfileClient({
         )}
 
         {/* BOOKING FORM */}
-        {submitted ? (
+        {schedulingMode === 'calendly' ? null : submitted ? (
           <div style={{ background: 'rgba(0,255,159,0.06)', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '16px', padding: '32px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: '32px', marginBottom: '12px' }}>✓</div>
             <div style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>Request sent!</div>
@@ -482,6 +500,28 @@ export default function TrainerProfileClient({
               Powered by <span style={{ color: '#9A9A9F' }}>SkillPathIQ</span>
             </p>
           </form>
+        )}
+
+        {/* BOTH MODE — secondary Calendly button below form */}
+        {schedulingMode === 'both' && !submitted && calendlyUrl && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '4px 0' }}>
+              <div style={{ flex: 1, height: '1px', background: '#2A2A2D' }} />
+              <span style={{ fontSize: '12px', color: '#555558' }}>or</span>
+              <div style={{ flex: 1, height: '1px', background: '#2A2A2D' }} />
+            </div>
+            <a
+              href={calendlyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'block', width: '100%', background: 'transparent', color: '#9A9A9F',
+                border: '1px solid #2A2A2D', borderRadius: '12px', padding: '14px',
+                fontSize: '15px', fontWeight: 600, cursor: 'pointer', textAlign: 'center' as const, textDecoration: 'none',
+              }}>
+              Book via Calendly
+            </a>
+          </>
         )}
       </div>
     </div>
