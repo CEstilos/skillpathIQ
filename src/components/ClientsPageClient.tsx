@@ -631,13 +631,16 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
         {/* Empty state */}
         {visibleNew.length === 0 && visibleAtRisk.length === 0 && visibleLapsed.length === 0 && visibleActive.length === 0 && (
           <div style={{ padding: '40px 16px', textAlign: 'center' }}>
-            <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '16px' }}>
-              {localPlayers.length === 0 ? 'No players yet' : 'No players match your search'}
-            </p>
-            {localPlayers.length === 0 && (
-              <button onClick={() => router.push('/dashboard/players/new')} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
-                Add first player
-              </button>
+            {localPlayers.length === 0 ? (
+              <>
+                <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>No players yet</div>
+                <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '20px' }}>Add your first player to start tracking sessions, drills, and retention.</p>
+                <button onClick={() => router.push('/dashboard/players/new')} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+                  Add Player
+                </button>
+              </>
+            ) : (
+              <p style={{ fontSize: '14px', color: '#9A9A9F' }}>No players match your search</p>
             )}
           </div>
         )}

@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 
-interface Profile { id: string; full_name: string; email: string; primary_sport?: string; onboarding_completed?: boolean; username?: string | null; public_profile_enabled?: boolean | null }
+interface Profile { id: string; full_name: string; email: string; primary_sport?: string; onboarding_completed?: boolean; username?: string | null; public_profile_enabled?: boolean | null; bio?: string | null; sport?: string | null; location?: string | null }
 interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; trainer_id: string; created_at: string }
 interface Group { id: string; name: string; sport: string; session_day: string; session_time: string }
 interface Session { id: string; player_id: string; session_date: string; notes: string | null }
@@ -452,35 +452,8 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     setTimeout(() => setDashToast(null), 3000)
   }
 
-  async function handleAcceptBooking(req: BookingRequest) {
-    const supabaseClient = createClient()
-    await supabaseClient.from('booking_requests').update({ status: 'accepted' }).eq('id', req.id)
-    setLocalBookingRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'accepted' } : r))
-
-    if (req.request_type === 'returning_player') {
-      showDashToast('Session request accepted')
-    } else {
-      const initials = req.player_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-      await supabaseClient.from('players').insert({
-        trainer_id: profile!.id,
-        full_name: req.player_name,
-        parent_email: req.parent_email,
-        contact_type: 'parent',
-        avatar_initials: initials,
-        archived: false,
-      })
-      showDashToast('Player added to your roster')
-    }
-
-    await fetch('/api/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: req.parent_email,
-        subject: `${profile?.full_name} accepted your session request`,
-        body: `Hi ${req.parent_name},\n\nGreat news! ${profile?.full_name} has accepted your session request for ${req.player_name}. They'll be in touch soon to confirm.\n\nLooking forward to it!`,
-      }),
-    }).catch(() => {})
+  function handleAcceptBooking(req: BookingRequest) {
+    router.push(`/requests/${req.id}/schedule`)
   }
 
   async function handleDeclineBooking(req: BookingRequest, notify: boolean) {
@@ -756,7 +729,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                     </div>
                   ) : (
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => handleAcceptBooking(req)} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>Accept</button>
+                      <button onClick={() => handleAcceptBooking(req)} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>Accept &amp; Schedule →</button>
                       <button onClick={() => setDecliningBooking(req.id)} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Decline</button>
                     </div>
                   )}
@@ -1084,9 +1057,19 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                 <span style={{ fontSize: '12px', color: '#9A9A9F' }}>{todaySessions.length > 0 ? `${todaySessions.length} scheduled` : 'None scheduled'}</span>
               </div>
               {todaySessions.length === 0 ? (
-                <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '24px', textAlign: 'center' as const }}>
-                  <div style={{ fontSize: '13px', color: '#9A9A9F' }}>No sessions scheduled for today</div>
-                  <button onClick={() => router.push('/dashboard/sessions/new')} style={{ marginTop: '12px', background: 'transparent', border: '1px solid rgba(0,255,159,0.3)', borderRadius: '8px', padding: '7px 14px', fontSize: '13px', color: '#00FF9F', cursor: 'pointer', fontWeight: 600 }}>Schedule one</button>
+                <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '24px' }}>
+                  {upcomingSessions.length === 0 ? (
+                    <>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>Nothing scheduled</div>
+                      <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '16px', lineHeight: 1.5 }}>Add an upcoming session or share your booking link so parents can request one.</div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => router.push('/dashboard/sessions/new')} style={{ flex: 1, background: 'transparent', border: '1px solid rgba(0,255,159,0.3)', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', color: '#00FF9F', cursor: 'pointer', fontWeight: 600 }}>Schedule session</button>
+                        <button onClick={() => { const link = `https://skillpathiq.com/t/${profile?.username}`; navigator.clipboard.writeText(link).then(() => showDashToast('Link copied!')).catch(() => {}) }} style={{ flex: 1, background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>Share Booking Link</button>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: '13px', color: '#9A9A9F', textAlign: 'center' as const }}>No sessions scheduled for today</div>
+                  )}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1243,15 +1226,25 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
             )}
 
             {/* BOOKING REQUESTS */}
-            {localBookingRequests.filter(r => r.status === 'pending').length > 0 && (
-              <div style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', overflow: 'hidden' }}>
+            {(() => {
+              const pendingReqs = localBookingRequests.filter(r => r.status === 'pending')
+              const hasPending = pendingReqs.length > 0
+              return (
+              <div style={{ background: '#1A1A1C', border: `1px solid ${hasPending ? 'rgba(0,255,159,0.25)' : '#2A2A2D'}`, borderRadius: '12px', overflow: 'hidden' }}>
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F' }} />
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>
-                    New booking request{localBookingRequests.filter(r => r.status === 'pending').length !== 1 ? 's' : ''} ({localBookingRequests.filter(r => r.status === 'pending').length})
+                  {hasPending && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F' }} />}
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: hasPending ? '#00FF9F' : '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>
+                    {hasPending ? `New booking request${pendingReqs.length !== 1 ? 's' : ''} (${pendingReqs.length})` : 'Booking Requests'}
                   </span>
                 </div>
-                {localBookingRequests.filter(r => r.status === 'pending').map((req, i, arr) => (
+                {!hasPending && (
+                  <div style={{ padding: '20px 16px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>No pending requests</div>
+                    <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '14px', lineHeight: 1.5 }}>Share your booking link to start receiving session requests from parents.</div>
+                    <button onClick={() => { const link = `https://skillpathiq.com/t/${profile?.username}`; navigator.clipboard.writeText(link).then(() => showDashToast('Link copied!')).catch(() => {}) }} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>Share Booking Link</button>
+                  </div>
+                )}
+                {pendingReqs.map((req, i, arr) => (
                   <div key={req.id} style={{ padding: '16px', borderBottom: i < arr.length - 1 ? '1px solid #2A2A2D' : 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                       <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
@@ -1288,7 +1281,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
-                        <button onClick={() => handleAcceptBooking(req)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>Accept</button>
+                        <button onClick={() => handleAcceptBooking(req)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>Accept &amp; Schedule →</button>
                         <button onClick={() => setDecliningBooking(decliningBooking === req.id ? null : req.id)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Decline</button>
                       </div>
                     </div>
@@ -1309,10 +1302,13 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                       {bookingHistoryOpen ? '▾' : '▸'} History ({localBookingRequests.filter(r => r.status !== 'pending').length})
                     </button>
                     {bookingHistoryOpen && localBookingRequests.filter(r => r.status !== 'pending').map((req) => (
-                      <div key={req.id} style={{ padding: '10px 16px', borderTop: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', gap: '10px', opacity: 0.65 }}>
+                      <div key={req.id} style={{ padding: '10px 16px', borderTop: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', gap: '10px', opacity: 0.7 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</span>
+                            {req.status === 'accepted' && req.player_id
+                              ? <span onClick={() => router.push(`/dashboard/players/${req.player_id}`)} style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{req.player_name}</span>
+                              : <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{req.player_name}</span>
+                            }
                             <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 5px', borderRadius: '99px',
                               background: req.request_type === 'returning_player' ? 'rgba(0,255,159,0.12)' : 'rgba(154,154,159,0.12)',
                               color: req.request_type === 'returning_player' ? '#00FF9F' : '#9A9A9F',
@@ -1322,15 +1318,21 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                           </div>
                           <div style={{ fontSize: '11px', color: '#9A9A9F' }}>{req.parent_name}</div>
                         </div>
-                        <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '99px', fontWeight: 600, background: req.status === 'accepted' ? 'rgba(0,255,159,0.1)' : 'rgba(224,49,49,0.1)', color: req.status === 'accepted' ? '#00FF9F' : '#E03131' }}>
-                          {req.status === 'accepted' ? 'Accepted' : 'Declined'}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
+                          <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '99px', fontWeight: 600, background: req.status === 'accepted' ? 'rgba(0,255,159,0.1)' : 'rgba(224,49,49,0.1)', color: req.status === 'accepted' ? '#00FF9F' : '#E03131' }}>
+                            {req.status === 'accepted' ? 'Accepted' : 'Declined'}
+                          </span>
+                          {req.status === 'accepted' && req.player_id && (
+                            <button onClick={() => router.push(`/dashboard/players/${req.player_id}`)} style={{ background: 'none', border: 'none', color: '#555558', fontSize: '10px', cursor: 'pointer', padding: 0 }}>View profile →</button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            )}
+              )
+            })()}
 
             {/* UNLOGGED SESSIONS PANEL */}
             {showUnlogged && unloggedSessions.length > 0 && (
@@ -1361,12 +1363,18 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
             )}
 
             {/* RECENT SESSIONS TABLE */}
-            {sessions.filter(s => s.player_id).length > 0 && (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>Recent sessions</span>
-                  <button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '12px', color: '#00FF9F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>View all →</button>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>Recent sessions</span>
+                {sessions.filter(s => s.player_id).length > 0 && <button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '12px', color: '#00FF9F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>View all →</button>}
+              </div>
+              {sessions.filter(s => s.player_id).length === 0 ? (
+                <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '24px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>No sessions logged</div>
+                  <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '16px', lineHeight: 1.5 }}>Log a session after training to start tracking your activity and revenue.</div>
+                  <button onClick={() => players.length > 0 ? router.push(`/dashboard/players/${players[0].id}/log`) : router.push('/dashboard/players/new')} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>Log Session</button>
                 </div>
+              ) : (
                 <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', overflow: 'hidden' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 72px', padding: '8px 16px', borderBottom: '1px solid #2A2A2D' }}>
                     <div style={{ fontSize: '11px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Player</div>
@@ -1388,23 +1396,54 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                     )
                   })}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* ACTIVATION CHECKLIST */}
+            {/* GETTING STARTED CHECKLIST */}
             {(() => {
               const hasPlayer = players.length > 0
-              const hasScheduled = todaySessions.length > 0 || upcomingSessions.length > 0
               const hasLoggedSession = sessions.some(s => s.player_id !== null)
-              const hasAiRecap = sessions.some(s => s.player_id !== null && (s as { feedback?: string | null }).feedback)
+              const hasDrillAssignment = drillWeeks.length > 0
+              const hasPublicProfile = !!(profile?.username && (profile?.bio || profile?.sport || profile?.location))
+              const hasSharedLink = !!(profile?.public_profile_enabled && profile?.username)
               const steps = [
-                { key: 'player', title: 'Add your first player', desc: 'Build your roster by adding a player to the app', done: hasPlayer, action: () => router.push('/dashboard/players/new') },
-                { key: 'schedule', title: 'Schedule a session', desc: 'Set up an upcoming training session', done: hasScheduled, action: () => router.push('/dashboard/sessions/new') },
-                { key: 'log', title: 'Log your first session', desc: 'Record what happened after a training session', done: hasLoggedSession, action: () => players.length > 0 ? router.push(`/dashboard/players/${players[0].id}/log`) : router.push('/dashboard/players/new') },
-                { key: 'ai', title: 'Generate an AI parent recap', desc: 'Let AI write a personalized parent update after a session', done: hasAiRecap, action: () => players.length > 0 ? router.push(`/dashboard/players/${players[0].id}/log`) : router.push('/dashboard/players/new') },
+                { key: 'player', title: 'Add your first player', desc: 'Build your roster by adding your first player', done: hasPlayer, action: () => router.push('/dashboard/players/new') },
+                { key: 'log', title: 'Log your first session', desc: 'Record a training session to start tracking your business', done: hasLoggedSession, action: () => players.length > 0 ? router.push(`/dashboard/players/${players[0].id}/log`) : router.push('/dashboard/players/new') },
+                { key: 'drills', title: 'Assign drills to a player', desc: 'Give your players work to do between sessions', done: hasDrillAssignment, action: () => players.length > 0 ? router.push(`/dashboard/drills/new?player=${players[0].id}`) : router.push('/dashboard/players/new') },
+                { key: 'profile', title: 'Set up your public profile', desc: 'Add your bio, sport, location and rates so parents know who you are', done: hasPublicProfile, action: () => router.push('/dashboard/settings') },
+                { key: 'link', title: 'Share your booking link', desc: 'Send your profile link to a client and let SkillPathIQ handle the rest', done: hasSharedLink, action: () => router.push('/dashboard/settings') },
               ]
               const completedCount = steps.filter(s => s.done).length
-              if (completedCount === steps.length) return null
+              if (completedCount === steps.length) {
+                const now2 = new Date()
+                const startOfMonth2 = new Date(now2.getFullYear(), now2.getMonth(), 1)
+                const thirtyDaysAgo2 = new Date(now2.getTime() - 30 * 24 * 60 * 60 * 1000)
+                const sessionsThisMonth2 = sessions.filter(s => s.player_id && new Date(s.session_date) >= startOfMonth2).length
+                const activePIds = new Set(sessions.filter(s => s.player_id && new Date(s.session_date) >= thirtyDaysAgo2).map(s => s.player_id))
+                const activeCount2 = activePIds.size
+                const retRate2 = players.length > 0 ? Math.round((activeCount2 / players.length) * 100) : null
+                return (
+                  <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '24px' }}>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff', marginBottom: '4px' }}>You&apos;re set up.</div>
+                    <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '20px' }}>Here&apos;s how your business looks right now.</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                      {[
+                        { label: 'Active Players', value: String(activeCount2) },
+                        { label: 'Sessions This Month', value: String(sessionsThisMonth2) },
+                        { label: 'Retention Rate', value: retRate2 !== null ? `${retRate2}%` : '—' },
+                      ].map(stat => (
+                        <div key={stat.label} style={{ background: '#0E0E0F', borderRadius: '10px', padding: '14px', textAlign: 'center' as const }}>
+                          <div style={{ fontSize: '22px', fontWeight: 700, color: '#00FF9F', lineHeight: 1 }}>{stat.value}</div>
+                          <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '5px' }}>{stat.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <button onClick={() => router.push('/dashboard/business')} style={{ width: '100%', background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '10px', padding: '13px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+                      View My Business →
+                    </button>
+                  </div>
+                )
+              }
               return (
                 <div style={{ background: 'rgba(0,255,159,0.04)', border: '1px solid rgba(0,255,159,0.2)', borderRadius: '16px', padding: '24px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -1500,6 +1539,16 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
 
             {/* REVENUE SNAPSHOT */}
             <RevenueSnapshot />
+
+            {/* DRILL ENGAGEMENT EMPTY STATE */}
+            {drillWeeks.length === 0 && (
+              <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', padding: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: '12px' }}>Drill Engagement</div>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>No drills assigned</div>
+                <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '16px', lineHeight: 1.5 }}>Assign drills to your players to track engagement between sessions.</div>
+                <button onClick={() => router.push('/dashboard/clients')} style={{ width: '100%', background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '9px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>Assign Drills</button>
+              </div>
+            )}
 
             {/* DRILL ENGAGEMENT */}
             {(lowEngagementPlayers.length > 0 || drillNudgeLoading) && showDrillAlert && (

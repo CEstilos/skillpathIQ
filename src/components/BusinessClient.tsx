@@ -237,6 +237,15 @@ export default function BusinessClient({ profile, players, sessions, attendance 
           )}
         </div>
 
+        {/* ── EMPTY STATE ── */}
+        {sessions.length === 0 && (
+          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '40px 24px', textAlign: 'center' as const, marginBottom: '28px' }}>
+            <div style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>No data yet</div>
+            <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '20px' }}>Log your first session to start seeing your numbers here.</p>
+            <button onClick={() => router.push('/dashboard/clients')} style={{ background: GREEN, color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>Log Session</button>
+          </div>
+        )}
+
         {/* ── CLIENT HEALTH ── */}
         <SectionLabel text="Client Health" />
         <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '24px', marginBottom: '28px' }}>
@@ -295,8 +304,8 @@ export default function BusinessClient({ profile, players, sessions, attendance 
           <StatCard
             label="Active players"
             value={activeLast30}
-            change={getPctChange(activeLast30, activePrev30)}
-            compare={`vs ${activePrev30} prev 30d`}
+            change={activePrev30 === 0 ? null : getPctChange(activeLast30, activePrev30)}
+            compare={activePrev30 === 0 ? 'Last 30 days' : `vs ${activePrev30} prev 30d`}
             accent={GREEN}
           />
           <StatCard
@@ -384,8 +393,8 @@ export default function BusinessClient({ profile, players, sessions, attendance 
           <StatCard
             label="Est. revenue this month"
             value={hasRates ? formatCurrency(revenueThisMonth) : '—'}
-            change={hasRates ? getPctChange(revenueThisMonth, revenueLastMonth) : null}
-            compare={hasRates ? `vs ${formatCurrency(revenueLastMonth)} last month` : 'Set rates to track'}
+            change={hasRates && revenueLastMonth > 0 ? getPctChange(revenueThisMonth, revenueLastMonth) : null}
+            compare={hasRates ? (revenueLastMonth > 0 ? `vs ${formatCurrency(revenueLastMonth)} last month` : 'This month') : 'Set rates to track'}
           />
           <StatCard
             label={`Est. revenue ${now.getFullYear()}`}

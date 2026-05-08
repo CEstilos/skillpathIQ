@@ -21,11 +21,12 @@ interface Props {
   group: Group | null
   trainerName?: string
   trainerEmail?: string
+  initialToast?: string | null
 }
 
 const SKILL_LEVELS = ['beginner', 'intermediate', 'advanced', 'elite']
 
-export default function PlayerProfileClient({ player, sessions, drillWeeks, drills, completions, group, trainerName, trainerEmail }: Props) {
+export default function PlayerProfileClient({ player, sessions, drillWeeks, drills, completions, group, trainerName, trainerEmail, initialToast }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [linkShared, setLinkShared] = useState(false)
@@ -45,6 +46,14 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [archiving, setArchiving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (initialToast) {
+      showToast(initialToast)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (drillWeeks.length === 0) return
@@ -419,10 +428,10 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
               </div>
             )}
             {drillWeeks.length === 0 ? (
-              <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
-                <p style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '12px' }}>No drill work assigned yet</p>
+              <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '24px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>No drills assigned yet.</div>
                 <button onClick={() => router.push(`/dashboard/drills/new?player=${player.id}`)} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-                  Assign drill work
+                  Assign Drills
                 </button>
               </div>
             ) : (
@@ -474,10 +483,10 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
           <div>
             <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Session history</div>
             {sessions.length === 0 ? (
-              <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
-                <p style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '12px' }}>No sessions logged yet</p>
+              <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '24px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>No sessions logged for {player.full_name} yet.</div>
                 <button onClick={() => router.push(`/dashboard/players/${player.id}/log`)} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-                  Log first session
+                  Log Session
                 </button>
               </div>
             ) : (

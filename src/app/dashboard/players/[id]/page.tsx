@@ -2,10 +2,13 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import PlayerProfileClient from '@/components/PlayerProfileClient'
 
-export default async function PlayerProfilePage({ params }: { params: { id: string } }) {
+export default async function PlayerProfilePage({ params, searchParams }: { params: { id: string }; searchParams?: Promise<{ toast?: string }> }) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
+
+  const resolvedSearch = searchParams ? await searchParams : {}
+  const initialToast = resolvedSearch.toast ? decodeURIComponent(resolvedSearch.toast) : null
 
   const { data: player } = await supabase
     .from('players')
@@ -59,6 +62,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
       group={group}
       trainerName={profile?.full_name || undefined}
       trainerEmail={(profile as { full_name?: string; email?: string } | null)?.email || undefined}
+      initialToast={initialToast}
     />
   )
 }

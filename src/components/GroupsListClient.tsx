@@ -146,7 +146,8 @@ export default function GroupsListClient({ profile, groups: initialGroups, playe
         {/* GROUP CARDS */}
         {groups.length === 0 ? (
           <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '48px 24px', textAlign: 'center' as const }}>
-            <p style={{ fontSize: '15px', color: '#9A9A9F', marginBottom: '16px' }}>No groups yet</p>
+            <p style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>No groups yet</p>
+            <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '20px' }}>Create a group to organize players and log group sessions together.</p>
             <button
               onClick={() => setShowModal(true)}
               style={{ background: GREEN, color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
