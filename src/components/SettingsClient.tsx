@@ -7,6 +7,16 @@ import NavBar from '@/components/NavBar'
 import { generateSlots } from '@/lib/generateSlots'
 
 const DAY_ORDER = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+const GREEN = '#00FF9F'
+
+type Tab = 'account' | 'public_profile' | 'scheduling' | 'rates'
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'account', label: 'Account' },
+  { id: 'public_profile', label: 'Public Profile' },
+  { id: 'scheduling', label: 'Scheduling' },
+  { id: 'rates', label: 'My Rates' },
+]
 
 function formatTime(t: string) {
   const [h, m] = t.split(':').map(Number)
@@ -73,20 +83,72 @@ interface BlackoutDate {
 export default function SettingsClient({ profile }: { profile: Profile | null }) {
   const supabase = createClient()
   const router = useRouter()
+
+  // ── Tab state ──────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<Tab>('account')
+  const [tabsDirty, setTabsDirty] = useState<Record<Tab, boolean>>({
+    account: false, public_profile: false, scheduling: false, rates: false,
+  })
+
+  function markDirty(tab: Tab) {
+    setTabsDirty(prev => ({ ...prev, [tab]: true }))
+  }
+  function markClean(tab: Tab) {
+    setTabsDirty(prev => ({ ...prev, [tab]: false }))
+  }
+
+  function handleTabClick(tab: Tab) {
+    if (tab === activeTab) return
+    const isDirty = activeTab === 'account'
+      ? newPassword !== ''
+      : tabsDirty[activeTab]
+    if (isDirty && !confirm('You have unsaved changes. Leave anyway?')) return
+    setActiveTab(tab)
+  }
+
+  // ── Rates ──────────────────────────────────────────────────────────────────
   const [individualRate, setIndividualRate] = useState(profile?.individual_rate?.toString() || '')
   const [groupRate, setGroupRate] = useState(profile?.group_rate?.toString() || '')
-  const [loading, setLoading] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [ratesLoading, setRatesLoading] = useState(false)
+  const [ratesSaved, setRatesSaved] = useState(false)
+  const [ratesError, setRatesError] = useState<string | null>(null)
+
+  async function handleSaveRates() {
+    setRatesLoading(true)
+    setRatesError(null)
+    const { error } = await supabase.from('profiles').update({
+      individual_rate: parseFloat(individualRate) || 0,
+      group_rate: parseFloat(groupRate) || 0,
+    }).eq('id', profile?.id)
+    setRatesLoading(false)
+    if (error) { setRatesError(error.message); return }
+    markClean('rates')
+    setRatesSaved(true)
+    setTimeout(() => setRatesSaved(false), 2000)
+  }
+
+  // ── Password ───────────────────────────────────────────────────────────────
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordSaved, setPasswordSaved] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
-  const [welcomeMessage, setWelcomeMessage] = useState(profile?.welcome_message || '')
-  const [welcomeSaved, setWelcomeSaved] = useState(false)
-  const [welcomeLoading, setWelcomeLoading] = useState(false)
 
+  async function handlePasswordChange() {
+    setPasswordError(null)
+    if (newPassword.length < 8) { setPasswordError('Password must be at least 8 characters'); return }
+    if (newPassword !== confirmPassword) { setPasswordError('Passwords do not match'); return }
+    setPasswordLoading(true)
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) { setPasswordError(error.message); setPasswordLoading(false); return }
+    setPasswordSaved(true)
+    setNewPassword('')
+    setConfirmPassword('')
+    setTimeout(() => setPasswordSaved(false), 3000)
+    setPasswordLoading(false)
+  }
+
+  // ── Public Profile ─────────────────────────────────────────────────────────
   const [username, setUsername] = useState(profile?.username || '')
   const [bio, setBio] = useState(profile?.bio || '')
   const [sport, setSport] = useState(profile?.sport || '')
@@ -97,6 +159,45 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
   const [profileError, setProfileError] = useState<string | null>(null)
   const [copiedProfileUrl, setCopiedProfileUrl] = useState(false)
 
+  const [welcomeMessage, setWelcomeMessage] = useState(profile?.welcome_message || '')
+  const [welcomeSaved, setWelcomeSaved] = useState(false)
+  const [welcomeLoading, setWelcomeLoading] = useState(false)
+
+  async function handleSavePublicProfile() {
+    setProfileError(null)
+    const trimmed = username.trim().toLowerCase()
+    if (!trimmed) { setProfileError('Username is required'); return }
+    if (!/^[a-z0-9_-]+$/.test(trimmed)) { setProfileError('Username can only contain letters, numbers, hyphens, and underscores'); return }
+    setProfileSaving(true)
+    const { error } = await supabase.from('profiles').update({
+      username: trimmed,
+      bio: bio.trim() || null,
+      sport: sport.trim() || null,
+      location: location.trim() || null,
+      public_profile_enabled: publicProfileEnabled,
+    }).eq('id', profile?.id)
+    setProfileSaving(false)
+    if (error) {
+      setProfileError(error.message.includes('unique') || error.code === '23505' ? 'That username is already taken' : error.message)
+      return
+    }
+    markClean('public_profile')
+    setProfileSaved(true)
+    setTimeout(() => setProfileSaved(false), 2500)
+  }
+
+  async function handleSaveWelcome() {
+    setWelcomeLoading(true)
+    await supabase.from('profiles').update({ welcome_message: welcomeMessage }).eq('id', profile?.id)
+    setWelcomeLoading(false)
+    markClean('public_profile')
+    setWelcomeSaved(true)
+    setTimeout(() => setWelcomeSaved(false), 2000)
+  }
+
+  const profileUrl = username.trim() ? `https://skillpathiq.com/t/${username.trim().toLowerCase()}` : null
+
+  // ── Scheduling ─────────────────────────────────────────────────────────────
   const [schedulingMode, setSchedulingMode] = useState<'skillpathiq' | 'calendly' | 'both'>(
     (profile?.scheduling_mode as 'skillpathiq' | 'calendly' | 'both') || 'skillpathiq'
   )
@@ -107,6 +208,26 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
   const [calendlySaved, setCalendlySaved] = useState(false)
   const [copiedIntakeUrl, setCopiedIntakeUrl] = useState(false)
 
+  async function handleSaveScheduling() {
+    setCalendlyError(null)
+    if (schedulingMode !== 'skillpathiq' && !calendlyUrl.trim().startsWith('https://calendly.com/')) {
+      setCalendlyError('URL must start with https://calendly.com/')
+      return
+    }
+    setCalendlySaving(true)
+    const { error } = await supabase.from('profiles').update({
+      scheduling_mode: schedulingMode,
+      calendly_url: schedulingMode !== 'skillpathiq' ? calendlyUrl.trim() : null,
+    }).eq('id', profile?.id)
+    setCalendlySaving(false)
+    if (error) { setCalendlyError(error.message); return }
+    setSavedCalendlyUrl(schedulingMode !== 'skillpathiq' ? calendlyUrl.trim() : '')
+    markClean('scheduling')
+    setCalendlySaved(true)
+    setTimeout(() => setCalendlySaved(false), 2500)
+  }
+
+  // ── Availability ───────────────────────────────────────────────────────────
   const [durations, setDurations] = useState<SessionDuration[]>([])
   const [windows, setWindows] = useState<AvailabilityWindow[]>([])
   const [blackouts, setBlackouts] = useState<BlackoutDate[]>([])
@@ -116,18 +237,12 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
   const [windowFormOpen, setWindowFormOpen] = useState(false)
   const [editingWindowId, setEditingWindowId] = useState<string | null>(null)
   const [windowForm, setWindowForm] = useState({
-    day_of_week: 'monday',
-    start_time: '',
-    end_time: '',
-    session_type: 'both',
-    display_label: '',
-    duration_id: '',
-    buffer_minutes: '0',
-    max_capacity: '',
+    day_of_week: 'monday', start_time: '', end_time: '',
+    session_type: 'both', display_label: '', duration_id: '',
+    buffer_minutes: '0', max_capacity: '',
   })
   const [savingWindow, setSavingWindow] = useState(false)
   const [windowError, setWindowError] = useState<string | null>(null)
-
   const [newBlackoutDate, setNewBlackoutDate] = useState('')
   const [newBlackoutNote, setNewBlackoutNote] = useState('')
   const [addingBlackout, setAddingBlackout] = useState(false)
@@ -169,16 +284,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
 
   function openAddWindow() {
     setEditingWindowId(null)
-    setWindowForm({
-      day_of_week: 'monday',
-      start_time: '',
-      end_time: '',
-      session_type: 'both',
-      display_label: '',
-      duration_id: durations[0]?.id || '',
-      buffer_minutes: '0',
-      max_capacity: '',
-    })
+    setWindowForm({ day_of_week: 'monday', start_time: '', end_time: '', session_type: 'both', display_label: '', duration_id: durations[0]?.id || '', buffer_minutes: '0', max_capacity: '' })
     setWindowError(null)
     setWindowFormOpen(true)
   }
@@ -187,14 +293,10 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
     setEditingWindowId(w.id)
     const matchingDuration = durations.find(d => d.duration_minutes === w.duration_minutes)
     setWindowForm({
-      day_of_week: w.day_of_week,
-      start_time: w.start_time.slice(0, 5),
-      end_time: w.end_time.slice(0, 5),
-      session_type: w.session_type,
-      display_label: w.display_label || '',
+      day_of_week: w.day_of_week, start_time: w.start_time.slice(0, 5), end_time: w.end_time.slice(0, 5),
+      session_type: w.session_type, display_label: w.display_label || '',
       duration_id: matchingDuration?.id || durations[0]?.id || '',
-      buffer_minutes: w.buffer_minutes.toString(),
-      max_capacity: w.max_capacity?.toString() || '',
+      buffer_minutes: w.buffer_minutes.toString(), max_capacity: w.max_capacity?.toString() || '',
     })
     setWindowError(null)
     setWindowFormOpen(true)
@@ -206,21 +308,13 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
     const selectedDuration = durations.find(d => d.id === windowForm.duration_id)
     if (!selectedDuration) { setWindowError('Selected duration not found'); return }
     const bufferMins = parseInt(windowForm.buffer_minutes) || 0
-    const maxCap = (windowForm.session_type !== 'individual' && windowForm.max_capacity)
-      ? parseInt(windowForm.max_capacity) || null
-      : null
-
+    const maxCap = (windowForm.session_type !== 'individual' && windowForm.max_capacity) ? parseInt(windowForm.max_capacity) || null : null
     setSavingWindow(true)
     setWindowError(null)
     const payload = {
-      day_of_week: windowForm.day_of_week,
-      start_time: windowForm.start_time,
-      end_time: windowForm.end_time,
-      session_type: windowForm.session_type,
-      display_label: windowForm.display_label.trim() || null,
-      duration_minutes: selectedDuration.duration_minutes,
-      buffer_minutes: bufferMins,
-      max_capacity: maxCap,
+      day_of_week: windowForm.day_of_week, start_time: windowForm.start_time, end_time: windowForm.end_time,
+      session_type: windowForm.session_type, display_label: windowForm.display_label.trim() || null,
+      duration_minutes: selectedDuration.duration_minutes, buffer_minutes: bufferMins, max_capacity: maxCap,
     }
     if (editingWindowId) {
       const { data, error } = await supabase.from('trainer_availability_windows').update(payload).eq('id', editingWindowId).select().single()
@@ -228,11 +322,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
       if (error) { setWindowError(error.message); return }
       setWindows(prev => prev.map(w => w.id === editingWindowId ? data : w))
     } else {
-      const { data, error } = await supabase.from('trainer_availability_windows').insert({
-        trainer_id: profile!.id,
-        ...payload,
-        sort_order: windows.length,
-      }).select().single()
+      const { data, error } = await supabase.from('trainer_availability_windows').insert({ trainer_id: profile!.id, ...payload, sort_order: windows.length }).select().single()
       setSavingWindow(false)
       if (error) { setWindowError(error.message); return }
       setWindows(prev => [...prev, data])
@@ -251,15 +341,10 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
     setAddingBlackout(true)
     setBlackoutError(null)
     const { data, error } = await supabase.from('trainer_blackout_dates').insert({
-      trainer_id: profile!.id,
-      blackout_date: newBlackoutDate,
-      note: newBlackoutNote.trim() || null,
+      trainer_id: profile!.id, blackout_date: newBlackoutDate, note: newBlackoutNote.trim() || null,
     }).select().single()
     setAddingBlackout(false)
-    if (error) {
-      setBlackoutError(error.code === '23505' ? 'That date is already blocked' : error.message)
-      return
-    }
+    if (error) { setBlackoutError(error.code === '23505' ? 'That date is already blocked' : error.message); return }
     setBlackouts(prev => [...prev, data].sort((a, b) => a.blackout_date.localeCompare(b.blackout_date)))
     setNewBlackoutDate('')
     setNewBlackoutNote('')
@@ -270,154 +355,63 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
     setBlackouts(prev => prev.filter(b => b.id !== id))
   }
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        individual_rate: parseFloat(individualRate) || 0,
-        group_rate: parseFloat(groupRate) || 0,
-      })
-      .eq('id', profile?.id)
-
-    if (error) { setError(error.message); setLoading(false); return }
-
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-    setLoading(false)
-  }
-
-  async function handlePasswordChange() {
-    setPasswordError(null)
-    if (newPassword.length < 8) { setPasswordError('Password must be at least 8 characters'); return }
-    if (newPassword !== confirmPassword) { setPasswordError('Passwords do not match'); return }
-    setPasswordLoading(true)
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) { setPasswordError(error.message); setPasswordLoading(false); return }
-    setPasswordSaved(true)
-    setNewPassword('')
-    setConfirmPassword('')
-    setTimeout(() => setPasswordSaved(false), 3000)
-    setPasswordLoading(false)
-  }
-
-  async function handleSaveWelcome() {
-    setWelcomeLoading(true)
-    await supabase.from('profiles')
-      .update({ welcome_message: welcomeMessage })
-      .eq('id', profile?.id)
-    setWelcomeLoading(false)
-    setWelcomeSaved(true)
-    setTimeout(() => setWelcomeSaved(false), 2000)
-  }
-
-  async function handleSavePublicProfile() {
-    setProfileError(null)
-    const trimmed = username.trim().toLowerCase()
-    if (!trimmed) { setProfileError('Username is required'); return }
-    if (!/^[a-z0-9_-]+$/.test(trimmed)) { setProfileError('Username can only contain letters, numbers, hyphens, and underscores'); return }
-    setProfileSaving(true)
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        username: trimmed,
-        bio: bio.trim() || null,
-        sport: sport.trim() || null,
-        location: location.trim() || null,
-        public_profile_enabled: publicProfileEnabled,
-      })
-      .eq('id', profile?.id)
-    setProfileSaving(false)
-    if (error) {
-      if (error.message.includes('unique') || error.code === '23505') {
-        setProfileError('That username is already taken')
-      } else {
-        setProfileError(error.message)
-      }
-      return
-    }
-    setProfileSaved(true)
-    setTimeout(() => setProfileSaved(false), 2500)
-  }
-
-  const profileUrl = username.trim() ? `https://skillpathiq.com/t/${username.trim().toLowerCase()}` : null
-
-  async function handleSaveScheduling() {
-    setCalendlyError(null)
-    if (schedulingMode !== 'skillpathiq') {
-      if (!calendlyUrl.trim().startsWith('https://calendly.com/')) {
-        setCalendlyError('URL must start with https://calendly.com/')
-        return
-      }
-    }
-    setCalendlySaving(true)
-    const { error } = await supabase.from('profiles').update({
-      scheduling_mode: schedulingMode,
-      calendly_url: schedulingMode !== 'skillpathiq' ? calendlyUrl.trim() : null,
-    }).eq('id', profile?.id)
-    setCalendlySaving(false)
-    if (error) { setCalendlyError(error.message); return }
-    setSavedCalendlyUrl(schedulingMode !== 'skillpathiq' ? calendlyUrl.trim() : '')
-    setCalendlySaved(true)
-    setTimeout(() => setCalendlySaved(false), 2500)
-  }
+  // ── Shared input styles ────────────────────────────────────────────────────
+  const fieldInput = { background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }
+  const card = { background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column' as const, gap: '16px' }
+  const sectionLabel = { fontSize: '13px', fontWeight: 600 as const, color: '#ffffff', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }
+  const saveBtn = (active: boolean) => ({
+    background: active ? GREEN : '#2A2A2D', color: active ? '#0E0E0F' : '#9A9A9F',
+    border: 'none', borderRadius: '8px', padding: '10px', fontSize: '14px',
+    fontWeight: 700 as const, cursor: active ? 'pointer' as const : 'default' as const,
+  })
 
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw', width: '100%' }}>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { overflow-x: hidden; max-width: 100vw; background: #0E0E0F; }
+        .tab-strip::-webkit-scrollbar { display: none; }
       `}</style>
 
       <NavBar trainerName={profile?.full_name} />
 
-      <div style={{ maxWidth: '560px', margin: '0 auto', padding: '20px 16px', width: '100%' }}>
+      <div style={{ maxWidth: '560px', margin: '0 auto', padding: '20px 16px 48px', width: '100%' }}>
 
+        <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '24px' }}>Settings</h1>
 
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#ffffff', fontFamily: '"Exo 2", sans-serif', marginBottom: '8px' }}>Settings</h1>
-          <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '32px' }}>Set your default session rates for revenue tracking</p>
+        {/* TAB STRIP */}
+        <div
+          className="tab-strip"
+          style={{ display: 'flex', overflowX: 'auto', borderBottom: '1px solid #2A2A2D', marginBottom: '28px', scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}>
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => handleTabClick(tab.id)}
+              style={{
+                flexShrink: 0,
+                padding: '10px 16px',
+                background: 'none',
+                border: 'none',
+                borderBottom: `2px solid ${activeTab === tab.id ? GREEN : 'transparent'}`,
+                marginBottom: '-1px',
+                fontSize: '14px',
+                fontWeight: 600,
+                color: activeTab === tab.id ? '#ffffff' : '#9A9A9F',
+                cursor: 'pointer',
+                transition: 'color 0.15s',
+                whiteSpace: 'nowrap' as const,
+              }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-          <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* ── ACCOUNT TAB ──────────────────────────────────────────────────── */}
+        {activeTab === 'account' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Session rates</div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Individual session rate</label>
-                <div style={{ display: 'flex', alignItems: 'center', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', overflow: 'hidden' }}>
-                  <span style={{ padding: '11px 14px', fontSize: '14px', color: '#9A9A9F', borderRight: '1px solid #2A2A2D' }}>$</span>
-                  <input
-                    style={{ flex: 1, background: 'transparent', border: 'none', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none' }}
-                    type="number" min="0" step="0.01" placeholder="0.00"
-                    value={individualRate}
-                    onChange={e => setIndividualRate(e.target.value)}
-                  />
-                  <span style={{ padding: '11px 14px', fontSize: '13px', color: '#9A9A9F' }}>per session</span>
-                </div>
-                <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Applied to 1-on-1 training sessions</span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Group session rate <span style={{ fontSize: '11px', color: '#9A9A9F', fontWeight: 400 }}>(per player)</span></label>
-                <div style={{ display: 'flex', alignItems: 'center', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', overflow: 'hidden' }}>
-                  <span style={{ padding: '11px 14px', fontSize: '14px', color: '#9A9A9F', borderRight: '1px solid #2A2A2D' }}>$</span>
-                  <input
-                    style={{ flex: 1, background: 'transparent', border: 'none', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none' }}
-                    type="number" min="0" step="0.01" placeholder="0.00"
-                    value={groupRate}
-                    onChange={e => setGroupRate(e.target.value)}
-                  />
-                  <span style={{ padding: '11px 14px', fontSize: '13px', color: '#9A9A9F' }}>per session</span>
-                </div>
-                <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Rate per player · multiplied by attendance at each session</span>
-              </div>
-            </div>
-
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Account</div>
+            <div style={card}>
+              <div style={sectionLabel}>Account</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #2A2A2D' }}>
                 <span style={{ fontSize: '13px', color: '#9A9A9F' }}>Name</span>
                 <span style={{ fontSize: '13px', color: '#ffffff' }}>{profile?.full_name}</span>
@@ -428,36 +422,46 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
               </div>
             </div>
 
-            {error && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{error}</p>}
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Welcome email</div>
-                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Sent automatically to parents when you add a new player. Leave blank to skip.</div>
+            <div style={card}>
+              <div style={sectionLabel}>Change password</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>New password</label>
+                <input
+                  style={fieldInput} type="password" placeholder="Min. 8 characters" minLength={8}
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Message</label>
-                <textarea
-                  value={welcomeMessage}
-                  onChange={e => setWelcomeMessage(e.target.value)}
-                  placeholder={`Hi! I'm excited to start working with your player. Through SkillPathIQ you'll be able to track their progress, see their drill assignments, and stay updated after every session. I'll send updates after each session — looking forward to getting started!`}
-                  rows={6}
-                  style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', resize: 'vertical' as const, fontFamily: 'sans-serif', lineHeight: 1.6 }}
+                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Confirm new password</label>
+                <input
+                  style={fieldInput} type="password" placeholder="Repeat new password" minLength={8}
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
                 />
-                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>The player&apos;s profile link will be included automatically.</div>
               </div>
+              {passwordError && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{passwordError}</p>}
+              {passwordSaved && <p style={{ fontSize: '13px', color: GREEN, background: 'rgba(0,255,159,0.06)', border: '1px solid rgba(0,255,159,0.2)', borderRadius: '8px', padding: '10px 14px' }}>Password updated successfully</p>}
               <button
                 type="button"
-                onClick={handleSaveWelcome}
-                disabled={welcomeLoading}
-                style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
-                {welcomeSaved ? '✓ Saved!' : welcomeLoading ? 'Saving...' : 'Save welcome message'}
+                onClick={handlePasswordChange}
+                disabled={passwordLoading || !newPassword}
+                style={saveBtn(!!newPassword)}>
+                {passwordSaved ? '✓ Updated!' : passwordLoading ? 'Updating...' : 'Update password'}
               </button>
             </div>
-            {/* PUBLIC PROFILE */}
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+          </div>
+        )}
+
+        {/* ── PUBLIC PROFILE TAB ───────────────────────────────────────────── */}
+        {activeTab === 'public_profile' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+            <div style={card}>
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Public profile</div>
-                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Let parents find and book you at your personal link</div>
+                <div style={sectionLabel}>Public profile</div>
+                <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '4px' }}>Let parents find and book you at your personal link</div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -466,10 +470,9 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                   <span style={{ padding: '11px 12px', fontSize: '13px', color: '#555558', borderRight: '1px solid #2A2A2D', whiteSpace: 'nowrap' as const }}>skillpathiq.com/t/</span>
                   <input
                     style={{ flex: 1, background: 'transparent', border: 'none', padding: '11px 12px', fontSize: '14px', color: '#ffffff', outline: 'none', minWidth: 0 }}
-                    type="text"
-                    placeholder="yourname"
+                    type="text" placeholder="yourname"
                     value={username}
-                    onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                    onChange={e => { setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '')); markDirty('public_profile') }}
                   />
                 </div>
                 <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Letters, numbers, hyphens, underscores only</span>
@@ -479,7 +482,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                 <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Bio <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
                 <textarea
                   value={bio}
-                  onChange={e => setBio(e.target.value)}
+                  onChange={e => { setBio(e.target.value); markDirty('public_profile') }}
                   placeholder="Tell parents about your experience, coaching style, or specialties..."
                   rows={3}
                   style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', resize: 'vertical' as const, fontFamily: 'sans-serif', lineHeight: 1.6 }}
@@ -489,23 +492,11 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Sport <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
-                  <input
-                    style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
-                    type="text"
-                    placeholder="Basketball"
-                    value={sport}
-                    onChange={e => setSport(e.target.value)}
-                  />
+                  <input style={fieldInput} type="text" placeholder="Basketball" value={sport} onChange={e => { setSport(e.target.value); markDirty('public_profile') }} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Location <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
-                  <input
-                    style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
-                    type="text"
-                    placeholder="Chicago, IL"
-                    value={location}
-                    onChange={e => setLocation(e.target.value)}
-                  />
+                  <input style={fieldInput} type="text" placeholder="Chicago, IL" value={location} onChange={e => { setLocation(e.target.value); markDirty('public_profile') }} />
                 </div>
               </div>
 
@@ -516,19 +507,19 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                 </div>
                 <button
                   type="button"
-                  onClick={() => setPublicProfileEnabled(!publicProfileEnabled)}
-                  style={{ width: '44px', height: '24px', borderRadius: '12px', border: 'none', background: publicProfileEnabled ? '#00FF9F' : '#2A2A2D', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
+                  onClick={() => { setPublicProfileEnabled(p => !p); markDirty('public_profile') }}
+                  style={{ width: '44px', height: '24px', borderRadius: '12px', border: 'none', background: publicProfileEnabled ? GREEN : '#2A2A2D', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
                   <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#ffffff', position: 'absolute', top: '3px', left: publicProfileEnabled ? '23px' : '3px', transition: 'left 0.2s' }} />
                 </button>
               </div>
 
               {profileUrl && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 14px' }}>
-                  <span style={{ flex: 1, fontSize: '13px', color: '#00FF9F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{profileUrl}</span>
+                  <span style={{ flex: 1, fontSize: '13px', color: GREEN, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{profileUrl}</span>
                   <button
                     type="button"
                     onClick={() => { navigator.clipboard.writeText(profileUrl); setCopiedProfileUrl(true); setTimeout(() => setCopiedProfileUrl(false), 2000) }}
-                    style={{ fontSize: '12px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: copiedProfileUrl ? '#00FF9F' : '#9A9A9F', cursor: 'pointer', flexShrink: 0, fontWeight: 600 }}>
+                    style={{ fontSize: '12px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: copiedProfileUrl ? GREEN : '#9A9A9F', cursor: 'pointer', flexShrink: 0, fontWeight: 600 }}>
                     {copiedProfileUrl ? '✓ Copied' : 'Copy'}
                   </button>
                   <a href={profileUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer', flexShrink: 0, fontWeight: 600, textDecoration: 'none' }}>Preview</a>
@@ -537,20 +528,44 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
 
               {profileError && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px', margin: 0 }}>{profileError}</p>}
 
-              <button
-                type="button"
-                onClick={handleSavePublicProfile}
-                disabled={profileSaving}
-                style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+              <button type="button" onClick={handleSavePublicProfile} disabled={profileSaving} style={saveBtn(true)}>
                 {profileSaved ? '✓ Saved!' : profileSaving ? 'Saving...' : 'Save public profile'}
               </button>
             </div>
 
-            {/* SCHEDULING */}
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={card}>
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Scheduling</div>
-                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Choose how parents book sessions with you</div>
+                <div style={sectionLabel}>Welcome email</div>
+                <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '4px' }}>Sent automatically to parents when you add a new player. Leave blank to skip.</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Message</label>
+                <textarea
+                  value={welcomeMessage}
+                  onChange={e => { setWelcomeMessage(e.target.value); markDirty('public_profile') }}
+                  placeholder={`Hi! I'm excited to start working with your player. Through SkillPathIQ you'll be able to track their progress, see their drill assignments, and stay updated after every session. I'll send updates after each session — looking forward to getting started!`}
+                  rows={6}
+                  style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%', resize: 'vertical' as const, fontFamily: 'sans-serif', lineHeight: 1.6 }}
+                />
+                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>The player&apos;s profile link will be included automatically.</div>
+              </div>
+              <button type="button" onClick={handleSaveWelcome} disabled={welcomeLoading} style={saveBtn(true)}>
+                {welcomeSaved ? '✓ Saved!' : welcomeLoading ? 'Saving...' : 'Save welcome message'}
+              </button>
+            </div>
+
+          </div>
+        )}
+
+        {/* ── SCHEDULING TAB ───────────────────────────────────────────────── */}
+        {activeTab === 'scheduling' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+            {/* Scheduling mode + Calendly */}
+            <div style={card}>
+              <div>
+                <div style={sectionLabel}>Scheduling</div>
+                <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '4px' }}>Choose how parents book sessions with you</div>
               </div>
 
               <div>
@@ -564,13 +579,8 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                     <button
                       key={opt.value}
                       type="button"
-                      onClick={() => { setSchedulingMode(opt.value); setCalendlyError(null) }}
-                      style={{
-                        flex: 1, padding: '9px 8px', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                        background: schedulingMode === opt.value ? '#00FF9F' : 'transparent',
-                        color: schedulingMode === opt.value ? '#0E0E0F' : '#9A9A9F',
-                        transition: 'all 0.15s',
-                      }}>
+                      onClick={() => { setSchedulingMode(opt.value); setCalendlyError(null); markDirty('scheduling') }}
+                      style={{ flex: 1, padding: '9px 8px', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer', background: schedulingMode === opt.value ? GREEN : 'transparent', color: schedulingMode === opt.value ? '#0E0E0F' : '#9A9A9F', transition: 'all 0.15s' }}>
                       {opt.label}
                     </button>
                   ))}
@@ -581,11 +591,10 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Your Calendly link <span style={{ color: '#E03131' }}>*</span></label>
                   <input
-                    type="url"
-                    placeholder="https://calendly.com/yourname"
+                    type="url" placeholder="https://calendly.com/yourname"
                     value={calendlyUrl}
-                    onChange={e => setCalendlyUrl(e.target.value)}
-                    style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
+                    onChange={e => { setCalendlyUrl(e.target.value); markDirty('scheduling') }}
+                    style={fieldInput}
                   />
                   {calendlyError && <p style={{ fontSize: '12px', color: '#E03131', margin: 0 }}>{calendlyError}</p>}
                 </div>
@@ -596,17 +605,13 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Post-booking intake link</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 14px' }}>
-                      <span style={{ flex: 1, fontSize: '13px', color: '#00FF9F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                      <span style={{ flex: 1, fontSize: '13px', color: GREEN, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                         {`https://skillpathiq.com/intake/${username.trim().toLowerCase()}`}
                       </span>
                       <button
                         type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(`https://skillpathiq.com/intake/${username.trim().toLowerCase()}`)
-                          setCopiedIntakeUrl(true)
-                          setTimeout(() => setCopiedIntakeUrl(false), 2000)
-                        }}
-                        style={{ fontSize: '12px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: copiedIntakeUrl ? '#00FF9F' : '#9A9A9F', cursor: 'pointer', flexShrink: 0, fontWeight: 600 }}>
+                        onClick={() => { navigator.clipboard.writeText(`https://skillpathiq.com/intake/${username.trim().toLowerCase()}`); setCopiedIntakeUrl(true); setTimeout(() => setCopiedIntakeUrl(false), 2000) }}
+                        style={{ fontSize: '12px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: copiedIntakeUrl ? GREEN : '#9A9A9F', cursor: 'pointer', flexShrink: 0, fontWeight: 600 }}>
                         {copiedIntakeUrl ? '✓ Copied' : 'Copy'}
                       </button>
                     </div>
@@ -614,16 +619,10 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                       Paste this link into Calendly as your confirmation redirect URL. After a parent books via Calendly, they&apos;ll be sent here to complete their player profile.
                     </p>
                   </div>
-
                   <div style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '14px' }}>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', marginBottom: '10px' }}>How to set this up in Calendly:</div>
                     <ol style={{ paddingLeft: '16px', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {[
-                        'Open your Calendly event type',
-                        'Go to Confirmation Page settings',
-                        "Select 'Redirect to an external site'",
-                        'Paste the link above',
-                      ].map((step, i) => (
+                      {['Open your Calendly event type', 'Go to Confirmation Page settings', "Select 'Redirect to an external site'", 'Paste the link above'].map((step, i) => (
                         <li key={i} style={{ fontSize: '12px', color: '#555558' }}>{step}</li>
                       ))}
                     </ol>
@@ -631,23 +630,19 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                 </>
               )}
 
-              <button
-                type="button"
-                onClick={handleSaveScheduling}
-                disabled={calendlySaving}
-                style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+              <button type="button" onClick={handleSaveScheduling} disabled={calendlySaving} style={saveBtn(true)}>
                 {calendlySaved ? '✓ Saved!' : calendlySaving ? 'Saving...' : 'Save scheduling'}
               </button>
             </div>
 
-            {/* AVAILABILITY */}
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Availability */}
+            <div style={{ ...card, gap: '20px' }}>
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Availability</div>
-                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Shown on your public profile to help parents choose a time</div>
+                <div style={sectionLabel}>Availability</div>
+                <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '4px' }}>Shown on your public profile to help parents choose a time</div>
               </div>
 
-              {/* SESSION DURATIONS */}
+              {/* Session Durations */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Session Durations</div>
                 {durations.length > 0 && (
@@ -663,18 +658,13 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                 {durations.length < 5 && (
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <input
-                      type="text"
-                      placeholder='e.g. "60 min" or "1 hour"'
+                      type="text" placeholder='e.g. "60 min" or "1 hour"'
                       value={newDurationLabel}
                       onChange={e => setNewDurationLabel(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddDuration())}
                       style={{ flex: 1, background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 12px', fontSize: '14px', color: '#ffffff', outline: 'none' }}
                     />
-                    <button
-                      type="button"
-                      onClick={handleAddDuration}
-                      disabled={addingDuration || !newDurationLabel.trim()}
-                      style={{ background: newDurationLabel.trim() ? '#00FF9F' : '#2A2A2D', color: newDurationLabel.trim() ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: 700, cursor: newDurationLabel.trim() ? 'pointer' : 'default' }}>
+                    <button type="button" onClick={handleAddDuration} disabled={addingDuration || !newDurationLabel.trim()} style={{ background: newDurationLabel.trim() ? GREEN : '#2A2A2D', color: newDurationLabel.trim() ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: 700, cursor: newDurationLabel.trim() ? 'pointer' : 'default' }}>
                       {addingDuration ? '...' : 'Add'}
                     </button>
                   </div>
@@ -682,12 +672,12 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                 {durationError && <p style={{ fontSize: '12px', color: '#E03131', margin: 0 }}>{durationError}</p>}
               </div>
 
-              {/* AVAILABILITY WINDOWS */}
+              {/* Availability Windows */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Availability Windows</div>
                   {!windowFormOpen && (
-                    <button type="button" onClick={openAddWindow} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.3)', background: 'transparent', color: '#00FF9F', cursor: 'pointer', fontWeight: 600 }}>+ Add</button>
+                    <button type="button" onClick={openAddWindow} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.3)', background: 'transparent', color: GREEN, cursor: 'pointer', fontWeight: 600 }}>+ Add</button>
                   )}
                 </div>
 
@@ -701,16 +691,12 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'capitalize' }}>{w.day_of_week}</span>
                           <span style={{ fontSize: '12px', color: '#9A9A9F' }}>{formatTime(w.start_time)} – {formatTime(w.end_time)}</span>
-                          <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '99px', fontWeight: 600, background: w.session_type === 'individual' ? 'rgba(74,158,255,0.15)' : w.session_type === 'group' ? 'rgba(245,166,35,0.15)' : 'rgba(0,255,159,0.12)', color: w.session_type === 'individual' ? '#4A9EFF' : w.session_type === 'group' ? '#F5A623' : '#00FF9F' }}>
+                          <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '99px', fontWeight: 600, background: w.session_type === 'individual' ? 'rgba(74,158,255,0.15)' : w.session_type === 'group' ? 'rgba(245,166,35,0.15)' : 'rgba(0,255,159,0.12)', color: w.session_type === 'individual' ? '#4A9EFF' : w.session_type === 'group' ? '#F5A623' : GREEN }}>
                             {w.session_type === 'individual' ? 'Individual' : w.session_type === 'group' ? 'Group' : 'Both'}
                           </span>
                           {w.display_label && <span style={{ fontSize: '12px', color: '#9A9A9F', fontStyle: 'italic' }}>{w.display_label}</span>}
                         </div>
-                        {slots.length > 0 && (
-                          <div style={{ fontSize: '11px', color: '#555558', marginTop: '4px' }}>
-                            {slotPreview}{extra}
-                          </div>
-                        )}
+                        {slots.length > 0 && <div style={{ fontSize: '11px', color: '#555558', marginTop: '4px' }}>{slotPreview}{extra}</div>}
                       </div>
                       <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                         <button type="button" onClick={() => openEditWindow(w)} style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Edit</button>
@@ -723,32 +709,22 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                 {windowFormOpen && (
                   <div style={{ background: '#0E0E0F', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{editingWindowId ? 'Edit window' : 'Add window'}</div>
-
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                       <div>
                         <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Day</label>
-                        <select
-                          value={windowForm.day_of_week}
-                          onChange={e => setWindowForm(prev => ({ ...prev, day_of_week: e.target.value }))}
-                          style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
-                          {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(d => (
-                            <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>
-                          ))}
+                        <select value={windowForm.day_of_week} onChange={e => setWindowForm(prev => ({ ...prev, day_of_week: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
+                          {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
                         </select>
                       </div>
                       <div>
                         <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Session type</label>
-                        <select
-                          value={windowForm.session_type}
-                          onChange={e => setWindowForm(prev => ({ ...prev, session_type: e.target.value }))}
-                          style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
+                        <select value={windowForm.session_type} onChange={e => setWindowForm(prev => ({ ...prev, session_type: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
                           <option value="both">Both</option>
                           <option value="individual">Individual</option>
                           <option value="group">Group</option>
                         </select>
                       </div>
                     </div>
-
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                       <div>
                         <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Start time</label>
@@ -759,59 +735,39 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                         <input type="time" value={windowForm.end_time} onChange={e => setWindowForm(prev => ({ ...prev, end_time: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
                       </div>
                     </div>
-
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                       <div>
                         <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Session duration <span style={{ color: '#E03131' }}>*</span></label>
                         {durations.length === 0 ? (
                           <div style={{ fontSize: '12px', color: '#9A9A9F', padding: '9px 10px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px' }}>Add session durations above first</div>
                         ) : (
-                          <select
-                            value={windowForm.duration_id}
-                            onChange={e => setWindowForm(prev => ({ ...prev, duration_id: e.target.value }))}
-                            style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
-                            {durations.map(d => (
-                              <option key={d.id} value={d.id}>{d.label}</option>
-                            ))}
+                          <select value={windowForm.duration_id} onChange={e => setWindowForm(prev => ({ ...prev, duration_id: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
+                            {durations.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
                           </select>
                         )}
                       </div>
                       <div>
                         <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Buffer between slots</label>
-                        <select
-                          value={windowForm.buffer_minutes}
-                          onChange={e => setWindowForm(prev => ({ ...prev, buffer_minutes: e.target.value }))}
-                          style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
+                        <select value={windowForm.buffer_minutes} onChange={e => setWindowForm(prev => ({ ...prev, buffer_minutes: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
                           <option value="0">None</option>
                           <option value="15">15 min</option>
                           <option value="30">30 min</option>
                         </select>
                       </div>
                     </div>
-
                     {windowForm.session_type !== 'individual' && (
                       <div>
                         <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Max group capacity <span style={{ color: '#555558', fontWeight: 400 }}>(optional)</span></label>
-                        <input
-                          type="number"
-                          min="1"
-                          placeholder="e.g. 8"
-                          value={windowForm.max_capacity}
-                          onChange={e => setWindowForm(prev => ({ ...prev, max_capacity: e.target.value }))}
-                          style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}
-                        />
+                        <input type="number" min="1" placeholder="e.g. 8" value={windowForm.max_capacity} onChange={e => setWindowForm(prev => ({ ...prev, max_capacity: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
                       </div>
                     )}
-
                     <div>
                       <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Label <span style={{ color: '#555558', fontWeight: 400 }}>(optional)</span></label>
                       <input type="text" placeholder='e.g. "Group training only"' value={windowForm.display_label} onChange={e => setWindowForm(prev => ({ ...prev, display_label: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
                     </div>
-
                     {windowError && <p style={{ fontSize: '12px', color: '#E03131', margin: 0 }}>{windowError}</p>}
-
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button type="button" onClick={handleSaveWindow} disabled={savingWindow || durations.length === 0} style={{ flex: 1, background: durations.length > 0 ? '#00FF9F' : '#2A2A2D', color: durations.length > 0 ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '13px', fontWeight: 700, cursor: durations.length > 0 ? 'pointer' : 'default' }}>
+                      <button type="button" onClick={handleSaveWindow} disabled={savingWindow || durations.length === 0} style={{ flex: 1, background: durations.length > 0 ? GREEN : '#2A2A2D', color: durations.length > 0 ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '13px', fontWeight: 700, cursor: durations.length > 0 ? 'pointer' : 'default' }}>
                         {savingWindow ? 'Saving...' : editingWindowId ? 'Save changes' : 'Add window'}
                       </button>
                       <button type="button" onClick={() => { setWindowFormOpen(false); setEditingWindowId(null) }} style={{ flex: 1, background: 'transparent', color: '#9A9A9F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
@@ -824,11 +780,10 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                 )}
               </div>
 
-              {/* BLACKOUT DATES */}
+              {/* Blackout Dates */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Blackout Dates</div>
                 <div style={{ fontSize: '12px', color: '#555558' }}>Mark dates when you&apos;re unavailable — those days won&apos;t appear on your profile</div>
-
                 {blackouts.map(b => (
                   <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', background: '#0E0E0F', borderRadius: '8px', border: '1px solid #2A2A2D' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -838,28 +793,11 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                     <button type="button" onClick={() => handleDeleteBlackout(b.id)} style={{ background: 'none', border: 'none', color: '#9A9A9F', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0', flexShrink: 0 }}>×</button>
                   </div>
                 ))}
-
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="date"
-                      min={today}
-                      value={newBlackoutDate}
-                      onChange={e => setNewBlackoutDate(e.target.value)}
-                      style={{ flex: 1, background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: newBlackoutDate ? '#ffffff' : '#555558', outline: 'none', colorScheme: 'dark' }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Note (optional)"
-                      value={newBlackoutNote}
-                      onChange={e => setNewBlackoutNote(e.target.value)}
-                      style={{ flex: 1, background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: '#ffffff', outline: 'none' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddBlackout}
-                      disabled={addingBlackout || !newBlackoutDate}
-                      style={{ background: newBlackoutDate ? '#00FF9F' : '#2A2A2D', color: newBlackoutDate ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', fontWeight: 700, cursor: newBlackoutDate ? 'pointer' : 'default', flexShrink: 0 }}>
+                    <input type="date" min={today} value={newBlackoutDate} onChange={e => setNewBlackoutDate(e.target.value)} style={{ flex: 1, background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: newBlackoutDate ? '#ffffff' : '#555558', outline: 'none', colorScheme: 'dark' }} />
+                    <input type="text" placeholder="Note (optional)" value={newBlackoutNote} onChange={e => setNewBlackoutNote(e.target.value)} style={{ flex: 1, background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '9px 12px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
+                    <button type="button" onClick={handleAddBlackout} disabled={addingBlackout || !newBlackoutDate} style={{ background: newBlackoutDate ? GREEN : '#2A2A2D', color: newBlackoutDate ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '9px 14px', fontSize: '13px', fontWeight: 700, cursor: newBlackoutDate ? 'pointer' : 'default', flexShrink: 0 }}>
                       {addingBlackout ? '...' : 'Block'}
                     </button>
                   </div>
@@ -868,53 +806,57 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
               </div>
             </div>
 
-            <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Change password</div>
+          </div>
+        )}
+
+        {/* ── MY RATES TAB ─────────────────────────────────────────────────── */}
+        {activeTab === 'rates' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+            <div style={card}>
+              <div style={sectionLabel}>Session rates</div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>New password</label>
-                <input
-                  style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
-                  type="password" placeholder="Min. 8 characters"
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  minLength={8}
-                />
+                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Individual session rate</label>
+                <div style={{ display: 'flex', alignItems: 'center', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', overflow: 'hidden' }}>
+                  <span style={{ padding: '11px 14px', fontSize: '14px', color: '#9A9A9F', borderRight: '1px solid #2A2A2D' }}>$</span>
+                  <input
+                    style={{ flex: 1, background: 'transparent', border: 'none', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none' }}
+                    type="number" min="0" step="0.01" placeholder="0.00"
+                    value={individualRate}
+                    onChange={e => { setIndividualRate(e.target.value); markDirty('rates') }}
+                  />
+                  <span style={{ padding: '11px 14px', fontSize: '13px', color: '#9A9A9F' }}>per session</span>
+                </div>
+                <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Applied to 1-on-1 training sessions</span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Confirm new password</label>
-                <input
-                  style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none', width: '100%' }}
-                  type="password" placeholder="Repeat new password"
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  minLength={8}
-                />
+                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Group session rate <span style={{ fontSize: '11px', color: '#9A9A9F', fontWeight: 400 }}>(per player)</span></label>
+                <div style={{ display: 'flex', alignItems: 'center', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', overflow: 'hidden' }}>
+                  <span style={{ padding: '11px 14px', fontSize: '14px', color: '#9A9A9F', borderRight: '1px solid #2A2A2D' }}>$</span>
+                  <input
+                    style={{ flex: 1, background: 'transparent', border: 'none', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none' }}
+                    type="number" min="0" step="0.01" placeholder="0.00"
+                    value={groupRate}
+                    onChange={e => { setGroupRate(e.target.value); markDirty('rates') }}
+                  />
+                  <span style={{ padding: '11px 14px', fontSize: '13px', color: '#9A9A9F' }}>per session</span>
+                </div>
+                <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Rate per player · multiplied by attendance at each session</span>
               </div>
 
-              {passwordError && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{passwordError}</p>}
-              {passwordSaved && <p style={{ fontSize: '13px', color: '#00FF9F', background: 'rgba(0,255,159,0.06)', border: '1px solid rgba(0,255,159,0.2)', borderRadius: '8px', padding: '10px 14px' }}>Password updated successfully</p>}
+              {ratesError && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{ratesError}</p>}
 
-              <button
-                type="button"
-                onClick={handlePasswordChange}
-                disabled={passwordLoading || !newPassword}
-                style={{ background: newPassword ? '#00FF9F' : '#2A2A2D', color: newPassword ? '#0E0E0F' : '#9A9A9F', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '15px', fontWeight: 700, cursor: newPassword ? 'pointer' : 'default' }}>
-                {passwordSaved ? '✓ Password updated!' : passwordLoading ? 'Updating...' : 'Update password'}
+              <button type="button" onClick={handleSaveRates} disabled={ratesLoading} style={saveBtn(true)}>
+                {ratesSaved ? '✓ Saved!' : ratesLoading ? 'Saving...' : 'Save rates'}
               </button>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', marginBottom: '32px' }}>
-              {saved ? '✓ Saved!' : loading ? 'Saving...' : 'Save settings'}
-            </button>
+          </div>
+        )}
 
-          </form>
-        </div>
       </div>
-
+    </div>
   )
 }
