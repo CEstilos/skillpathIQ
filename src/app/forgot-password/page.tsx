@@ -20,9 +20,9 @@ export default function ForgotPasswordPage() {
     setLoading(true)
     setError(null)
 
-    // redirectTo must be in Supabase's redirect URL allowlist
-    const redirectTo = `${window.location.origin}/reset-password`
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: 'https://skillpathiq.com/reset-password',
+    })
 
     setLoading(false)
     if (error) {
