@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
     setError(null)
 
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: 'https://skillpathiq.com/reset-password',
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     })
 
     setLoading(false)

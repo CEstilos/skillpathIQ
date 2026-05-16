@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -13,31 +13,6 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [exchanging, setExchanging] = useState(true)
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const errorCode = params.get('error_code')
-    const code = params.get('code')
-
-    if (errorCode) {
-      setError('This link has expired.')
-      setExchanging(false)
-      return
-    }
-
-    if (code) {
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        if (error) setError('This link has expired.')
-        setExchanging(false)
-      })
-    } else {
-      // No code — link may already have been used or is malformed
-      setError('Invalid or expired reset link.')
-      setExchanging(false)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -76,21 +51,6 @@ export default function ResetPasswordPage() {
             <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>Password updated.</h1>
             <p style={{ fontSize: '14px', color: '#9A9A9F' }}>Redirecting you to login…</p>
           </div>
-        ) : exchanging ? (
-          <div>
-            <p style={{ fontSize: '14px', color: '#9A9A9F' }}>Verifying your link…</p>
-          </div>
-        ) : error && !error.includes('characters') && !error.includes('match') ? (
-          <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#ffffff', marginBottom: '12px' }}>Link expired</h1>
-            <p style={{ fontSize: '14px', color: '#9A9A9F', marginBottom: '24px' }}>{error}</p>
-            <Link
-              href="/forgot-password"
-              style={{ display: 'inline-block', background: '#00FF9F', color: '#0E0E0F', textDecoration: 'none', borderRadius: '8px', padding: '11px 20px', fontSize: '14px', fontWeight: 600 }}
-            >
-              Request a new link
-            </Link>
-          </div>
         ) : (
           <>
             <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>Choose a new password</h1>
@@ -123,7 +83,10 @@ export default function ResetPasswordPage() {
 
               {error && (
                 <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>
-                  {error}
+                  {error}{' '}
+                  {error.includes('expired') && (
+                    <Link href="/forgot-password" style={{ color: '#E03131', fontWeight: 600 }}>Request a new one.</Link>
+                  )}
                 </p>
               )}
 
