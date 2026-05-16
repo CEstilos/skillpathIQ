@@ -4,10 +4,9 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 
-// SETUP: In Supabase Dashboard → Authentication → URL Configuration,
-// add your domain to "Redirect URLs" so the reset email link is accepted.
-// The redirectTo below points to your auth callback, which then forwards
-// to /reset-password once the session is established.
+// SETUP: In Supabase Dashboard → Authentication → URL Configuration → Redirect URLs,
+// add https://skillpathiq.com/reset-password (and http://localhost:3000/reset-password
+// for local dev). Without this the email link will redirect to the site root.
 
 export default function ForgotPasswordPage() {
   const supabase = createClient()
@@ -21,7 +20,8 @@ export default function ForgotPasswordPage() {
     setLoading(true)
     setError(null)
 
-    const redirectTo = `${window.location.origin}/auth/callback?next=/reset-password`
+    // redirectTo must be in Supabase's redirect URL allowlist
+    const redirectTo = `${window.location.origin}/reset-password`
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
 
     setLoading(false)
