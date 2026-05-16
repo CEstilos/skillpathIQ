@@ -22,12 +22,18 @@ function emailHtml(body: string) {
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const next = searchParams.get('next')
+
+  // Validate next param — only allow internal paths
+  const redirectTo = next?.startsWith('/') ? next : '/dashboard'
+  const isRecovery = redirectTo === '/reset-password'
 
   if (code) {
     const supabase = await createServerSupabaseClient()
     const { data: { session } } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (session?.user) {
+    // Skip welcome email for password recovery flows
+    if (session?.user && !isRecovery) {
       try {
         const supabaseAdmin = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -80,5 +86,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/dashboard`)
+  return NextResponse.redirect(`${origin}${redirectTo}`)
 }
