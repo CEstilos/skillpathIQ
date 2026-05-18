@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     request_type = 'new_player',
     player_id,
     parent_name, parent_email, parent_phone,
-    player_name, player_age, player_position, player_goals,
+    player_name, player_age, player_gender, player_position, player_goals,
     preferred_session_type, message,
     preferred_slots,
   } = body
@@ -220,7 +220,7 @@ export async function POST(request: Request) {
       `You have a new session request from ${resolvedParentName} for ${resolvedPlayerName}.`,
       ``,
       `Request details:`,
-      `  Player: ${resolvedPlayerName}${resolvedPlayerAge ? `, age ${resolvedPlayerAge}` : ''}`,
+      `  Player: ${resolvedPlayerName}${resolvedPlayerAge ? `, age ${resolvedPlayerAge}` : ''}${player_gender ? ` (${player_gender === 'boy' ? 'Boy' : 'Girl'})` : ''}`,
       player_position ? `  Position: ${player_position}` : null,
       `  Session type: ${preferred_session_type === 'group' ? 'Group' : '1-on-1'}`,
       player_goals ? `  Goals: ${player_goals}` : null,

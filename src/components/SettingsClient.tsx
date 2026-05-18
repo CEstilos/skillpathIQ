@@ -66,6 +66,9 @@ interface AvailabilityWindow {
   duration_minutes: number
   buffer_minutes: number
   max_capacity: number | null
+  gender_restriction: string | null
+  min_age: number | null
+  max_age: number | null
 }
 
 interface SessionDuration {
@@ -240,6 +243,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
     day_of_week: 'monday', start_time: '', end_time: '',
     session_type: 'both', display_label: '', duration_id: '',
     buffer_minutes: '0', max_capacity: '',
+    gender_restriction: '', min_age: '', max_age: '',
   })
   const [savingWindow, setSavingWindow] = useState(false)
   const [windowError, setWindowError] = useState<string | null>(null)
@@ -284,7 +288,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
 
   function openAddWindow() {
     setEditingWindowId(null)
-    setWindowForm({ day_of_week: 'monday', start_time: '', end_time: '', session_type: 'both', display_label: '', duration_id: durations[0]?.id || '', buffer_minutes: '0', max_capacity: '' })
+    setWindowForm({ day_of_week: 'monday', start_time: '', end_time: '', session_type: 'both', display_label: '', duration_id: durations[0]?.id || '', buffer_minutes: '0', max_capacity: '', gender_restriction: '', min_age: '', max_age: '' })
     setWindowError(null)
     setWindowFormOpen(true)
   }
@@ -297,6 +301,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
       session_type: w.session_type, display_label: w.display_label || '',
       duration_id: matchingDuration?.id || durations[0]?.id || '',
       buffer_minutes: w.buffer_minutes.toString(), max_capacity: w.max_capacity?.toString() || '',
+      gender_restriction: w.gender_restriction || '', min_age: w.min_age?.toString() || '', max_age: w.max_age?.toString() || '',
     })
     setWindowError(null)
     setWindowFormOpen(true)
@@ -315,6 +320,9 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
       day_of_week: windowForm.day_of_week, start_time: windowForm.start_time, end_time: windowForm.end_time,
       session_type: windowForm.session_type, display_label: windowForm.display_label.trim() || null,
       duration_minutes: selectedDuration.duration_minutes, buffer_minutes: bufferMins, max_capacity: maxCap,
+      gender_restriction: windowForm.gender_restriction || null,
+      min_age: windowForm.min_age ? parseInt(windowForm.min_age) : null,
+      max_age: windowForm.max_age ? parseInt(windowForm.max_age) : null,
     }
     if (editingWindowId) {
       const { data, error } = await supabase.from('trainer_availability_windows').update(payload).eq('id', editingWindowId).select().single()
@@ -695,6 +703,14 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                             {w.session_type === 'individual' ? 'Individual' : w.session_type === 'group' ? 'Group' : 'Both'}
                           </span>
                           {w.display_label && <span style={{ fontSize: '12px', color: '#9A9A9F', fontStyle: 'italic' }}>{w.display_label}</span>}
+                          {(w.gender_restriction || w.min_age || w.max_age) && (
+                            <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '99px', fontWeight: 600, background: 'rgba(245,166,35,0.12)', color: '#F5A623' }}>
+                              {[
+                                w.gender_restriction === 'boys' ? 'Boys' : w.gender_restriction === 'girls' ? 'Girls' : null,
+                                w.min_age && w.max_age ? `Ages ${w.min_age}–${w.max_age}` : w.min_age ? `${w.min_age}+` : w.max_age ? `U${w.max_age + 1}` : null,
+                              ].filter(Boolean).join(' · ')}
+                            </span>
+                          )}
                         </div>
                         {slots.length > 0 && <div style={{ fontSize: '11px', color: '#555558', marginTop: '4px' }}>{slotPreview}{extra}</div>}
                       </div>
@@ -761,6 +777,21 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                         <input type="number" min="1" placeholder="e.g. 8" value={windowForm.max_capacity} onChange={e => setWindowForm(prev => ({ ...prev, max_capacity: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
                       </div>
                     )}
+                    <div>
+                      <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Player gender <span style={{ color: '#555558', fontWeight: 400 }}>(optional)</span></label>
+                      <select value={windowForm.gender_restriction} onChange={e => setWindowForm(prev => ({ ...prev, gender_restriction: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
+                        <option value="">Any gender</option>
+                        <option value="boys">Boys only</option>
+                        <option value="girls">Girls only</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Age range <span style={{ color: '#555558', fontWeight: 400 }}>(optional)</span></label>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <input type="number" min="1" max="99" placeholder="Min age" value={windowForm.min_age} onChange={e => setWindowForm(prev => ({ ...prev, min_age: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
+                        <input type="number" min="1" max="99" placeholder="Max age" value={windowForm.max_age} onChange={e => setWindowForm(prev => ({ ...prev, max_age: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
+                      </div>
+                    </div>
                     <div>
                       <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Label <span style={{ color: '#555558', fontWeight: 400 }}>(optional)</span></label>
                       <input type="text" placeholder='e.g. "Group training only"' value={windowForm.display_label} onChange={e => setWindowForm(prev => ({ ...prev, display_label: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />

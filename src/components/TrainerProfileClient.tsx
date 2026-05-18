@@ -42,6 +42,9 @@ interface AvailabilityWindow {
   duration_minutes: number
   buffer_minutes: number
   max_capacity: number | null
+  gender_restriction: string | null
+  min_age: number | null
+  max_age: number | null
 }
 
 interface SessionDuration {
@@ -82,6 +85,7 @@ export default function TrainerProfileClient({
     parentPhone: '',
     playerName: '',
     playerAge: '',
+    playerGender: '',
     playerPosition: '',
     playerGoals: '',
     sessionType: 'individual' as 'individual' | 'group',
@@ -94,6 +98,9 @@ export default function TrainerProfileClient({
 
   function set(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
+    if (field === 'playerGender' || field === 'playerAge') {
+      setSelectedSlots([])
+    }
   }
 
   function toggleSlot(window_id: string, slot_time: string) {
@@ -112,7 +119,7 @@ export default function TrainerProfileClient({
     return selectedSlots.findIndex(s => s.window_id === window_id && s.slot_time === slot_time)
   }
 
-  // Generate all slots grouped by day
+  // Generate all slots grouped by day (used in availability display)
   const slotsByDay = DAY_ORDER.reduce<Record<string, Array<{ window: AvailabilityWindow; time: string }>>>((acc, day) => {
     const dayWindows = sortWindows(availabilityWindows.filter(w => w.day_of_week === day))
     const slots = dayWindows.flatMap(w =>
@@ -122,7 +129,45 @@ export default function TrainerProfileClient({
     return acc
   }, {})
 
-  const hasSlots = Object.keys(slotsByDay).length > 0
+  // Filtered slots for the booking slot picker
+  const playerAge = parseInt(form.playerAge) || null
+  const playerGender = form.playerGender // 'boy' | 'girl' | ''
+
+  function windowMatchesPlayer(w: AvailabilityWindow): boolean {
+    if (w.gender_restriction) {
+      if (playerGender) {
+        const expected = playerGender === 'boy' ? 'boys' : 'girls'
+        if (w.gender_restriction !== expected) return false
+      }
+    }
+    if (playerAge) {
+      if (w.min_age && playerAge < w.min_age) return false
+      if (w.max_age && playerAge > w.max_age) return false
+    }
+    return true
+  }
+
+  const filteredSlotsByDay = DAY_ORDER.reduce<Record<string, Array<{ window: AvailabilityWindow; time: string }>>>((acc, day) => {
+    const dayWindows = sortWindows(availabilityWindows.filter(w => w.day_of_week === day && windowMatchesPlayer(w)))
+    const slots = dayWindows.flatMap(w =>
+      generateSlots(w.start_time, w.end_time, w.duration_minutes, w.buffer_minutes).map(t => ({ window: w, time: t }))
+    )
+    if (slots.length > 0) acc[day] = slots
+    return acc
+  }, {})
+
+  const hasAnySlots = Object.keys(slotsByDay).length > 0
+  const hasSlots = Object.keys(filteredSlotsByDay).length > 0
+  const hasGenderRestrictedWindows = availabilityWindows.some(w => w.gender_restriction)
+
+  function restrictionLabel(w: AvailabilityWindow): string | null {
+    const parts: string[] = []
+    if (w.gender_restriction) parts.push(w.gender_restriction === 'boys' ? 'Boys' : 'Girls')
+    if (w.min_age && w.max_age) parts.push(`Ages ${w.min_age}–${w.max_age}`)
+    else if (w.min_age) parts.push(`${w.min_age}+`)
+    else if (w.max_age) parts.push(`U${w.max_age + 1}`)
+    return parts.length > 0 ? parts.join(' · ') : null
+  }
 
   // Compute upcoming blackout display dates
   const upcomingBlackoutDisplay = upcomingBlackouts
@@ -138,11 +183,15 @@ export default function TrainerProfileClient({
       setError('Player age is required.')
       return
     }
+    if (hasGenderRestrictedWindows && !form.playerGender) {
+      setError('Please select your player\'s gender to see available sessions.')
+      return
+    }
     if (!form.parentPhone.trim()) {
       setError('Phone number is required.')
       return
     }
-    if (hasSlots && selectedSlots.length === 0) {
+    if (hasAnySlots && hasSlots && selectedSlots.length === 0) {
       setError('Please select at least one preferred time.')
       return
     }
@@ -167,6 +216,7 @@ export default function TrainerProfileClient({
           parent_phone: form.parentPhone.trim(),
           player_name: form.playerName.trim(),
           player_age: parseInt(form.playerAge),
+          player_gender: form.playerGender || null,
           player_position: form.playerPosition.trim() || null,
           player_goals: form.playerGoals.trim() || null,
           preferred_session_type: form.sessionType,
@@ -301,6 +351,7 @@ export default function TrainerProfileClient({
                             <span style={{ fontSize: '12px', padding: '2px 7px', borderRadius: '99px', fontWeight: 600, background: badge.bg, color: badge.color }}>
                               {badge.label}{w.max_capacity && w.session_type !== 'individual' ? ` · up to ${w.max_capacity}` : ''}
                             </span>
+                            {(() => { const rl = restrictionLabel(w); return rl ? <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '99px', fontWeight: 600, background: 'rgba(245,166,35,0.12)', color: '#F5A623' }}>{rl}</span> : null })()}
                             {w.display_label && <span style={{ fontSize: '11px', color: '#9A9A9F', fontStyle: 'italic' }}>{w.display_label}</span>}
                           </div>
                           <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '3px' }}>
@@ -373,6 +424,19 @@ export default function TrainerProfileClient({
                 <label style={labelStyle}>Player name <span style={{ color: '#E03131' }}>*</span></label>
                 <input style={inputStyle} type="text" placeholder="Alex Smith" value={form.playerName} onChange={e => set('playerName', e.target.value)} />
               </div>
+              <div>
+                <label style={labelStyle}>
+                  Player gender{hasGenderRestrictedWindows ? <span style={{ color: '#E03131' }}> *</span> : <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}> (optional)</span>}
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  {(['boy', 'girl'] as const).map(g => (
+                    <button key={g} type="button" onClick={() => set('playerGender', form.playerGender === g ? '' : g)}
+                      style={{ padding: '11px', borderRadius: '10px', border: `1px solid ${form.playerGender === g ? 'rgba(0,255,159,0.4)' : '#2A2A2D'}`, background: form.playerGender === g ? 'rgba(0,255,159,0.08)' : 'transparent', color: form.playerGender === g ? GREEN : '#9A9A9F', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'sans-serif' }}>
+                      {g === 'boy' ? 'Boy' : 'Girl'}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={labelStyle}>Age <span style={{ color: '#E03131' }}>*</span></label>
@@ -402,7 +466,7 @@ export default function TrainerProfileClient({
               </div>
 
               {/* RANKED SLOT PICKER */}
-              {hasSlots && (
+              {hasAnySlots && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div>
                     <label style={{ ...labelStyle, marginBottom: '2px' }}>
@@ -414,11 +478,17 @@ export default function TrainerProfileClient({
                     </div>
                   </div>
 
-                  {DAY_ORDER.filter(day => slotsByDay[day]).map(day => (
+                  {!hasSlots && (playerGender || playerAge) && (
+                    <div style={{ padding: '12px 14px', background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '10px', fontSize: '13px', color: '#F5A623' }}>
+                      No available sessions match your player&apos;s profile. Contact {trainer.full_name.split(' ')[0]} directly if you have questions.
+                    </div>
+                  )}
+
+                  {DAY_ORDER.filter(day => filteredSlotsByDay[day]).map(day => (
                     <div key={day}>
                       <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>{day}</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        {slotsByDay[day].map(({ window: w, time }) => {
+                        {filteredSlotsByDay[day].map(({ window: w, time }) => {
                           const rank = slotRank(w.id, time)
                           const isSelected = rank !== -1
                           const badge = sessionTypeBadge(w.session_type)
