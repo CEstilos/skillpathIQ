@@ -26,7 +26,7 @@ interface Drill {
   category: string
 }
 
-interface Player { id: string; full_name: string; group_id: string | null }
+interface Player { id: string; full_name: string }
 interface Group { id: string; name: string; sport: string }
 
 function NewDrillWeekForm() {
@@ -43,6 +43,7 @@ function NewDrillWeekForm() {
   const [selectedPlayer, setSelectedPlayer] = useState(preselectedPlayer || '')
   const [players, setPlayers] = useState<Player[]>([])
   const [groups, setGroups] = useState<Group[]>([])
+  const [groupMembers, setGroupMembers] = useState<{ group_id: string; player_id: string }[]>([])
   const [title, setTitle] = useState('')
   const [weekStart, setWeekStart] = useState(() => {
     const today = new Date()
@@ -67,6 +68,12 @@ const categories = CATEGORIES_BY_SPORT[sport] || DEFAULT_CATEGORIES
       const { data: groupsData } = await supabase.from('groups').select('*').eq('trainer_id', user.id)
       setPlayers(playersData || [])
       setGroups(groupsData || [])
+      if (groupsData && groupsData.length > 0) {
+        const { data: memberRows } = await supabase
+          .from('group_members').select('group_id, player_id')
+          .in('group_id', groupsData.map((g: Group) => g.id))
+        setGroupMembers(memberRows || [])
+      }
       if (preselectedGroup && groupsData) {
         const group = groupsData.find((g: Group) => g.id === preselectedGroup)
         if (group?.sport) setSport(group.sport)
@@ -200,7 +207,7 @@ const categories = CATEGORIES_BY_SPORT[sport] || DEFAULT_CATEGORIES
                         <div>
                           <div style={{ fontSize: '14px', fontWeight: 500, color: isSelected ? '#ffffff' : '#9A9A9F' }}>{g.name}</div>
                           <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '1px' }}>
-                            {players.filter(p => p.group_id === g.id).length} players
+                            {groupMembers.filter(m => m.group_id === g.id).length} players
                           </div>
                         </div>
                       </div>
@@ -229,11 +236,15 @@ const categories = CATEGORIES_BY_SPORT[sport] || DEFAULT_CATEGORIES
                       </div>
                       <div>
                         <div style={{ fontSize: '14px', fontWeight: 500, color: isSelected ? '#ffffff' : '#9A9A9F' }}>{player.full_name}</div>
-                        {player.group_id && (
-                          <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '1px' }}>
-                            {groups.find(g => g.id === player.group_id)?.name || 'Group'}
-                          </div>
-                        )}
+                        {(() => {
+                          const playerGroupIds = groupMembers.filter(m => m.player_id === player.id).map(m => m.group_id)
+                          const firstGroup = playerGroupIds.length > 0 ? groups.find(g => g.id === playerGroupIds[0]) : null
+                          return firstGroup ? (
+                            <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '1px' }}>
+                              {firstGroup.name}
+                            </div>
+                          ) : null
+                        })()}
                       </div>
                     </div>
                   )

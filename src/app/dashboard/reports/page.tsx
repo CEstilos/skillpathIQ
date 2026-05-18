@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-interface Player { id: string; full_name: string; parent_email: string; group_id: string }
+interface Player { id: string; full_name: string; parent_email: string }
 interface DrillWeek { id: string; title: string; week_start: string; group_id: string }
 interface Drill { id: string; title: string; reps: string; drill_week_id: string; sort_order: number }
 interface Completion { id: string; drill_id: string; player_id: string }
@@ -41,8 +41,13 @@ function ReportsView() {
     const { data: groupData } = await supabase.from('groups').select('*').eq('id', groupId).single()
     setGroup(groupData)
 
-    const { data: playersData } = await supabase.from('players').select('*').eq('group_id', groupId)
-    setPlayers(playersData || [])
+    const { data: memberRows } = await supabase
+      .from('group_members').select('player_id').eq('group_id', groupId)
+    const memberIds = (memberRows || []).map(r => r.player_id)
+    const playersData = memberIds.length > 0
+      ? (await supabase.from('players').select('*').in('id', memberIds)).data || []
+      : []
+    setPlayers(playersData)
 
     const { data: weekData } = await supabase
       .from('drill_weeks').select('*').eq('group_id', groupId)

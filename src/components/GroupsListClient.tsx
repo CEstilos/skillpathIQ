@@ -8,7 +8,7 @@ import NavBar from '@/components/NavBar'
 interface Group {
   id: string; name: string; sport: string; session_day: string; session_time: string; location?: string | null; trainer_id: string
 }
-interface Player { id: string; full_name: string; group_id: string | null }
+interface Player { id: string; full_name: string }
 interface Session { id: string; group_id: string | null; session_date: string; session_time: string; status: string; title: string; rescheduled_date?: string | null }
 interface DrillWeek { id: string; group_id: string | null }
 interface Drill { id: string; drill_week_id: string }
@@ -18,6 +18,7 @@ interface Props {
   profile: { full_name: string } | null
   groups: Group[]
   players: Player[]
+  groupMembers: { group_id: string; player_id: string }[]
   sessions: Session[]
   drillWeeks: DrillWeek[]
   drills: Drill[]
@@ -48,7 +49,7 @@ function formatTime(t: string) {
   return `${hour % 12 || 12}:${m}${hour >= 12 ? 'pm' : 'am'}`
 }
 
-export default function GroupsListClient({ profile, groups: initialGroups, players, sessions, drillWeeks, drills, completions }: Props) {
+export default function GroupsListClient({ profile, groups: initialGroups, players, groupMembers, sessions, drillWeeks, drills, completions }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -63,8 +64,9 @@ export default function GroupsListClient({ profile, groups: initialGroups, playe
   const today = new Date().toISOString().split('T')[0]
 
   function getGroupStats(group: Group) {
-    const groupPlayers = players.filter(p => p.group_id === group.id)
-    const playerCount = groupPlayers.length
+    const groupPlayerIds = groupMembers.filter(m => m.group_id === group.id).map(m => m.player_id)
+    const groupPlayers = players.filter(p => groupPlayerIds.includes(p.id))
+    const playerCount = groupPlayerIds.length
 
     const groupDrillWeekIds = drillWeeks.filter(w => w.group_id === group.id).map(w => w.id)
     const groupDrills = drills.filter(d => groupDrillWeekIds.includes(d.drill_week_id))

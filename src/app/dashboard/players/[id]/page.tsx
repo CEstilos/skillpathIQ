@@ -25,10 +25,18 @@ export default async function PlayerProfilePage({ params, searchParams }: { para
     .eq('player_id', params.id)
     .order('session_date', { ascending: false })
 
+  // Fetch player's group memberships
+  const { data: memberRows } = await supabase
+    .from('group_members').select('group_id').eq('player_id', params.id)
+  const groupIds = (memberRows || []).map(m => m.group_id)
+
+  // Build drill_weeks query with all group IDs
+  let drillFilter = `player_id.eq.${params.id}`
+  for (const gid of groupIds) drillFilter += `,group_id.eq.${gid}`
   const { data: drillWeeks } = await supabase
     .from('drill_weeks')
     .select('*')
-    .or(`player_id.eq.${params.id},group_id.eq.${player.group_id || '00000000-0000-0000-0000-000000000000'}`)
+    .or(drillFilter)
     .order('week_start', { ascending: false })
 
   const { data: drills } = await supabase
@@ -43,11 +51,10 @@ export default async function PlayerProfilePage({ params, searchParams }: { para
     .eq('player_id', params.id)
     .in('drill_id', drills?.map(d => d.id) || [])
 
-  const { data: group } = player.group_id ? await supabase
-    .from('groups')
-    .select('*')
-    .eq('id', player.group_id)
-    .single() : { data: null }
+  // Fetch all groups this player belongs to
+  const { data: groups } = groupIds.length > 0
+    ? await supabase.from('groups').select('*').in('id', groupIds)
+    : { data: [] }
 
   const { data: profile } = await supabase
     .from('profiles').select('full_name, email').eq('id', user.id).single()
@@ -59,7 +66,7 @@ export default async function PlayerProfilePage({ params, searchParams }: { para
       drillWeeks={drillWeeks || []}
       drills={drills || []}
       completions={completions || []}
-      group={group}
+      groups={groups || []}
       trainerName={profile?.full_name || undefined}
       trainerEmail={(profile as { full_name?: string; email?: string } | null)?.email || undefined}
       initialToast={initialToast}

@@ -40,11 +40,24 @@ export default async function ClientsPage() {
     .from('completions').select('*')
     .in('player_id', players?.map(p => p.id) || [])
 
+  const allPlayerIds = [...(players || []).map(p => p.id), ...(archivedPlayers || []).map(p => p.id)]
+  const { data: groupMemberRows } = allPlayerIds.length > 0
+    ? await supabase.from('group_members').select('group_id, player_id').in('player_id', allPlayerIds)
+    : { data: [] }
+
+  const groupIdsMap = new Map<string, string[]>()
+  for (const m of (groupMemberRows || [])) {
+    if (!groupIdsMap.has(m.player_id)) groupIdsMap.set(m.player_id, [])
+    groupIdsMap.get(m.player_id)!.push(m.group_id)
+  }
+  const enrichedPlayers = (players || []).map(p => ({ ...p, group_ids: groupIdsMap.get(p.id) || [] }))
+  const enrichedArchivedPlayers = (archivedPlayers || []).map(p => ({ ...p, group_ids: groupIdsMap.get(p.id) || [] }))
+
   return (
     <ClientsPageClient
       profile={profile}
-      players={players || []}
-      archivedPlayers={archivedPlayers || []}
+      players={enrichedPlayers}
+      archivedPlayers={enrichedArchivedPlayers}
       sessions={sessions || []}
       groups={groups || []}
       sessionPlayers={sessionPlayers || []}

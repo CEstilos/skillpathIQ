@@ -37,7 +37,7 @@ interface Player {
   parent_name?: string | null
   parent_phone?: string | null
   trainer_id: string
-  group_id: string | null
+  group_ids: string[]
   skill_level: string | null
   avatar_initials: string | null
   archived: boolean
@@ -140,9 +140,10 @@ export default function PlayerShareClient({
       .order('week_start', { ascending: false }).limit(1).single()
     if (playerWeek) {
       weekData = playerWeek
-    } else if (player.group_id) {
+    } else if (player.group_ids.length > 0) {
+      const groupFilter = player.group_ids.map(gid => `group_id.eq.${gid}`).join(',')
       const { data: groupWeek } = await supabase
-        .from('drill_weeks').select('*').eq('group_id', player.group_id)
+        .from('drill_weeks').select('*').or(groupFilter)
         .order('week_start', { ascending: false }).limit(1).single()
       if (groupWeek) weekData = groupWeek
     }
@@ -159,10 +160,13 @@ export default function PlayerShareClient({
       setCompletions(completionsData || [])
     }
 
-    const groupId = player.group_id
+    const groupFilter = player.group_ids.map(gid => `group_id.eq.${gid}`).join(',')
+    const orFilter = player.group_ids.length > 0
+      ? `player_id.eq.${playerId},${groupFilter}`
+      : `player_id.eq.${playerId}`
     const { data: allWeeksData } = await supabase
       .from('drill_weeks').select('*')
-      .or(groupId ? `player_id.eq.${playerId},group_id.eq.${groupId}` : `player_id.eq.${playerId}`)
+      .or(orFilter)
       .order('week_start', { ascending: false })
     setAllDrillWeeks(allWeeksData || [])
 

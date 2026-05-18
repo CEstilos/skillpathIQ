@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 
-interface Player { id: string; full_name: string; group_id: string; parent_email: string | null; contact_type: string | null; birth_year: number | null; skill_level: string | null }
+interface Player { id: string; full_name: string; parent_email: string | null; contact_type: string | null; birth_year: number | null; skill_level: string | null }
 interface Session { id: string; title: string; session_date: string; session_time: string; group_id: string }
 
 const CATEGORIES = ['Ball handling', 'Shooting', 'Passing', 'Footwork', 'Defense', 'Conditioning']
@@ -56,8 +56,12 @@ const [editingEmail, setEditingEmail] = useState<string | null>(null)
     setSession(sessionData)
 
     if (sessionData?.group_id) {
-      const { data: playersData } = await supabase
-        .from('players').select('*').eq('group_id', sessionData.group_id).eq('archived', false)
+      const { data: memberRows } = await supabase
+        .from('group_members').select('player_id').eq('group_id', sessionData.group_id)
+      const memberIds = (memberRows || []).map(r => r.player_id)
+      const { data: playersData } = memberIds.length > 0
+        ? await supabase.from('players').select('*').in('id', memberIds).eq('archived', false)
+        : { data: [] }
       setPlayers(playersData || [])
       setAttendance(playersData?.map((p: Player) => p.id) || [])
       setPlayerNotes(playersData?.map((p: Player) => ({ playerId: p.id, note: '' })) || [])

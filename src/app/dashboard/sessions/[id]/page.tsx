@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 
-interface Player { id: string; full_name: string; group_id: string }
+interface Player { id: string; full_name: string }
 interface Session {
   id: string
   title: string
@@ -55,14 +55,18 @@ export default function SessionDetailPage() {
     setNewTime(sessionData?.session_time || '')
 
     if (sessionData?.group_id) {
-      const { data: playersData } = await supabase
-        .from('players').select('*').eq('group_id', sessionData.group_id)
+      const { data: memberRows } = await supabase
+        .from('group_members').select('player_id').eq('group_id', sessionData.group_id)
+      const memberIds = (memberRows || []).map(r => r.player_id)
+      const { data: playersData } = memberIds.length > 0
+        ? await supabase.from('players').select('*').in('id', memberIds)
+        : { data: [] }
       setPlayers(playersData || [])
     } else {
       const { data: sessionPlayersData } = await supabase
-        .from('session_players').select('player_id, players(id, full_name, group_id)')
+        .from('session_players').select('player_id, players(id, full_name)')
         .eq('session_id', sessionId)
-      const playersData = sessionPlayersData?.map((sp: { player_id: string; players: { id: string; full_name: string; group_id: string } | { id: string; full_name: string; group_id: string }[] }) => {
+      const playersData = sessionPlayersData?.map((sp: { player_id: string; players: { id: string; full_name: string } | { id: string; full_name: string }[] }) => {
         const p = sp.players
         return Array.isArray(p) ? p[0] : p
       }).filter(Boolean) || []

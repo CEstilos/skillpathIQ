@@ -44,7 +44,6 @@ function NewPlayerForm() {
 
     const { data: newPlayer, error } = await supabase.from('players').insert({
       trainer_id: user.id,
-      group_id: groupId || null,
       full_name: fullName,
       parent_email: contactEmail || null,
       contact_type: contactType,
@@ -52,6 +51,10 @@ function NewPlayerForm() {
     }).select().single()
 
     if (error) { setError(error.message); setLoading(false); return }
+
+    if (groupId && newPlayer) {
+      await supabase.from('group_members').insert({ group_id: groupId, player_id: newPlayer.id })
+    }
 
     // Send welcome email if contact email and trainer has a welcome message
     if (contactEmail && newPlayer) {

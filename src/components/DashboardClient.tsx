@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 
 interface Profile { id: string; full_name: string; email: string; primary_sport?: string; onboarding_completed?: boolean; username?: string | null; public_profile_enabled?: boolean | null; bio?: string | null; sport?: string | null; location?: string | null }
-interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; trainer_id: string; created_at: string }
+interface Player { id: string; full_name: string; parent_email: string; group_ids: string[]; trainer_id: string; created_at: string }
 interface Group { id: string; name: string; sport: string; session_day: string; session_time: string }
 interface Session { id: string; player_id: string; session_date: string; notes: string | null }
 interface ScheduledSession { id: string; title: string; session_date: string; session_time: string; type: string; group_id: string | null; status?: string; rescheduled_date?: string | null; groups?: { name: string; sport: string } }
@@ -187,7 +187,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   }
   function getCurrentDrillWeek(player: Player) {
-    if (player.group_id) return drillWeeks.find(w => w.group_id === player.group_id) || null
+    if (player.group_ids.length > 0) return drillWeeks.find(w => w.group_id && player.group_ids.includes(w.group_id)) || null
     return drillWeeks.find(w => w.player_id === player.id) || null
   }
 
@@ -750,7 +750,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
             )}
             {todaySessions.map(session => {
               const sessionPlayers = session.group_id
-                ? players.filter(p => p.group_id === session.group_id)
+                ? players.filter(p => session.group_id ? p.group_ids.includes(session.group_id) : false)
                 : allSessionPlayers.filter(sp => sp.session_id === session.id).map(sp => players.find(p => p.id === sp.player_id)).filter(Boolean) as Player[]
               const { isLogged } = getSessionDisplayState(session)
               const displayName = session.groups?.name || sessionPlayers.map(p => p.full_name).join(', ') || 'Session'
@@ -802,7 +802,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                 </div>
                 {upcomingSessions.slice(0, 2).map(session => {
                   const upcomingPlayers = session.group_id
-                    ? players.filter(p => p.group_id === session.group_id)
+                    ? players.filter(p => session.group_id ? p.group_ids.includes(session.group_id) : false)
                     : allSessionPlayers.filter(sp => sp.session_id === session.id).map(sp => players.find(p => p.id === sp.player_id)).filter(Boolean) as Player[]
                   const displayName = session.groups?.name || upcomingPlayers.map(p => p.full_name).join(', ') || 'Session'
                   const dayAbbr = new Date(session.session_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase()
@@ -865,7 +865,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                       </div>
                       {unloggedSessions.map((session, i) => {
                         const sessionPlayers = session.group_id
-                          ? players.filter(p => p.group_id === session.group_id)
+                          ? players.filter(p => session.group_id ? p.group_ids.includes(session.group_id) : false)
                           : allSessionPlayers.filter(sp => sp.session_id === session.id).map(sp => players.find(p => p.id === sp.player_id)).filter(Boolean) as Player[]
                         return (
                           <div key={session.id} style={{ padding: '10px 14px', borderBottom: i < unloggedSessions.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1075,7 +1075,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {todaySessions.map(session => {
                     const sessionPlayers = session.group_id
-                      ? players.filter(p => p.group_id === session.group_id)
+                      ? players.filter(p => session.group_id ? p.group_ids.includes(session.group_id) : false)
                       : allSessionPlayers.filter(sp => sp.session_id === session.id).map(sp => players.find(p => p.id === sp.player_id)).filter(Boolean) as Player[]
                     const { isPast, isLogged } = getSessionDisplayState(session)
                     return (
@@ -1343,7 +1343,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                 </div>
                 {unloggedSessions.map((session, i) => {
                   const sessionPlayers = session.group_id
-                    ? players.filter(p => p.group_id === session.group_id)
+                    ? players.filter(p => session.group_id ? p.group_ids.includes(session.group_id) : false)
                     : allSessionPlayers.filter(sp => sp.session_id === session.id).map(sp => players.find(p => p.id === sp.player_id)).filter(Boolean) as Player[]
                   return (
                     <div key={session.id} style={{ padding: '12px 16px', borderBottom: i < unloggedSessions.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>

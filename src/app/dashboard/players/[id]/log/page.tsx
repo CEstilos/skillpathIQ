@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 
-interface Player { id: string; full_name: string; group_id: string | null; birth_year: number | null; skill_level: string | null; parent_email: string | null; contact_type: string | null }
+interface Player { id: string; full_name: string; birth_year: number | null; skill_level: string | null; parent_email: string | null; contact_type: string | null }
 interface Profile { full_name: string }
 interface PlayerRecap { playerId: string; playerName: string; parentSummary: string; copied: boolean }
 
@@ -27,6 +27,7 @@ export default function QuickLogPage() {
   const alsoPlayerIds = searchParams.get('also')?.split(',').filter(Boolean) || []
 
   const [players, setPlayers] = useState<Player[]>([])
+  const [isGroupPlayer, setIsGroupPlayer] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [sessionDate, setSessionDate] = useState(() => new Date().toISOString().split('T')[0])
   const [sessionType, setSessionType] = useState('individual')
@@ -61,6 +62,10 @@ export default function QuickLogPage() {
     const { data: playersData } = await supabase
       .from('players').select('*').in('id', allPlayerIds)
     setPlayers(playersData || [])
+
+    const { data: groupMemberRows } = await supabase
+      .from('group_members').select('group_id').eq('player_id', playerId)
+    setIsGroupPlayer((groupMemberRows || []).length > 0)
 
     if (scheduledSessionId) {
       const { data: scheduledSession } = await supabase
@@ -338,7 +343,7 @@ router.push(`/dashboard/players/${playerId}`)
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{player.full_name}</div>
                 <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
-                  {player.group_id ? 'Group player' : 'Individual'}
+                  {isGroupPlayer ? 'Group player' : 'Individual'}
                   {player.birth_year && ` · Age ${new Date().getFullYear() - player.birth_year}`}
                   {player.skill_level && ` · ${player.skill_level.charAt(0).toUpperCase() + player.skill_level.slice(1)}`}
                 </div>

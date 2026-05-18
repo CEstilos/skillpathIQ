@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import NavBar from '@/components/NavBar'
 
 interface Profile { id: string; full_name: string; individual_rate: number | null; group_rate: number | null }
-interface Player { id: string; full_name: string; created_at: string; custom_rate: number | null; group_id: string | null }
+interface Player { id: string; full_name: string; created_at: string; custom_rate: number | null; group_ids: string[] }
 interface Session { id: string; player_id: string; session_date: string; session_type: string; rate_override: number | null; group_id: string | null }
 interface Attendance { session_id: string; player_id: string; attended: boolean }
 
@@ -54,7 +54,7 @@ export default function BusinessClient({ profile, players, sessions, attendance 
       const groupRate = Number(profile?.group_rate) || 0
       const attendingCount = attendance.filter(a => a.session_id === s.id && a.attended).length
       if (attendingCount > 0) return groupRate * attendingCount
-      const groupPlayerCount = players.filter(p => p.group_id === s.group_id).length
+      const groupPlayerCount = players.filter(p => s.group_id ? p.group_ids.includes(s.group_id) : false).length
       return groupRate * Math.max(groupPlayerCount, 1)
     }
     const player = players.find(p => p.id === s.player_id)

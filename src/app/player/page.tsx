@@ -27,6 +27,11 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
 
   if (!player) return <NotFound message="Player not found." />
 
+  const { data: memberRows } = await supabase
+    .from('group_members').select('group_id').eq('player_id', player.id)
+  const group_ids = (memberRows || []).map(m => m.group_id)
+  const playerWithGroups = { ...player, group_ids }
+
   const { data: trainer } = await supabase
     .from('profiles')
     .select('id, full_name, bio, sport, location, profile_photo_url, individual_rate, group_rate')
@@ -62,7 +67,7 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
 
   return (
     <PlayerShareClient
-      player={player}
+      player={playerWithGroups}
       trainer={trainer || null}
       availabilityWindows={availabilityWindows}
       sessionDurations={sessionDurations || []}

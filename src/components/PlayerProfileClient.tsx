@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import NavBar from '@/components/NavBar'
 
-interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; created_at: string; custom_rate: number | null; birth_year: number | null; skill_level: string | null; archived: boolean; archived_at: string | null; player_gender: string | null; player_experience: string | null; additional_info: string | null }
+interface Player { id: string; full_name: string; parent_email: string; created_at: string; custom_rate: number | null; birth_year: number | null; skill_level: string | null; archived: boolean; archived_at: string | null; player_gender: string | null; player_experience: string | null; additional_info: string | null }
 interface Session { id: string; player_id: string; session_date: string; session_type: string; notes: string | null }
 interface DrillWeek { id: string; title: string; week_start: string; player_id: string | null; group_id: string | null }
 interface Drill { id: string; title: string; reps: string; description: string; drill_week_id: string; sort_order: number }
@@ -18,7 +18,7 @@ interface Props {
   drillWeeks: DrillWeek[]
   drills: Drill[]
   completions: Completion[]
-  group: Group | null
+  groups: Group[]
   trainerName?: string
   trainerEmail?: string
   initialToast?: string | null
@@ -26,7 +26,8 @@ interface Props {
 
 const SKILL_LEVELS = ['beginner', 'intermediate', 'advanced', 'elite']
 
-export default function PlayerProfileClient({ player, sessions, drillWeeks, drills, completions, group, trainerName, trainerEmail, initialToast }: Props) {
+export default function PlayerProfileClient({ player, sessions, drillWeeks, drills, completions, groups, trainerName, trainerEmail, initialToast }: Props) {
+  const group = groups[0] || null
   const router = useRouter()
   const supabase = createClient()
   const [linkShared, setLinkShared] = useState(false)

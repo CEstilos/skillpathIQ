@@ -10,7 +10,7 @@ const NEW_COLOR = '#4A9EFF'
 interface Profile { id: string; full_name: string; email: string; individual_rate: number | null; group_rate: number | null }
 interface Player {
   id: string; full_name: string; parent_email: string; parent_name?: string | null
-  group_id: string | null; created_at: string; custom_rate: number | null
+  group_ids: string[]; created_at: string; custom_rate: number | null
   archived: boolean; archived_at: string | null
 }
 interface Session {
@@ -146,7 +146,7 @@ export default function ClientsPageClient({ profile, players, archivedPlayers = 
       if (s.notes || s.feedback || s.drills_covered) return false
       if (s.player_id === player.id) return true
       if (linkedSessionIds.has(s.id)) return true
-      if (player.group_id && s.group_id === player.group_id) return true
+      if (s.group_id && player.group_ids.includes(s.group_id)) return true
       return false
     })
     upcoming.sort((a, b) => a.session_date.localeCompare(b.session_date))
@@ -183,7 +183,7 @@ export default function ClientsPageClient({ profile, players, archivedPlayers = 
 
   function getPlayerRate(player: Player) {
     if (player.custom_rate !== null) return player.custom_rate
-    if (player.group_id) return profile?.group_rate || 0
+    if (player.group_ids.length > 0) return profile?.group_rate || 0
     return profile?.individual_rate || 0
   }
 
@@ -228,7 +228,7 @@ export default function ClientsPageClient({ profile, players, archivedPlayers = 
 
   function getCurrentDrillWeekForPlayer(player: Player): DrillWeek | null {
     const weeks = drillWeeks.filter(w =>
-      w.player_id === player.id || (player.group_id && w.group_id === player.group_id)
+      w.player_id === player.id || (w.group_id && player.group_ids.includes(w.group_id))
     )
     if (weeks.length === 0) return null
     return weeks.sort((a, b) => b.week_start.localeCompare(a.week_start))[0]
@@ -258,7 +258,7 @@ export default function ClientsPageClient({ profile, players, archivedPlayers = 
     const last = getLastSession(player.id)
     const days = last ? getDaysSince(last.session_date) : null
     const sessionCount = getSessionCount(player.id)
-    const group = getGroup(player.group_id)
+    const group = getGroup(player.group_ids[0] || null)
     const firstName = player.full_name.split(' ')[0]
     const status = getStatus(player.id)
     const trainerName = profile?.full_name?.split(' ')[0] || 'Coach'
@@ -346,7 +346,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
   function renderMobileCard(player: Player, accentColor: string, statusLabel: string, canReengage: boolean) {
     const last = getLastSession(player.id)
     const days = last ? getDaysSince(last.session_date) : null
-    const group = getGroup(player.group_id)
+    const group = getGroup(player.group_ids[0] || null)
     const nextSess = getNextSession(player)
     const sessionCount = getSessionCount(player.id)
     const message = aiMessages[player.id]

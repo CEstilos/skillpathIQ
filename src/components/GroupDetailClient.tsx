@@ -9,7 +9,7 @@ interface Group {
   id: string; name: string; sport: string; session_day: string; session_time: string; location?: string | null; trainer_id: string
 }
 interface Player {
-  id: string; full_name: string; group_id: string | null; parent_email: string | null; avatar_initials?: string | null
+  id: string; full_name: string; group_ids: string[]; parent_email: string | null; avatar_initials?: string | null
 }
 interface Session {
   id: string; title: string; session_date: string; session_time: string; status: string; group_id: string | null; rescheduled_date?: string | null
@@ -118,7 +118,7 @@ export default function GroupDetailClient({ group: initialGroup, players: initia
   }
 
   const availablePlayers = allPlayers.filter(p =>
-    p.group_id !== group.id &&
+    !p.group_ids.includes(group.id) &&
     (search === '' || p.full_name.toLowerCase().includes(search.toLowerCase()))
   )
 
@@ -147,15 +147,15 @@ export default function GroupDetailClient({ group: initialGroup, players: initia
 
   async function handleRemovePlayer(player: Player) {
     setRemovingId(player.id)
-    const { error } = await supabase.from('players').update({ group_id: null }).eq('id', player.id)
+    const { error } = await supabase.from('group_members').delete().eq('group_id', group.id).eq('player_id', player.id)
     if (!error) setLocalPlayers(prev => prev.filter(p => p.id !== player.id))
     setRemovingId(null)
   }
 
   async function handleAddExistingPlayer(player: Player) {
-    const { error } = await supabase.from('players').update({ group_id: group.id }).eq('id', player.id)
+    const { error } = await supabase.from('group_members').insert({ group_id: group.id, player_id: player.id })
     if (!error) {
-      setLocalPlayers(prev => [...prev, { ...player, group_id: group.id }].sort((a, b) => a.full_name.localeCompare(b.full_name)))
+      setLocalPlayers(prev => [...prev, { ...player, group_ids: [...player.group_ids, group.id] }].sort((a, b) => a.full_name.localeCompare(b.full_name)))
       setSearch('')
     }
   }
@@ -167,13 +167,13 @@ export default function GroupDetailClient({ group: initialGroup, players: initia
     if (!user) return
     const { data, error } = await supabase.from('players').insert({
       trainer_id: user.id,
-      group_id: group.id,
       full_name: newPlayerName.trim(),
       parent_email: newPlayerEmail.trim(),
       avatar_initials: newPlayerName.trim().split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
     }).select().single()
     if (!error && data) {
-      setLocalPlayers(prev => [...prev, data].sort((a, b) => a.full_name.localeCompare(b.full_name)))
+      await supabase.from('group_members').insert({ group_id: group.id, player_id: data.id })
+      setLocalPlayers(prev => [...prev, { ...data, group_ids: [group.id] }].sort((a, b) => a.full_name.localeCompare(b.full_name)))
       setNewPlayerName(''); setNewPlayerEmail(''); setShowAddPlayer(false)
     }
     setAddingNewPlayer(false)
@@ -453,7 +453,7 @@ export default function GroupDetailClient({ group: initialGroup, players: initia
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: '13px', color: '#ffffff', fontWeight: 500 }}>{player.full_name}</div>
-                          {player.group_id && <div style={{ fontSize: '11px', color: '#9A9A9F' }}>In another group</div>}
+                          {player.group_ids.length > 0 && <div style={{ fontSize: '11px', color: '#9A9A9F' }}>In another group</div>}
                         </div>
                         <button onClick={() => handleAddExistingPlayer(player)}
                           style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: 'none', background: GREEN, color: '#0E0E0F', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
