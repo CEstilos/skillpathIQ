@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const {
       trainer_id,
       parent_name, parent_email, parent_phone,
-      player_name, player_age, player_position, player_goals,
+      player_name, player_age, player_gender, player_experience, additional_info, player_position, player_goals,
       session_type, message,
       is_returning,
       existing_player_id,
@@ -155,6 +155,9 @@ export async function POST(request: Request) {
       contact_type: 'parent',
       avatar_initials: initials,
       archived: false,
+      player_gender: player_gender || null,
+      player_experience: player_experience || null,
+      additional_info: additional_info || null,
     }).select('id').single()
 
     if (playerError) {
@@ -169,9 +172,12 @@ export async function POST(request: Request) {
       `A new player just filled out their intake form after booking via Calendly.`,
       ``,
       `Player: ${player_name}, age ${player_age}`,
+      player_gender ? `Gender: ${player_gender === 'male' ? 'Boy' : 'Girl'}` : null,
+      player_experience ? `Experience: ${player_experience === 'beginner' ? 'Beginner' : player_experience === 'rec_league' ? 'Rec League' : 'Bantam/Club'}` : null,
       player_position ? `Position: ${player_position}` : null,
       `Session type: ${session_type === 'group' ? 'Group' : '1-on-1'}`,
       player_goals ? `Goals: ${player_goals}` : null,
+      additional_info ? `Additional info: ${additional_info}` : null,
       message ? `\nMessage: ${message}` : null,
       ``,
       `Parent contact: ${parent_name} · ${parent_email}`,

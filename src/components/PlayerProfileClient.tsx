@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import NavBar from '@/components/NavBar'
 
-interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; created_at: string; custom_rate: number | null; birth_year: number | null; skill_level: string | null; archived: boolean; archived_at: string | null }
+interface Player { id: string; full_name: string; parent_email: string; group_id: string | null; created_at: string; custom_rate: number | null; birth_year: number | null; skill_level: string | null; archived: boolean; archived_at: string | null; player_gender: string | null; player_experience: string | null; additional_info: string | null }
 interface Session { id: string; player_id: string; session_date: string; session_type: string; notes: string | null }
 interface DrillWeek { id: string; title: string; week_start: string; player_id: string | null; group_id: string | null }
 interface Drill { id: string; title: string; reps: string; description: string; drill_week_id: string; sort_order: number }
@@ -270,6 +270,16 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
                   {group && <span style={{ fontSize: '12px', background: '#2A2A2D', color: '#9A9A9F', padding: '2px 8px', borderRadius: '6px' }}>{group.name}</span>}
                   {!group && <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Individual</span>}
                   {age && <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Age {age}</span>}
+                  {player.player_gender && (
+                    <span style={{ fontSize: '12px', color: '#9A9A9F', padding: '2px 8px', background: 'rgba(154,154,159,0.12)', borderRadius: '99px' }}>
+                      {player.player_gender === 'male' ? 'Boy' : 'Girl'}
+                    </span>
+                  )}
+                  {player.player_experience && (
+                    <span style={{ fontSize: '12px', color: '#9A9A9F', padding: '2px 8px', background: 'rgba(154,154,159,0.12)', borderRadius: '99px' }}>
+                      {player.player_experience === 'beginner' ? 'Beginner' : player.player_experience === 'rec_league' ? 'Rec League' : 'Bantam/Club'}
+                    </span>
+                  )}
                   {player.skill_level && <span style={{ fontSize: '12px', background: '#2A2A2D', color: '#9A9A9F', padding: '2px 8px', borderRadius: '6px', textTransform: 'capitalize' as const }}>{player.skill_level}</span>}
                   {player.parent_email && <span style={{ fontSize: '12px', color: '#9A9A9F' }}>{player.parent_email}</span>}
                 </div>
@@ -322,19 +332,27 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
           </div>
 
           {!editingInfo && (
-            <div style={{ display: 'flex', gap: '24px', marginTop: '12px', flexWrap: 'wrap' as const }}>
-              <div>
-                <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Age</div>
-                <div style={{ fontSize: '14px', color: '#ffffff', fontWeight: 500 }}>{age ? `${age} years old` : 'Not set'}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+              <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' as const }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Age</div>
+                  <div style={{ fontSize: '14px', color: '#ffffff', fontWeight: 500 }}>{age ? `${age} years old` : 'Not set'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Skill level</div>
+                  <div style={{ fontSize: '14px', color: '#ffffff', fontWeight: 500, textTransform: 'capitalize' as const }}>{player.skill_level || 'Not set'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Member since</div>
+                  <div style={{ fontSize: '14px', color: '#ffffff', fontWeight: 500 }}>{memberSince}</div>
+                </div>
               </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Skill level</div>
-                <div style={{ fontSize: '14px', color: '#ffffff', fontWeight: 500, textTransform: 'capitalize' as const }}>{player.skill_level || 'Not set'}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Member since</div>
-                <div style={{ fontSize: '14px', color: '#ffffff', fontWeight: 500 }}>{memberSince}</div>
-              </div>
+              {player.additional_info && (
+                <div style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px 12px' }}>
+                  <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Additional info</div>
+                  <div style={{ fontSize: '13px', color: '#9A9A9F', lineHeight: 1.5 }}>{player.additional_info}</div>
+                </div>
+              )}
             </div>
           )}
 

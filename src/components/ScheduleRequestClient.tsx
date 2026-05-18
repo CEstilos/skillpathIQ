@@ -18,6 +18,9 @@ interface BookingRequest {
   player_age: number | null
   player_position: string | null
   player_goals: string | null
+  player_gender: string | null
+  player_experience: string | null
+  additional_info: string | null
   preferred_session_type: string
   message: string | null
   status: string
@@ -297,6 +300,24 @@ export default function ScheduleRequestClient({
               <div style={{ display: 'flex', gap: '8px' }}>
                 <span style={{ fontSize: '12px', color: '#555558', width: '90px', flexShrink: 0 }}>Goals</span>
                 <span style={{ fontSize: '12px', color: '#9A9A9F', lineHeight: 1.5 }}>{req.player_goals}</span>
+              </div>
+            )}
+            {req.player_gender && (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <span style={{ fontSize: '12px', color: '#555558', width: '90px', flexShrink: 0 }}>Gender</span>
+                <span style={{ fontSize: '12px', color: '#9A9A9F' }}>{req.player_gender === 'male' ? 'Boy' : 'Girl'}</span>
+              </div>
+            )}
+            {req.player_experience && (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <span style={{ fontSize: '12px', color: '#555558', width: '90px', flexShrink: 0 }}>Level</span>
+                <span style={{ fontSize: '12px', color: '#9A9A9F' }}>{req.player_experience === 'beginner' ? 'Beginner' : req.player_experience === 'rec_league' ? 'Rec League' : 'Bantam/Club'}</span>
+              </div>
+            )}
+            {req.additional_info && (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <span style={{ fontSize: '12px', color: '#555558', width: '90px', flexShrink: 0 }}>Additional</span>
+                <span style={{ fontSize: '12px', color: '#9A9A9F', lineHeight: 1.5 }}>{req.additional_info}</span>
               </div>
             )}
             {req.message && (

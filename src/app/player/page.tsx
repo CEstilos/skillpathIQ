@@ -38,7 +38,7 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
   const [{ data: rawWindows }, { data: sessionDurations }, { data: rawBlackouts }] = await Promise.all([
     supabase
       .from('trainer_availability_windows')
-      .select('id, day_of_week, start_time, end_time, session_type, display_label, sort_order, duration_minutes, buffer_minutes, max_capacity')
+      .select('id, day_of_week, start_time, end_time, session_type, display_label, sort_order, duration_minutes, buffer_minutes, max_capacity, gender_filter, min_age, max_age, experience_filter')
       .eq('trainer_id', player.trainer_id)
       .order('sort_order', { ascending: true }),
     supabase

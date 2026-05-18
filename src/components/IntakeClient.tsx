@@ -30,6 +30,9 @@ interface IntakeForm {
   parentPhone: string
   playerName: string
   playerAge: string
+  playerGender: string
+  playerExperience: string
+  additionalInfo: string
   playerPosition: string
   playerGoals: string
   sessionType: 'individual' | 'group'
@@ -49,9 +52,12 @@ export default function IntakeClient({
     parentPhone: '',
     playerName: '',
     playerAge: '',
+    playerGender: '',
+    playerExperience: '',
+    additionalInfo: '',
     playerPosition: '',
     playerGoals: '',
-    sessionType: 'individual',
+    sessionType: 'group',
     message: '',
   })
 
@@ -78,6 +84,9 @@ export default function IntakeClient({
           parent_phone: form.parentPhone.trim(),
           player_name: form.playerName.trim(),
           player_age: parseInt(form.playerAge),
+          player_gender: form.playerGender || null,
+          player_experience: form.playerExperience || null,
+          additional_info: form.additionalInfo.trim() || null,
           player_position: form.playerPosition.trim() || null,
           player_goals: form.playerGoals.trim() || null,
           session_type: form.sessionType,
@@ -116,6 +125,14 @@ export default function IntakeClient({
     }
     if (!form.playerAge || parseInt(form.playerAge) < 1) {
       setError('Player age is required.')
+      return
+    }
+    if (!form.playerGender) {
+      setError('Please select your player\'s gender.')
+      return
+    }
+    if (!form.playerExperience) {
+      setError('Please select your player\'s experience level.')
       return
     }
     submitIntake()
@@ -222,6 +239,20 @@ export default function IntakeClient({
               <label style={labelStyle}>Player name <span style={{ color: '#E03131' }}>*</span></label>
               <input style={inputStyle} type="text" placeholder="Alex Smith" value={form.playerName} onChange={e => set('playerName', e.target.value)} />
             </div>
+            <div>
+              <label style={labelStyle}>Player gender <span style={{ color: '#E03131' }}>*</span></label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {([{ val: 'male', label: 'Boy' }, { val: 'female', label: 'Girl' }] as const).map(g => (
+                  <button
+                    key={g.val}
+                    type="button"
+                    onClick={() => set('playerGender', form.playerGender === g.val ? '' : g.val)}
+                    style={{ padding: '11px', borderRadius: '10px', border: `1px solid ${form.playerGender === g.val ? 'rgba(0,255,159,0.4)' : '#2A2A2D'}`, background: form.playerGender === g.val ? 'rgba(0,255,159,0.08)' : 'transparent', color: form.playerGender === g.val ? GREEN : '#9A9A9F', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'sans-serif' }}>
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={labelStyle}>Age <span style={{ color: '#E03131' }}>*</span></label>
@@ -233,12 +264,39 @@ export default function IntakeClient({
               </div>
             </div>
             <div>
+              <label style={labelStyle}>Highest level played <span style={{ color: '#E03131' }}>*</span></label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {([
+                  { val: 'beginner', label: 'Beginner' },
+                  { val: 'rec_league', label: 'Rec League' },
+                  { val: 'bantam_club', label: 'Bantam / Club Team' },
+                ] as const).map(exp => (
+                  <button
+                    key={exp.val}
+                    type="button"
+                    onClick={() => set('playerExperience', form.playerExperience === exp.val ? '' : exp.val)}
+                    style={{ padding: '11px 14px', borderRadius: '10px', border: `1px solid ${form.playerExperience === exp.val ? 'rgba(0,255,159,0.4)' : '#2A2A2D'}`, background: form.playerExperience === exp.val ? 'rgba(0,255,159,0.08)' : 'transparent', color: form.playerExperience === exp.val ? GREEN : '#9A9A9F', fontSize: '14px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' as const, fontFamily: 'sans-serif' }}>
+                    {exp.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
               <label style={labelStyle}>Goals <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
               <textarea
                 style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' as const, lineHeight: 1.6 }}
                 placeholder="What do you want your player to work on?"
                 value={form.playerGoals}
                 onChange={e => set('playerGoals', e.target.value)}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Anything else? <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
+              <textarea
+                style={{ ...inputStyle, minHeight: '72px', resize: 'vertical' as const, lineHeight: 1.6 }}
+                placeholder="e.g. position, goals, schedule constraints, injuries..."
+                value={form.additionalInfo}
+                onChange={e => set('additionalInfo', e.target.value)}
               />
             </div>
           </div>

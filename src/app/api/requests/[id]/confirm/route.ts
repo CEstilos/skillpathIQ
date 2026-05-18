@@ -92,6 +92,9 @@ export async function POST(
           contact_type: 'parent',
           avatar_initials: initials,
           archived: false,
+          player_gender: req.player_gender || null,
+          player_experience: req.player_experience || null,
+          additional_info: req.additional_info || null,
         })
         .select('id')
         .single()

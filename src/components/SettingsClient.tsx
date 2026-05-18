@@ -66,9 +66,10 @@ interface AvailabilityWindow {
   duration_minutes: number
   buffer_minutes: number
   max_capacity: number | null
-  gender_restriction: string | null
+  gender_filter: string | null
   min_age: number | null
   max_age: number | null
+  experience_filter: string[] | null
 }
 
 interface SessionDuration {
@@ -243,7 +244,8 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
     day_of_week: 'monday', start_time: '', end_time: '',
     session_type: 'both', display_label: '', duration_id: '',
     buffer_minutes: '0', max_capacity: '',
-    gender_restriction: '', min_age: '', max_age: '',
+    gender_filter: '', min_age: '', max_age: '',
+    experience_filter: [] as string[],
   })
   const [savingWindow, setSavingWindow] = useState(false)
   const [windowError, setWindowError] = useState<string | null>(null)
@@ -288,7 +290,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
 
   function openAddWindow() {
     setEditingWindowId(null)
-    setWindowForm({ day_of_week: 'monday', start_time: '', end_time: '', session_type: 'both', display_label: '', duration_id: durations[0]?.id || '', buffer_minutes: '0', max_capacity: '', gender_restriction: '', min_age: '', max_age: '' })
+    setWindowForm({ day_of_week: 'monday', start_time: '', end_time: '', session_type: 'both', display_label: '', duration_id: durations[0]?.id || '', buffer_minutes: '0', max_capacity: '', gender_filter: '', min_age: '', max_age: '', experience_filter: [] })
     setWindowError(null)
     setWindowFormOpen(true)
   }
@@ -301,7 +303,8 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
       session_type: w.session_type, display_label: w.display_label || '',
       duration_id: matchingDuration?.id || durations[0]?.id || '',
       buffer_minutes: w.buffer_minutes.toString(), max_capacity: w.max_capacity?.toString() || '',
-      gender_restriction: w.gender_restriction || '', min_age: w.min_age?.toString() || '', max_age: w.max_age?.toString() || '',
+      gender_filter: w.gender_filter || '', min_age: w.min_age?.toString() || '', max_age: w.max_age?.toString() || '',
+      experience_filter: w.experience_filter || [],
     })
     setWindowError(null)
     setWindowFormOpen(true)
@@ -314,15 +317,23 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
     if (!selectedDuration) { setWindowError('Selected duration not found'); return }
     const bufferMins = parseInt(windowForm.buffer_minutes) || 0
     const maxCap = (windowForm.session_type !== 'individual' && windowForm.max_capacity) ? parseInt(windowForm.max_capacity) || null : null
+    const minAgeVal = windowForm.min_age ? parseInt(windowForm.min_age) : null
+    const maxAgeVal = windowForm.max_age ? parseInt(windowForm.max_age) : null
+    if (minAgeVal !== null && maxAgeVal !== null && minAgeVal >= maxAgeVal) {
+      setWindowError('Min age must be less than max age')
+      setSavingWindow(false)
+      return
+    }
     setSavingWindow(true)
     setWindowError(null)
     const payload = {
       day_of_week: windowForm.day_of_week, start_time: windowForm.start_time, end_time: windowForm.end_time,
       session_type: windowForm.session_type, display_label: windowForm.display_label.trim() || null,
       duration_minutes: selectedDuration.duration_minutes, buffer_minutes: bufferMins, max_capacity: maxCap,
-      gender_restriction: windowForm.gender_restriction || null,
-      min_age: windowForm.min_age ? parseInt(windowForm.min_age) : null,
-      max_age: windowForm.max_age ? parseInt(windowForm.max_age) : null,
+      gender_filter: windowForm.gender_filter || null,
+      min_age: minAgeVal,
+      max_age: maxAgeVal,
+      experience_filter: windowForm.experience_filter.length > 0 ? windowForm.experience_filter : null,
     }
     if (editingWindowId) {
       const { data, error } = await supabase.from('trainer_availability_windows').update(payload).eq('id', editingWindowId).select().single()
@@ -703,15 +714,18 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                             {w.session_type === 'individual' ? 'Individual' : w.session_type === 'group' ? 'Group' : 'Both'}
                           </span>
                           {w.display_label && <span style={{ fontSize: '12px', color: '#9A9A9F', fontStyle: 'italic' }}>{w.display_label}</span>}
-                          {(w.gender_restriction || w.min_age || w.max_age) && (
-                            <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '99px', fontWeight: 600, background: 'rgba(245,166,35,0.12)', color: '#F5A623' }}>
-                              {[
-                                w.gender_restriction === 'boys' ? 'Boys' : w.gender_restriction === 'girls' ? 'Girls' : null,
-                                w.min_age && w.max_age ? `Ages ${w.min_age}–${w.max_age}` : w.min_age ? `${w.min_age}+` : w.max_age ? `U${w.max_age + 1}` : null,
-                              ].filter(Boolean).join(' · ')}
-                            </span>
-                          )}
                         </div>
+                        {(() => {
+                          const parts: string[] = []
+                          if (w.gender_filter) parts.push(w.gender_filter === 'boys' ? 'Boys' : w.gender_filter === 'girls' ? 'Girls' : 'Mixed')
+                          if (w.min_age != null && w.max_age != null) parts.push(`Ages ${w.min_age}–${w.max_age}`)
+                          else if (w.min_age != null) parts.push(`${w.min_age}+`)
+                          else if (w.max_age != null) parts.push(`U${w.max_age + 1}`)
+                          if (w.experience_filter && w.experience_filter.length > 0) {
+                            parts.push(w.experience_filter.map(e => e === 'beginner' ? 'Beginner' : e === 'rec_league' ? 'Rec League' : 'Bantam/Club').join(', '))
+                          }
+                          return parts.length > 0 ? <div style={{ fontSize: '11px', color: '#555558', marginTop: '3px' }}>{parts.join(' · ')}</div> : null
+                        })()}
                         {slots.length > 0 && <div style={{ fontSize: '11px', color: '#555558', marginTop: '4px' }}>{slotPreview}{extra}</div>}
                       </div>
                       <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
@@ -777,21 +791,68 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                         <input type="number" min="1" placeholder="e.g. 8" value={windowForm.max_capacity} onChange={e => setWindowForm(prev => ({ ...prev, max_capacity: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
                       </div>
                     )}
-                    <div>
-                      <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Player gender <span style={{ color: '#555558', fontWeight: 400 }}>(optional)</span></label>
-                      <select value={windowForm.gender_restriction} onChange={e => setWindowForm(prev => ({ ...prev, gender_restriction: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }}>
-                        <option value="">Any gender</option>
-                        <option value="boys">Boys only</option>
-                        <option value="girls">Girls only</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Age range <span style={{ color: '#555558', fontWeight: 400 }}>(optional)</span></label>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        <input type="number" min="1" max="99" placeholder="Min age" value={windowForm.min_age} onChange={e => setWindowForm(prev => ({ ...prev, min_age: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
-                        <input type="number" min="1" max="99" placeholder="Max age" value={windowForm.max_age} onChange={e => setWindowForm(prev => ({ ...prev, max_age: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
+                    {(windowForm.session_type === 'group' || windowForm.session_type === 'both') && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '8px' }}>
+                        <div>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Group filters</div>
+                          <div style={{ fontSize: '11px', color: '#555558' }}>Optional — restrict this slot to players that meet these criteria.</div>
+                        </div>
+
+                        {/* Gender */}
+                        <div>
+                          <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Gender</label>
+                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                            {[{ val: '', label: 'No filter' }, { val: 'boys', label: 'Boys' }, { val: 'girls', label: 'Girls' }, { val: 'mixed', label: 'Mixed' }].map(opt => (
+                              <button
+                                key={opt.val}
+                                type="button"
+                                onClick={() => setWindowForm(prev => ({ ...prev, gender_filter: opt.val }))}
+                                style={{ padding: '5px 10px', borderRadius: '6px', border: `1px solid ${windowForm.gender_filter === opt.val ? 'rgba(0,255,159,0.4)' : '#2A2A2D'}`, background: windowForm.gender_filter === opt.val ? 'rgba(0,255,159,0.08)' : 'transparent', color: windowForm.gender_filter === opt.val ? '#00FF9F' : '#9A9A9F', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Age range */}
+                        <div>
+                          <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Age range</label>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                            <input type="number" min="1" max="99" placeholder="Min age (e.g. 8)" value={windowForm.min_age} onChange={e => setWindowForm(prev => ({ ...prev, min_age: e.target.value }))} style={{ width: '100%', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
+                            <input type="number" min="1" max="99" placeholder="Max age (e.g. 12)" value={windowForm.max_age} onChange={e => setWindowForm(prev => ({ ...prev, max_age: e.target.value }))} style={{ width: '100%', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />
+                          </div>
+                        </div>
+
+                        {/* Experience */}
+                        <div>
+                          <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '4px' }}>Experience level</label>
+                          <div style={{ fontSize: '11px', color: '#555558', marginBottom: '6px' }}>Optional — select all that apply</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {([
+                              { value: 'beginner', label: 'Beginner' },
+                              { value: 'rec_league', label: 'Rec League' },
+                              { value: 'bantam_club', label: 'Bantam / Club Team' },
+                            ] as const).map(exp => (
+                              <label key={exp.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={windowForm.experience_filter.includes(exp.value)}
+                                  onChange={e => setWindowForm(prev => ({
+                                    ...prev,
+                                    experience_filter: e.target.checked
+                                      ? [...prev.experience_filter, exp.value]
+                                      : prev.experience_filter.filter(v => v !== exp.value)
+                                  }))}
+                                  style={{ accentColor: '#00FF9F', width: '14px', height: '14px' }}
+                                />
+                                <span style={{ fontSize: '13px', color: '#ffffff' }}>{exp.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                     <div>
                       <label style={{ fontSize: '12px', color: '#9A9A9F', display: 'block', marginBottom: '5px' }}>Label <span style={{ color: '#555558', fontWeight: 400 }}>(optional)</span></label>
                       <input type="text" placeholder='e.g. "Group training only"' value={windowForm.display_label} onChange={e => setWindowForm(prev => ({ ...prev, display_label: e.target.value }))} style={{ width: '100%', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 10px', fontSize: '13px', color: '#ffffff', outline: 'none' }} />

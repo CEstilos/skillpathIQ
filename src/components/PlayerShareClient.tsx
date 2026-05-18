@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
-import { generateSlots } from '@/lib/generateSlots'
+import { generateSlots, filterSlots } from '@/lib/generateSlots'
 
 const GREEN = '#00FF9F'
 const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -41,6 +41,8 @@ interface Player {
   skill_level: string | null
   avatar_initials: string | null
   archived: boolean
+  player_gender: string | null
+  player_experience: string | null
 }
 
 interface Trainer {
@@ -59,6 +61,10 @@ interface AvailabilityWindow {
   duration_minutes: number
   buffer_minutes: number
   max_capacity: number | null
+  gender_filter: string | null
+  min_age: number | null
+  max_age: number | null
+  experience_filter: string[] | null
 }
 
 interface SessionDuration {
@@ -104,7 +110,7 @@ export default function PlayerShareClient({
   const [activeTab, setActiveTab] = useState<Tab>('drills')
 
   // Booking form state
-  const [sessionType, setSessionType] = useState<'individual' | 'group'>('individual')
+  const [sessionType, setSessionType] = useState<'individual' | 'group'>('group')
   const [selectedSlots, setSelectedSlots] = useState<SelectedSlot[]>([])
   const [formMessage, setFormMessage] = useState('')
   const [bookingLoading, setBookingLoading] = useState(false)
@@ -207,11 +213,11 @@ export default function PlayerShareClient({
     return acc
   }, {})
 
-  const hasSlots = Object.keys(slotsByDay).length > 0
+  const hasAnySlots = Object.keys(slotsByDay).length > 0
 
   async function handleBookingSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (hasSlots && selectedSlots.length === 0) {
+    if (hasAnySlots && hasFilteredSlots && selectedSlots.length === 0) {
       setBookingError('Please select at least one preferred time.')
       return
     }
@@ -235,6 +241,8 @@ export default function PlayerShareClient({
           preferred_session_type: sessionType,
           message: formMessage.trim() || null,
           preferred_slots: preferredSlots.length > 0 ? preferredSlots : null,
+          player_gender: player.player_gender || null,
+          player_experience: player.player_experience || null,
         }),
       })
       const data = await res.json()
@@ -271,6 +279,23 @@ export default function PlayerShareClient({
   }
 
   const playerAge = player.birth_year ? new Date().getFullYear() - player.birth_year : null
+
+  const playerProfile = {
+    age: playerAge,
+    gender: player.player_gender || null,
+    experience: player.player_experience || null,
+  }
+  const filteredWindows = filterSlots(availabilityWindows, playerProfile, sessionType)
+  const filteredSlotsByDay = DAY_ORDER.reduce<Record<string, Array<{ window: AvailabilityWindow; time: string }>>>((acc, day) => {
+    const dayWindows = sortWindows(filteredWindows.filter(w => w.day_of_week === day))
+    const slots = dayWindows.flatMap(w =>
+      generateSlots(w.start_time, w.end_time, w.duration_minutes, w.buffer_minutes).map(t => ({ window: w, time: t }))
+    )
+    if (slots.length > 0) acc[day] = slots
+    return acc
+  }, {})
+  const hasFilteredSlots = Object.keys(filteredSlotsByDay).length > 0
+
   const doneCount = completions.length
   const totalCount = drills.length
   const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
@@ -565,6 +590,18 @@ export default function PlayerShareClient({
                       <span style={{ fontSize: '13px', color: '#ffffff', textAlign: 'right' as const }}>{player.parent_phone}</span>
                     </div>
                   )}
+                  {player.player_gender && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                      <span style={{ fontSize: '13px', color: '#9A9A9F', flexShrink: 0 }}>Gender</span>
+                      <span style={{ fontSize: '13px', color: '#ffffff', textAlign: 'right' as const }}>{player.player_gender === 'male' ? 'Boy' : 'Girl'}</span>
+                    </div>
+                  )}
+                  {player.player_experience && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                      <span style={{ fontSize: '13px', color: '#9A9A9F', flexShrink: 0 }}>Level</span>
+                      <span style={{ fontSize: '13px', color: '#ffffff', textAlign: 'right' as const }}>{player.player_experience === 'beginner' ? 'Beginner' : player.player_experience === 'rec_league' ? 'Rec League' : 'Bantam/Club'}</span>
+                    </div>
+                  )}
                 </div>
                 <div style={{ marginTop: '12px', fontSize: '12px', color: '#555558' }}>
                   Not your info? Contact your trainer to update your details.
@@ -576,15 +613,25 @@ export default function PlayerShareClient({
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Session preference</div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  {(['individual', 'group'] as const).map(type => (
-                    <button key={type} type="button" onClick={() => setSessionType(type)} style={{ padding: '12px', borderRadius: '10px', border: `1px solid ${sessionType === type ? 'rgba(0,255,159,0.4)' : '#2A2A2D'}`, background: sessionType === type ? 'rgba(0,255,159,0.08)' : 'transparent', color: sessionType === type ? GREEN : '#9A9A9F', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+                  {(['group', 'individual'] as const).map(type => (
+                    <button key={type} type="button" onClick={() => { setSessionType(type); setSelectedSlots([]) }} style={{ padding: '12px', borderRadius: '10px', border: `1px solid ${sessionType === type ? 'rgba(0,255,159,0.4)' : '#2A2A2D'}`, background: sessionType === type ? 'rgba(0,255,159,0.08)' : 'transparent', color: sessionType === type ? GREEN : '#9A9A9F', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
                       {type === 'individual' ? '1-on-1' : 'Group'}
                     </button>
                   ))}
                 </div>
 
                 {/* RANKED SLOT PICKER */}
-                {hasSlots && (
+                {hasAnySlots && !hasFilteredSlots && (
+                  <div style={{ padding: '16px', background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '12px', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>No group sessions available for your player right now.</div>
+                    <p style={{ fontSize: '13px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: '12px' }}>Current group sessions may not match your player&apos;s age, gender, or experience level. You can still send a request and {trainerFirstName} will be in touch.</p>
+                    <button type="button" onClick={() => { setSessionType('individual'); setSelectedSlots([]) }} style={{ padding: '8px 14px', background: GREEN, color: '#0E0E0F', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                      Switch to Individual
+                    </button>
+                  </div>
+                )}
+
+                {hasFilteredSlots && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div>
                       <label style={{ ...labelStyle, marginBottom: '2px' }}>
@@ -596,11 +643,11 @@ export default function PlayerShareClient({
                       </div>
                     </div>
 
-                    {DAY_ORDER.filter(day => slotsByDay[day]).map(day => (
+                    {DAY_ORDER.filter(day => filteredSlotsByDay[day]).map(day => (
                       <div key={day}>
                         <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>{day}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {slotsByDay[day].map(({ window: w, time }) => {
+                          {filteredSlotsByDay[day].map(({ window: w, time }) => {
                             const rank = slotRank(w.id, time)
                             const isSelected = rank !== -1
                             const badge = sessionTypeBadge(w.session_type)

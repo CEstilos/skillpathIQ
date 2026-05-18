@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { generateSlots } from '@/lib/generateSlots'
+import { generateSlots, filterSlots } from '@/lib/generateSlots'
 
 const GREEN = '#00FF9F'
 const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -42,9 +42,10 @@ interface AvailabilityWindow {
   duration_minutes: number
   buffer_minutes: number
   max_capacity: number | null
-  gender_restriction: string | null
+  gender_filter: string | null
   min_age: number | null
   max_age: number | null
+  experience_filter: string[] | null
 }
 
 interface SessionDuration {
@@ -85,10 +86,12 @@ export default function TrainerProfileClient({
     parentPhone: '',
     playerName: '',
     playerAge: '',
-    playerGender: '',
+    playerGender: '',      // 'male' | 'female' | ''
+    playerExperience: '',  // 'beginner' | 'rec_league' | 'bantam_club' | ''
+    additionalInfo: '',
     playerPosition: '',
     playerGoals: '',
-    sessionType: 'individual' as 'individual' | 'group',
+    sessionType: 'group' as 'individual' | 'group',
     message: '',
   })
   const [selectedSlots, setSelectedSlots] = useState<SelectedSlot[]>([])
@@ -98,7 +101,7 @@ export default function TrainerProfileClient({
 
   function set(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
-    if (field === 'playerGender' || field === 'playerAge') {
+    if (['playerGender', 'playerAge', 'playerExperience', 'sessionType'].includes(field)) {
       setSelectedSlots([])
     }
   }
@@ -119,7 +122,7 @@ export default function TrainerProfileClient({
     return selectedSlots.findIndex(s => s.window_id === window_id && s.slot_time === slot_time)
   }
 
-  // Generate all slots grouped by day (used in availability display)
+  // All slots (for availability display section)
   const slotsByDay = DAY_ORDER.reduce<Record<string, Array<{ window: AvailabilityWindow; time: string }>>>((acc, day) => {
     const dayWindows = sortWindows(availabilityWindows.filter(w => w.day_of_week === day))
     const slots = dayWindows.flatMap(w =>
@@ -130,25 +133,14 @@ export default function TrainerProfileClient({
   }, {})
 
   // Filtered slots for the booking slot picker
-  const playerAge = parseInt(form.playerAge) || null
-  const playerGender = form.playerGender // 'boy' | 'girl' | ''
-
-  function windowMatchesPlayer(w: AvailabilityWindow): boolean {
-    if (w.gender_restriction) {
-      if (playerGender) {
-        const expected = playerGender === 'boy' ? 'boys' : 'girls'
-        if (w.gender_restriction !== expected) return false
-      }
-    }
-    if (playerAge) {
-      if (w.min_age && playerAge < w.min_age) return false
-      if (w.max_age && playerAge > w.max_age) return false
-    }
-    return true
+  const playerProfile = {
+    age: parseInt(form.playerAge) || null,
+    gender: form.playerGender || null,
+    experience: form.playerExperience || null,
   }
-
+  const filteredWindows = filterSlots(availabilityWindows, playerProfile, form.sessionType)
   const filteredSlotsByDay = DAY_ORDER.reduce<Record<string, Array<{ window: AvailabilityWindow; time: string }>>>((acc, day) => {
-    const dayWindows = sortWindows(availabilityWindows.filter(w => w.day_of_week === day && windowMatchesPlayer(w)))
+    const dayWindows = sortWindows(filteredWindows.filter(w => w.day_of_week === day))
     const slots = dayWindows.flatMap(w =>
       generateSlots(w.start_time, w.end_time, w.duration_minutes, w.buffer_minutes).map(t => ({ window: w, time: t }))
     )
@@ -158,14 +150,26 @@ export default function TrainerProfileClient({
 
   const hasAnySlots = Object.keys(slotsByDay).length > 0
   const hasSlots = Object.keys(filteredSlotsByDay).length > 0
-  const hasGenderRestrictedWindows = availabilityWindows.some(w => w.gender_restriction)
+
+  // Check if there would be individual slots if they switched
+  const hasIndividualSlots = (() => {
+    if (form.sessionType === 'group') {
+      const indiv = filterSlots(availabilityWindows, playerProfile, 'individual')
+      return indiv.some(w => w.day_of_week)
+    }
+    return false
+  })()
 
   function restrictionLabel(w: AvailabilityWindow): string | null {
     const parts: string[] = []
-    if (w.gender_restriction) parts.push(w.gender_restriction === 'boys' ? 'Boys' : 'Girls')
-    if (w.min_age && w.max_age) parts.push(`Ages ${w.min_age}–${w.max_age}`)
-    else if (w.min_age) parts.push(`${w.min_age}+`)
-    else if (w.max_age) parts.push(`U${w.max_age + 1}`)
+    if (w.gender_filter && w.gender_filter !== 'mixed') parts.push(w.gender_filter === 'boys' ? 'Boys' : 'Girls')
+    else if (w.gender_filter === 'mixed') parts.push('Mixed')
+    if (w.min_age != null && w.max_age != null) parts.push(`Ages ${w.min_age}–${w.max_age}`)
+    else if (w.min_age != null) parts.push(`${w.min_age}+`)
+    else if (w.max_age != null) parts.push(`U${w.max_age + 1}`)
+    if (w.experience_filter && w.experience_filter.length > 0) {
+      parts.push(w.experience_filter.map(e => e === 'beginner' ? 'Beginner' : e === 'rec_league' ? 'Rec League' : 'Bantam/Club').join(', '))
+    }
     return parts.length > 0 ? parts.join(' · ') : null
   }
 
@@ -183,8 +187,12 @@ export default function TrainerProfileClient({
       setError('Player age is required.')
       return
     }
-    if (hasGenderRestrictedWindows && !form.playerGender) {
-      setError('Please select your player\'s gender to see available sessions.')
+    if (!form.playerGender) {
+      setError('Please select your player\'s gender.')
+      return
+    }
+    if (!form.playerExperience) {
+      setError('Please select your player\'s experience level.')
       return
     }
     if (!form.parentPhone.trim()) {
@@ -217,6 +225,8 @@ export default function TrainerProfileClient({
           player_name: form.playerName.trim(),
           player_age: parseInt(form.playerAge),
           player_gender: form.playerGender || null,
+          player_experience: form.playerExperience || null,
+          additional_info: form.additionalInfo.trim() || null,
           player_position: form.playerPosition.trim() || null,
           player_goals: form.playerGoals.trim() || null,
           preferred_session_type: form.sessionType,
@@ -425,14 +435,15 @@ export default function TrainerProfileClient({
                 <input style={inputStyle} type="text" placeholder="Alex Smith" value={form.playerName} onChange={e => set('playerName', e.target.value)} />
               </div>
               <div>
-                <label style={labelStyle}>
-                  Player gender{hasGenderRestrictedWindows ? <span style={{ color: '#E03131' }}> *</span> : <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}> (optional)</span>}
-                </label>
+                <label style={labelStyle}>Player gender <span style={{ color: '#E03131' }}>*</span></label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  {(['boy', 'girl'] as const).map(g => (
-                    <button key={g} type="button" onClick={() => set('playerGender', form.playerGender === g ? '' : g)}
-                      style={{ padding: '11px', borderRadius: '10px', border: `1px solid ${form.playerGender === g ? 'rgba(0,255,159,0.4)' : '#2A2A2D'}`, background: form.playerGender === g ? 'rgba(0,255,159,0.08)' : 'transparent', color: form.playerGender === g ? GREEN : '#9A9A9F', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'sans-serif' }}>
-                      {g === 'boy' ? 'Boy' : 'Girl'}
+                  {([{ val: 'male', label: 'Boy' }, { val: 'female', label: 'Girl' }] as const).map(g => (
+                    <button
+                      key={g.val}
+                      type="button"
+                      onClick={() => set('playerGender', form.playerGender === g.val ? '' : g.val)}
+                      style={{ padding: '11px', borderRadius: '10px', border: `1px solid ${form.playerGender === g.val ? 'rgba(0,255,159,0.4)' : '#2A2A2D'}`, background: form.playerGender === g.val ? 'rgba(0,255,159,0.08)' : 'transparent', color: form.playerGender === g.val ? GREEN : '#9A9A9F', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'sans-serif' }}>
+                      {g.label}
                     </button>
                   ))}
                 </div>
@@ -448,8 +459,35 @@ export default function TrainerProfileClient({
                 </div>
               </div>
               <div>
+                <label style={labelStyle}>Highest level played <span style={{ color: '#E03131' }}>*</span></label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {([
+                    { val: 'beginner', label: 'Beginner' },
+                    { val: 'rec_league', label: 'Rec League' },
+                    { val: 'bantam_club', label: 'Bantam / Club Team' },
+                  ] as const).map(exp => (
+                    <button
+                      key={exp.val}
+                      type="button"
+                      onClick={() => set('playerExperience', form.playerExperience === exp.val ? '' : exp.val)}
+                      style={{ padding: '11px 14px', borderRadius: '10px', border: `1px solid ${form.playerExperience === exp.val ? 'rgba(0,255,159,0.4)' : '#2A2A2D'}`, background: form.playerExperience === exp.val ? 'rgba(0,255,159,0.08)' : 'transparent', color: form.playerExperience === exp.val ? GREEN : '#9A9A9F', fontSize: '14px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' as const, fontFamily: 'sans-serif' }}>
+                      {exp.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
                 <label style={labelStyle}>Goals <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
                 <textarea style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' as const, lineHeight: 1.6 }} placeholder="What do you want your player to work on?" value={form.playerGoals} onChange={e => set('playerGoals', e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>Anything else? <span style={{ fontSize: '11px', fontWeight: 400, color: '#555558' }}>(optional)</span></label>
+                <textarea
+                  style={{ ...inputStyle, minHeight: '72px', resize: 'vertical' as const, lineHeight: 1.6 }}
+                  placeholder="e.g. position, goals, schedule constraints, injuries..."
+                  value={form.additionalInfo}
+                  onChange={e => set('additionalInfo', e.target.value)}
+                />
               </div>
             </div>
 
@@ -458,7 +496,7 @@ export default function TrainerProfileClient({
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Session preference</div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                {(['individual', 'group'] as const).map(type => (
+                {(['group', 'individual'] as const).map(type => (
                   <button key={type} type="button" onClick={() => set('sessionType', type)} style={{ padding: '12px', borderRadius: '10px', border: `1px solid ${form.sessionType === type ? 'rgba(0,255,159,0.4)' : '#2A2A2D'}`, background: form.sessionType === type ? 'rgba(0,255,159,0.08)' : 'transparent', color: form.sessionType === type ? GREEN : '#9A9A9F', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
                     {type === 'individual' ? '1-on-1' : 'Group'}
                   </button>
@@ -478,9 +516,35 @@ export default function TrainerProfileClient({
                     </div>
                   </div>
 
-                  {!hasSlots && (playerGender || playerAge) && (
-                    <div style={{ padding: '12px 14px', background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '10px', fontSize: '13px', color: '#F5A623' }}>
-                      No available sessions match your player&apos;s profile. Contact {trainer.full_name.split(' ')[0]} directly if you have questions.
+                  {hasAnySlots && !hasSlots && (form.playerGender || form.playerAge || form.playerExperience) && (
+                    <div style={{ padding: '20px', background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '12px' }}>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>
+                        No group sessions available for your player right now.
+                      </div>
+                      <p style={{ fontSize: '13px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: '16px' }}>
+                        Current group sessions may not match your player&apos;s age, gender, or experience level. You can still send a session request and {trainer.full_name.split(' ')[0]} will be in touch.
+                      </p>
+                      {hasIndividualSlots && (
+                        <p style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '12px' }}>
+                          Individual sessions are available —{' '}
+                          <button type="button" onClick={() => set('sessionType', 'individual')} style={{ background: 'none', border: 'none', color: GREEN, fontWeight: 600, cursor: 'pointer', fontSize: '13px', padding: 0 }}>
+                            Switch to Individual →
+                          </button>
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          set('sessionType', 'individual')
+                          setForm(prev => ({
+                            ...prev,
+                            sessionType: 'individual',
+                            message: prev.message ? prev.message + '\nNote: No matching group sessions were available for this player.' : 'Note: No matching group sessions were available for this player.',
+                          }))
+                        }}
+                        style={{ padding: '10px 16px', background: GREEN, color: '#0E0E0F', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                        Send a Request Anyway
+                      </button>
                     </div>
                   )}
 
