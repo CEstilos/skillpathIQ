@@ -340,59 +340,6 @@ export default function TrainerProfileClient({
           </div>
         )}
 
-        {/* AVAILABILITY DISPLAY */}
-        {schedulingMode !== 'calendly' && availabilityWindows.length > 0 && (
-          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', padding: '18px 20px', marginBottom: '28px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px' }}>Availability</div>
-
-            {DAY_ORDER.filter(day => slotsByDay[day]).map(day => {
-              const items = slotsByDay[day]
-              const windows = sortWindows(availabilityWindows.filter(w => w.day_of_week === day))
-              return (
-                <div key={day} style={{ display: 'flex', gap: '12px', marginBottom: '12px', alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff', textTransform: 'capitalize', minWidth: '86px', paddingTop: '2px' }}>{day}</span>
-                  <div style={{ flex: 1 }}>
-                    {windows.map(w => {
-                      const badge = sessionTypeBadge(w.session_type)
-                      const slots = generateSlots(w.start_time, w.end_time, w.duration_minutes, w.buffer_minutes)
-                      return (
-                        <div key={w.id} style={{ marginBottom: '6px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '12px', padding: '2px 7px', borderRadius: '99px', fontWeight: 600, background: badge.bg, color: badge.color }}>
-                              {badge.label}{w.max_capacity && w.session_type !== 'individual' ? ` · up to ${w.max_capacity}` : ''}
-                            </span>
-                            {(() => { const rl = restrictionLabel(w); return rl ? <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '99px', fontWeight: 600, background: 'rgba(245,166,35,0.12)', color: '#F5A623' }}>{rl}</span> : null })()}
-                            {w.display_label && <span style={{ fontSize: '11px', color: '#9A9A9F', fontStyle: 'italic' }}>{w.display_label}</span>}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '3px' }}>
-                            {slots.map(formatTime).join(' · ')}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
-
-            {sessionDurations.length > 0 && (
-              <div style={{ borderTop: '1px solid #2A2A2D', paddingTop: '10px', marginTop: '6px' }}>
-                <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Session lengths: </span>
-                <span style={{ fontSize: '12px', color: '#ffffff' }}>{sessionDurations.map(d => d.label).join(' · ')}</span>
-              </div>
-            )}
-
-            {upcomingBlackoutDisplay.length > 0 && (
-              <div style={{ marginTop: '10px', fontSize: '12px', color: '#555558' }}>
-                Unavailable: {upcomingBlackoutDisplay.join(', ')}
-              </div>
-            )}
-
-            <div style={{ marginTop: '10px', fontSize: '11px', color: '#555558', fontStyle: 'italic' }}>
-              Availability shown is a general guide. Your preferred times will be confirmed by the trainer.
-            </div>
-          </div>
-        )}
 
         {/* BOOKING FORM */}
         {schedulingMode === 'calendly' ? null : submitted ? (
