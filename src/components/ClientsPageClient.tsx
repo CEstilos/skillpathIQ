@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase'
 import NavBar from '@/components/NavBar'
 
 const NEW_COLOR = '#4A9EFF'
+const UPCOMING_COLOR = '#A78BFA'
 
 interface Profile { id: string; full_name: string; email: string; individual_rate: number | null; group_rate: number | null }
 interface Player {
@@ -156,16 +157,16 @@ export default function ClientsPageClient({ profile, players, archivedPlayers = 
   function formatNextSession(session: Session | null) {
     if (!session) return 'Unscheduled'
     const date = new Date(session.session_date + 'T00:00:00')
-    const dayAbbr = date.toLocaleDateString('en-US', { weekday: 'short' })
+    const monthDay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     if (session.session_time) {
       const [h, m] = session.session_time.split(':')
       const hour = parseInt(h)
       const ampm = hour >= 12 ? 'pm' : 'am'
       const display = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour
       const minStr = m === '00' ? '' : `:${m}`
-      return `${dayAbbr} ${display}${minStr}${ampm}`
+      return `${monthDay} ${display}${minStr}${ampm}`
     }
-    return dayAbbr
+    return monthDay
   }
 
   function getDaysSince(dateStr: string) {
@@ -311,7 +312,9 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
   const activePlayers = localPlayers.filter(p => getStatus(p.id) === 'active')
   const atRiskPlayers = localPlayers.filter(p => getStatus(p.id) === 'at-risk')
   const lapsedPlayers = localPlayers.filter(p => getStatus(p.id) === 'lapsed')
-  const newPlayers = localPlayers.filter(p => getStatus(p.id) === 'new')
+  const allNewPlayers = localPlayers.filter(p => getStatus(p.id) === 'new')
+  const upcomingPlayers = allNewPlayers.filter(p => getNextSession(p) !== null)
+  const newPlayers = allNewPlayers.filter(p => getNextSession(p) === null)
 
   const totalAtRiskRevenue = atRiskPlayers.reduce((sum, p) => sum + getPlayerRate(p), 0)
   const totalLapsedRevenue = lapsedPlayers.reduce((sum, p) => sum + getMonthlyRecoveryRevenue(p), 0)
@@ -328,6 +331,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
   const visibleActive = (statusFilter === 'all' || statusFilter === 'active') ? filteredBySearch(activePlayers) : []
   const visibleAtRisk = (statusFilter === 'all' || statusFilter === 'at-risk') ? filteredBySearch(atRiskPlayers) : []
   const visibleLapsed = (statusFilter === 'all' || statusFilter === 'lapsed') ? filteredBySearch(lapsedPlayers) : []
+  const visibleUpcoming = (statusFilter === 'all' || statusFilter === 'upcoming') ? filteredBySearch(upcomingPlayers) : []
   const visibleNew = (statusFilter === 'all' || statusFilter === 'new') ? filteredBySearch(newPlayers) : []
 
   function getInsight() {
@@ -519,7 +523,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { overflow-x: hidden; max-width: 100vw; background: #0E0E0F; }
         .mobile-bottom-nav-clients { display: none; }
-        .kpi-grid { grid-template-columns: repeat(4, 1fr); }
+        .kpi-grid { grid-template-columns: repeat(5, 1fr); }
         .players-pad { padding-bottom: 24px; }
         @media (max-width: 640px) {
           .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
@@ -574,6 +578,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
               <option value="active">Active</option>
               <option value="at-risk">At Risk</option>
               <option value="lapsed">Lapsed</option>
+              <option value="upcoming">Upcoming</option>
               <option value="new">New</option>
             </select>
             <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#9A9A9F', fontSize: '10px', pointerEvents: 'none' }}>▼</span>
@@ -586,7 +591,8 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
             { label: 'Active', count: activePlayers.length, sub: `${formatCurrency(totalActiveMonthly)}/mo revenue`, color: '#00FF9F' },
             { label: 'At Risk', count: atRiskPlayers.length, sub: `${formatCurrency(totalAtRiskRevenue)} at risk`, color: '#F5A623' },
             { label: 'Lapsed', count: lapsedPlayers.length, sub: `${formatCurrency(totalLapsedRevenue)} recoverable`, color: '#E03131' },
-            { label: 'New', count: newPlayers.length, sub: 'No sessions yet', color: NEW_COLOR },
+            { label: 'Upcoming', count: upcomingPlayers.length, sub: 'First session scheduled', color: UPCOMING_COLOR },
+            { label: 'New', count: newPlayers.length, sub: 'Nothing scheduled yet', color: NEW_COLOR },
           ].map(kpi => (
             <div key={kpi.label} style={{ background: '#1A1A1C', borderRadius: '12px', padding: '14px', borderBottom: `3px solid ${kpi.color}`, border: '1px solid #2A2A2D', borderBottomColor: kpi.color }}>
               <div style={{ fontSize: '10px', fontWeight: 700, color: kpi.color, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>{kpi.label}</div>
@@ -596,7 +602,15 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
           ))}
         </div>
 
-        {/* NEW CLIENTS */}
+        {/* UPCOMING — new players with a session scheduled */}
+        {visibleUpcoming.length > 0 && (
+          <div style={{ padding: '0 16px 16px' }}>
+            <MobileSectionHeader label="Upcoming" count={visibleUpcoming.length} color={UPCOMING_COLOR} />
+            {visibleUpcoming.map(p => renderMobileCard(p, UPCOMING_COLOR, 'Upcoming', false))}
+          </div>
+        )}
+
+        {/* NEW CLIENTS — no sessions, nothing scheduled */}
         {visibleNew.length > 0 && (
           <div style={{ padding: '0 16px 16px' }}>
             <MobileSectionHeader label="New Clients" count={visibleNew.length} color={NEW_COLOR} />
@@ -629,7 +643,7 @@ Write a SHORT, warm, personal text message (2-3 sentences max) from the trainer 
         )}
 
         {/* Empty state */}
-        {visibleNew.length === 0 && visibleAtRisk.length === 0 && visibleLapsed.length === 0 && visibleActive.length === 0 && (
+        {visibleNew.length === 0 && visibleUpcoming.length === 0 && visibleAtRisk.length === 0 && visibleLapsed.length === 0 && visibleActive.length === 0 && (
           <div style={{ padding: '40px 16px', textAlign: 'center' }}>
             {localPlayers.length === 0 ? (
               <>
