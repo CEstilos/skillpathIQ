@@ -144,6 +144,25 @@ export async function POST(
       })
       .eq('id', bookingRequestId)
 
+    // Step 3b: If this is a group session request, add player to the linked group
+    if (session_type === 'group' && req.preferred_slots && req.preferred_slots.length > 0) {
+      const windowIds = req.preferred_slots.map((s: { window_id: string }) => s.window_id).filter(Boolean)
+      if (windowIds.length > 0) {
+        const { data: linkedGroup } = await supabaseAdmin
+          .from('groups')
+          .select('id')
+          .eq('trainer_id', user.id)
+          .in('window_id', windowIds)
+          .single()
+        if (linkedGroup) {
+          await supabaseAdmin
+            .from('group_members')
+            .insert({ group_id: linkedGroup.id, player_id: playerId })
+            .then(() => {}) // ignore duplicate errors
+        }
+      }
+    }
+
     // Step 4: Send confirmation email to parent
     const resend = new Resend(process.env.RESEND_API_KEY)
     const formattedDate = formatDateLong(session_date)
