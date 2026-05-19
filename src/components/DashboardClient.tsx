@@ -131,6 +131,16 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     return 'lapsed'
   }
 
+  function hasUpcomingSession(player: Player): boolean {
+    const allSched = [...todaySessions, ...upcomingSessions]
+    return allSched.some(s => {
+      if (s.status === 'cancelled' || s.status === 'logged') return false
+      if (s.group_id && player.group_ids.includes(s.group_id)) return true
+      if (allSessionPlayers.some(sp => sp.session_id === s.id && sp.player_id === player.id)) return true
+      return false
+    })
+  }
+
   function getStatusStyle(status: string) {
     switch (status) {
       case 'active': return { color: '#00FF9F', bg: 'rgba(0,255,159,0.12)', label: 'Active' }
@@ -223,6 +233,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const activeCount = players.filter(p => getStatus(p.id) === 'active').length
   const atRiskCount = players.filter(p => getStatus(p.id) === 'at-risk').length
   const lapsedCount = players.filter(p => getStatus(p.id) === 'lapsed').length
+  const unscheduledNewPlayers = players.filter(p => getStatus(p.id) === 'new' && !hasUpcomingSession(p))
   const mobileAtRiskCount = players.filter(p => {
     const last = getLastSession(p.id)
     const days = getDaysSince(last?.session_date || null)
@@ -1510,14 +1521,14 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           <div style={{ position: 'sticky', top: '76px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
             {/* ACTION NEEDED */}
-            {(unloggedSessions.length > 0 || players.filter(p => getStatus(p.id) === 'new').length > 0 || localSessionRequests.length > 0 || localBookingRequests.filter(r => r.status === 'pending').length > 0 || lowEngagementPlayers.length > 0) && (
+            {(unloggedSessions.length > 0 || unscheduledNewPlayers.length > 0 || localSessionRequests.length > 0 || localBookingRequests.filter(r => r.status === 'pending').length > 0 || lowEngagementPlayers.length > 0) && (
               <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
                 <div style={{ padding: '14px 16px', borderBottom: '1px solid #2A2A2D' }}>
                   <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Action Needed</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {unloggedSessions.length > 0 && (
-                    <div style={{ padding: '12px 16px', borderBottom: (players.filter(p => getStatus(p.id) === 'new').length > 0 || localSessionRequests.length > 0) ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: (unscheduledNewPlayers.length > 0 || localSessionRequests.length > 0) ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F5A623', flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{unloggedSessions.length} unlogged session{unloggedSessions.length !== 1 ? 's' : ''}</div>
@@ -1526,12 +1537,12 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                       <button onClick={() => setShowUnlogged(!showUnlogged)} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(245,166,35,0.3)', background: 'transparent', color: '#F5A623', cursor: 'pointer', flexShrink: 0, fontWeight: 600 }}>Review</button>
                     </div>
                   )}
-                  {players.filter(p => getStatus(p.id) === 'new').length > 0 && (
+                  {unscheduledNewPlayers.length > 0 && (
                     <div style={{ padding: '12px 16px', borderBottom: localSessionRequests.length > 0 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4A9EFF', flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{players.filter(p => getStatus(p.id) === 'new').length} new player{players.filter(p => getStatus(p.id) === 'new').length !== 1 ? 's' : ''}</div>
-                        <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>Haven&apos;t had a session yet</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{unscheduledNewPlayers.length} new player{unscheduledNewPlayers.length !== 1 ? 's' : ''}</div>
+                        <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>Nothing scheduled yet</div>
                       </div>
                       <button onClick={() => router.push('/dashboard/sessions/new')} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(74,158,255,0.3)', background: 'transparent', color: '#4A9EFF', cursor: 'pointer', flexShrink: 0, fontWeight: 600 }}>Schedule</button>
                     </div>
