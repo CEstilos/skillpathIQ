@@ -53,6 +53,7 @@ interface Profile {
   public_profile_enabled: boolean | null
   calendly_url: string | null
   scheduling_mode: string | null
+  venmo_handle: string | null
 }
 
 interface AvailabilityWindow {
@@ -157,6 +158,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
   const [bio, setBio] = useState(profile?.bio || '')
   const [sport, setSport] = useState(profile?.sport || '')
   const [location, setLocation] = useState(profile?.location || '')
+  const [venmoHandle, setVenmoHandle] = useState(profile?.venmo_handle || '')
   const [publicProfileEnabled, setPublicProfileEnabled] = useState(profile?.public_profile_enabled ?? false)
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
@@ -179,6 +181,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
       sport: sport.trim() || null,
       location: location.trim() || null,
       public_profile_enabled: publicProfileEnabled,
+      venmo_handle: venmoHandle.trim().replace(/^@/, '') || null,
     }).eq('id', profile?.id)
     setProfileSaving(false)
     if (error) {
@@ -550,6 +553,24 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
               <button type="button" onClick={handleSavePublicProfile} disabled={profileSaving} style={saveBtn(true)}>
                 {profileSaved ? '✓ Saved!' : profileSaving ? 'Saving...' : 'Save public profile'}
               </button>
+            </div>
+
+            <div style={card}>
+              <div style={sectionLabel}>Venmo</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Venmo handle</label>
+                <div style={{ display: 'flex', alignItems: 'center', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', overflow: 'hidden' }}>
+                  <span style={{ padding: '11px 10px 11px 14px', fontSize: '14px', color: '#9A9A9F', flexShrink: 0 }}>@</span>
+                  <input
+                    style={{ flex: 1, background: 'transparent', border: 'none', padding: '11px 14px 11px 0', fontSize: '14px', color: '#ffffff', outline: 'none' }}
+                    type="text"
+                    placeholder="yourvenmoname"
+                    value={venmoHandle}
+                    onChange={e => { setVenmoHandle(e.target.value.replace(/^@/, '')); markDirty('public_profile') }}
+                  />
+                </div>
+                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Parents will see a Pay via Venmo link on your profile. Enter without the @ symbol.</div>
+              </div>
             </div>
 
             <div style={card}>

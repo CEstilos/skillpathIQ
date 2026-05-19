@@ -14,7 +14,7 @@ export default async function TrainerProfilePage({ params }: { params: Promise<{
 
   const { data: trainer } = await supabase
     .from('profiles')
-    .select('id, full_name, bio, sport, location, profile_photo_url, public_profile_enabled, individual_rate, group_rate')
+    .select('id, full_name, bio, sport, location, profile_photo_url, public_profile_enabled, individual_rate, group_rate, venmo_handle')
     .eq('username', username)
     .single()
 

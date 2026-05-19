@@ -70,7 +70,7 @@ export async function POST(
     // Fetch trainer profile for email
     const { data: trainer } = await supabaseAdmin
       .from('profiles')
-      .select('id, full_name, email, location')
+      .select('id, full_name, email, location, venmo_handle')
       .eq('id', user.id)
       .single()
 
@@ -181,12 +181,13 @@ export async function POST(
       `  Type: ${session_type === 'group' ? 'Group' : 'Individual'}`,
       `  Trainer: ${trainer.full_name}`,
       `  Location: ${location}`,
+      trainer.venmo_handle ? `  Payment: venmo.com/${trainer.venmo_handle}` : null,
       ``,
       `If you need to reschedule, please contact ${trainer.full_name} directly at ${trainer.email}.`,
       ``,
       `See you on the court.`,
       `— SkillPathIQ`,
-    ].join('\n')
+    ].filter(l => l !== null).join('\n')
 
     await resend.emails.send({
       from: 'SkillPathIQ <noreply@skillpathiq.app>',

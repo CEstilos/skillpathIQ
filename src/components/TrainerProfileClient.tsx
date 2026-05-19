@@ -29,6 +29,7 @@ interface Trainer {
   profile_photo_url: string | null
   individual_rate: number | null
   group_rate: number | null
+  venmo_handle: string | null
 }
 
 interface AvailabilityWindow {
@@ -326,6 +327,20 @@ export default function TrainerProfileClient({
           </div>
         )}
 
+        {/* VENMO */}
+        {trainer.venmo_handle && (
+          <div style={{ marginBottom: '28px' }}>
+            <a
+              href={`https://venmo.com/${trainer.venmo_handle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', background: '#3D95CE', color: '#ffffff', border: 'none', borderRadius: '12px', padding: '14px 20px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.3 1.8c.6 1 .9 2.1.9 3.5 0 4.3-3.7 9.9-6.7 13.8H6.8L4 2.6l6.2-.6 1.4 11.3c1.3-2.2 2.9-5.6 2.9-7.9 0-1.3-.2-2.1-.6-2.8l5.4-.8z"/></svg>
+              Pay via Venmo
+            </a>
+          </div>
+        )}
+
         {/* CALENDLY ONLY — book button */}
         {schedulingMode === 'calendly' && calendlyUrl && (
           <div style={{ marginBottom: '28px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
@@ -576,6 +591,15 @@ export default function TrainerProfileClient({
             <button type="submit" disabled={loading} style={{ background: GREEN, color: '#0E0E0F', border: 'none', borderRadius: '12px', padding: '16px', fontSize: '16px', fontWeight: 700, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'opacity 0.15s' }}>
               {loading ? 'Sending…' : 'Request Session'}
             </button>
+
+            {trainer.venmo_handle && (
+              <p style={{ fontSize: '12px', color: '#555558', textAlign: 'center' }}>
+                Payment accepted via{' '}
+                <a href={`https://venmo.com/${trainer.venmo_handle}`} target="_blank" rel="noopener noreferrer" style={{ color: '#9A9A9F', textDecoration: 'none' }}>
+                  Venmo @{trainer.venmo_handle}
+                </a>
+              </p>
+            )}
 
             <p style={{ fontSize: '12px', color: '#555558', textAlign: 'center' }}>
               Powered by <span style={{ color: '#9A9A9F' }}>SkillPathIQ</span>
