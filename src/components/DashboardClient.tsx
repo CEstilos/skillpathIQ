@@ -7,7 +7,7 @@ import NavBar from '@/components/NavBar'
 
 interface Profile { id: string; full_name: string; email: string; primary_sport?: string; onboarding_completed?: boolean; username?: string | null; public_profile_enabled?: boolean | null; bio?: string | null; sport?: string | null; location?: string | null }
 interface Player { id: string; full_name: string; parent_email: string; group_ids: string[]; trainer_id: string; created_at: string }
-interface Group { id: string; name: string; sport: string; session_day: string; session_time: string }
+interface Group { id: string; name: string; sport: string; session_day: string; session_time: string; window_id: string | null }
 interface Session { id: string; player_id: string; session_date: string; notes: string | null }
 interface ScheduledSession { id: string; title: string; session_date: string; session_time: string; type: string; group_id: string | null; status?: string; rescheduled_date?: string | null; groups?: { name: string; sport: string } }
 interface DrillWeek { id: string; group_id: string | null; player_id: string | null; title: string; week_start: string }
@@ -456,6 +456,14 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     router.push(`/requests/${req.id}/schedule`)
   }
 
+  function findLinkedGroup(req: BookingRequest): Group | null {
+    if (req.preferred_session_type !== 'group' || !req.preferred_slots) return null
+    const matched = groups.find(g =>
+      g.window_id && req.preferred_slots?.some(s => s.window_id === g.window_id)
+    )
+    return matched || null
+  }
+
   async function handleDeclineBooking(req: BookingRequest, notify: boolean) {
     const supabaseClient = createClient()
     await supabaseClient.from('booking_requests').update({ status: 'declined' }).eq('id', req.id)
@@ -688,7 +696,9 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           <div style={{ padding: '4px 16px 12px' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Booking Requests</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {localBookingRequests.filter(r => r.status === 'pending').map(req => (
+              {localBookingRequests.filter(r => r.status === 'pending').map(req => {
+                const linkedGroup = findLinkedGroup(req)
+                return (
                 <div key={req.id} style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', padding: '14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                     <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
@@ -710,6 +720,11 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                       <div style={{ fontSize: '12px', color: '#9A9A9F' }}>
                         {req.parent_name} · {req.preferred_session_type === 'group' ? 'Group' : '1-on-1'}{req.player_age ? ` · Age ${req.player_age}` : ''}
                       </div>
+                      {linkedGroup && (
+                        <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+                          Requested group: <span style={{ color: '#ffffff', fontWeight: 500 }}>{linkedGroup.name}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   {req.request_type !== 'returning_player' && (req.player_goals || req.message) && (
@@ -729,12 +744,17 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                     </div>
                   ) : (
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => handleAcceptBooking(req)} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>Accept &amp; Schedule →</button>
+                      {linkedGroup ? (
+                        <button onClick={() => router.push(`/dashboard/groups/${linkedGroup.id}?request=${req.id}`)} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>View Group →</button>
+                      ) : (
+                        <button onClick={() => handleAcceptBooking(req)} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>Accept &amp; Schedule →</button>
+                      )}
                       <button onClick={() => setDecliningBooking(req.id)} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Decline</button>
                     </div>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
@@ -1244,7 +1264,9 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                     <button onClick={() => { const link = `https://skillpathiq.com/t/${profile?.username}`; navigator.clipboard.writeText(link).then(() => showDashToast('Link copied!')).catch(() => {}) }} style={{ background: '#00FF9F', color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>Share Booking Link</button>
                   </div>
                 )}
-                {pendingReqs.map((req, i, arr) => (
+                {pendingReqs.map((req, i, arr) => {
+                  const linkedGroup = findLinkedGroup(req)
+                  return (
                   <div key={req.id} style={{ padding: '16px', borderBottom: i < arr.length - 1 ? '1px solid #2A2A2D' : 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                       <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
@@ -1266,6 +1288,11 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                         <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '1px' }}>
                           {req.parent_name} · {req.preferred_session_type === 'group' ? 'Group' : '1-on-1'}{req.player_age ? ` · Age ${req.player_age}` : ''}
                         </div>
+                        {linkedGroup && (
+                          <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+                            Requested group: <span style={{ color: '#ffffff', fontWeight: 500 }}>{linkedGroup.name}</span>
+                          </div>
+                        )}
                         {(req.request_type !== 'returning_player' && (req.player_position || req.player_goals) || req.message || req.preferred_availability_text) && (
                           <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             {req.request_type !== 'returning_player' && req.player_position && <div style={{ fontSize: '12px', color: '#9A9A9F' }}>Position: {req.player_position}</div>}
@@ -1281,7 +1308,11 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
-                        <button onClick={() => handleAcceptBooking(req)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>Accept &amp; Schedule →</button>
+                        {linkedGroup ? (
+                          <button onClick={() => router.push(`/dashboard/groups/${linkedGroup.id}?request=${req.id}`)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>View Group →</button>
+                        ) : (
+                          <button onClick={() => handleAcceptBooking(req)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>Accept &amp; Schedule →</button>
+                        )}
                         <button onClick={() => setDecliningBooking(decliningBooking === req.id ? null : req.id)} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Decline</button>
                       </div>
                     </div>
@@ -1295,7 +1326,8 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                       </div>
                     )}
                   </div>
-                ))}
+                  )
+                })}
                 {localBookingRequests.filter(r => r.status !== 'pending').length > 0 && (
                   <div style={{ borderTop: '1px solid #2A2A2D' }}>
                     <button onClick={() => setBookingHistoryOpen(!bookingHistoryOpen)} style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: '#9A9A9F', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>

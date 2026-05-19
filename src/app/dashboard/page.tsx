@@ -16,7 +16,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     .order('created_at', { ascending: false })
 
   const { data: groups } = await supabase
-    .from('groups').select('*').eq('trainer_id', user.id)
+    .from('groups').select('*, window_id').eq('trainer_id', user.id)
     .order('created_at', { ascending: true })
 
   const { data: sessions } = await supabase

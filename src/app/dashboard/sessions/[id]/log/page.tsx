@@ -187,6 +187,12 @@ const [editingEmail, setEditingEmail] = useState<string | null>(null)
 await supabase.from('sessions')
 .update({ status: 'logged' })
 .eq('id', sessionId)
+
+    // Clear the confirmed-for-next-session list for this group
+    if (session?.group_id) {
+      await supabase.from('group_confirmed_players').delete().eq('group_id', session.group_id)
+    }
+
     setLoading(false)
 
     // If group session with players who have parent emails, go to player notes step
