@@ -81,6 +81,7 @@ export default function GroupDetailClient({ group: initialGroup, players: initia
   const [newPlayerName, setNewPlayerName] = useState('')
   const [newPlayerEmail, setNewPlayerEmail] = useState('')
   const [addingNewPlayer, setAddingNewPlayer] = useState(false)
+  const [addPlayerError, setAddPlayerError] = useState<string | null>(null)
 
   // Email state
   const [showEmailComposer, setShowEmailComposer] = useState(false)
@@ -153,29 +154,41 @@ export default function GroupDetailClient({ group: initialGroup, players: initia
   }
 
   async function handleAddExistingPlayer(player: Player) {
+    setAddPlayerError(null)
     const { error } = await supabase.from('group_members').insert({ group_id: group.id, player_id: player.id })
-    if (!error) {
-      setLocalPlayers(prev => [...prev, { ...player, group_ids: [...player.group_ids, group.id] }].sort((a, b) => a.full_name.localeCompare(b.full_name)))
-      setSearch('')
+    if (error) {
+      setAddPlayerError(error.message)
+      return
     }
+    setLocalPlayers(prev => [...prev, { ...player, group_ids: [...player.group_ids, group.id] }].sort((a, b) => a.full_name.localeCompare(b.full_name)))
+    setSearch('')
   }
 
   async function handleAddNewPlayer() {
     if (!newPlayerName.trim() || !newPlayerEmail.trim()) return
     setAddingNewPlayer(true)
+    setAddPlayerError(null)
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data, error } = await supabase.from('players').insert({
+    if (!user) { setAddingNewPlayer(false); return }
+    const { data, error: playerError } = await supabase.from('players').insert({
       trainer_id: user.id,
       full_name: newPlayerName.trim(),
       parent_email: newPlayerEmail.trim(),
       avatar_initials: newPlayerName.trim().split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
     }).select().single()
-    if (!error && data) {
-      await supabase.from('group_members').insert({ group_id: group.id, player_id: data.id })
-      setLocalPlayers(prev => [...prev, { ...data, group_ids: [group.id] }].sort((a, b) => a.full_name.localeCompare(b.full_name)))
-      setNewPlayerName(''); setNewPlayerEmail(''); setShowAddPlayer(false)
+    if (playerError || !data) {
+      setAddPlayerError(playerError?.message || 'Failed to create player')
+      setAddingNewPlayer(false)
+      return
     }
+    const { error: memberError } = await supabase.from('group_members').insert({ group_id: group.id, player_id: data.id })
+    if (memberError) {
+      setAddPlayerError(memberError.message)
+      setAddingNewPlayer(false)
+      return
+    }
+    setLocalPlayers(prev => [...prev, { ...data, group_ids: [group.id] }].sort((a, b) => a.full_name.localeCompare(b.full_name)))
+    setNewPlayerName(''); setNewPlayerEmail(''); setShowAddPlayer(false)
     setAddingNewPlayer(false)
   }
 
@@ -420,7 +433,7 @@ export default function GroupDetailClient({ group: initialGroup, players: initia
             <div style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>
               Players ({localPlayers.length})
             </div>
-            <button onClick={() => setShowAddPlayer(!showAddPlayer)}
+            <button onClick={() => { setShowAddPlayer(!showAddPlayer); setAddPlayerError(null) }}
               style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', background: showAddPlayer ? 'rgba(0,255,159,0.1)' : GREEN, color: showAddPlayer ? GREEN : '#0E0E0F', border: showAddPlayer ? '1px solid rgba(0,255,159,0.3)' : 'none', fontWeight: 700, cursor: 'pointer' }}>
               + Add player
             </button>
@@ -466,6 +479,11 @@ export default function GroupDetailClient({ group: initialGroup, players: initia
               )}
               {availablePlayers.length === 0 && search && (
                 <p style={{ fontSize: '13px', color: '#9A9A9F' }}>No players found</p>
+              )}
+              {addPlayerError && (
+                <p style={{ fontSize: '13px', color: RED, background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px', marginTop: '8px' }}>
+                  {addPlayerError}
+                </p>
               )}
             </div>
           )}
