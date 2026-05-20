@@ -205,6 +205,7 @@ export default function TrainerProfileClient({
 
   const hasAnySlots = Object.keys(slotsByDay).length > 0
   const hasSlots = Object.keys(filteredSlotsByDay).length > 0
+  const playerInfoComplete = !!form.playerGender && !!form.playerAge && !!form.playerExperience
 
   // Check if there would be individual slots if they switched
   const hasIndividualSlots = (() => {
@@ -526,7 +527,12 @@ export default function TrainerProfileClient({
               </div>
 
               {/* RANKED SLOT PICKER */}
-              {hasAnySlots && (
+              {!playerInfoComplete && (
+                <div style={{ fontSize: '13px', color: '#555558', textAlign: 'center', padding: '16px 0' }}>
+                  Enter your player&apos;s information to see available sessions.
+                </div>
+              )}
+              {hasAnySlots && playerInfoComplete && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div>
                     <label style={{ ...labelStyle, marginBottom: '2px' }}>
