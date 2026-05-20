@@ -36,6 +36,15 @@ interface BookingRequest {
   created_at: string
   preferred_availability_text: string | null
   preferred_slots: Array<{ rank: number; window_id: string; slot_time: string }> | null
+  package_id: string | null
+}
+
+interface TrainerPackage {
+  id: string
+  name: string
+  session_count: number
+  price: number
+  price_per_session: number
 }
 
 interface Props {
@@ -53,9 +62,10 @@ interface Props {
   unloggedSessions: ScheduledSession[]
   sessionRequests: SessionRequest[]
   bookingRequests: BookingRequest[]
+  packages?: TrainerPackage[]
 }
 
-export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions, allSessionPlayers, sessionLogs, unloggedSessions, sessionRequests, bookingRequests }: Props) {
+export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions, allSessionPlayers, sessionLogs, unloggedSessions, sessionRequests, bookingRequests, packages = [] }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -709,6 +719,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {localBookingRequests.filter(r => r.status === 'pending').map(req => {
                 const linkedGroup = findLinkedGroup(req)
+                const reqPkg = req.package_id ? packages.find(p => p.id === req.package_id) : null
                 return (
                 <div key={req.id} style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', padding: '14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
@@ -734,6 +745,12 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                       {linkedGroup && (
                         <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
                           Requested group: <span style={{ color: '#ffffff', fontWeight: 500 }}>{linkedGroup.name}</span>
+                        </div>
+                      )}
+                      {reqPkg && (
+                        <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+                          {reqPkg.name} · {reqPkg.session_count} sessions · ${Number(reqPkg.price).toFixed(2)}
+                          <span style={{ marginLeft: '8px', fontSize: '11px', color: '#F5A623', fontWeight: 600 }}>Payment Pending</span>
                         </div>
                       )}
                     </div>
@@ -1277,6 +1294,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                 )}
                 {pendingReqs.map((req, i, arr) => {
                   const linkedGroup = findLinkedGroup(req)
+                  const reqPkg = req.package_id ? packages.find(p => p.id === req.package_id) : null
                   return (
                   <div key={req.id} style={{ padding: '16px', borderBottom: i < arr.length - 1 ? '1px solid #2A2A2D' : 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
@@ -1302,6 +1320,12 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                         {linkedGroup && (
                           <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
                             Requested group: <span style={{ color: '#ffffff', fontWeight: 500 }}>{linkedGroup.name}</span>
+                          </div>
+                        )}
+                        {reqPkg && (
+                          <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+                            {reqPkg.name} · {reqPkg.session_count} sessions · ${Number(reqPkg.price).toFixed(2)}
+                            <span style={{ marginLeft: '8px', fontSize: '11px', color: '#F5A623', fontWeight: 600 }}>Payment Pending</span>
                           </div>
                         )}
                         {(req.request_type !== 'returning_player' && (req.player_position || req.player_goals) || req.message || req.preferred_availability_text) && (

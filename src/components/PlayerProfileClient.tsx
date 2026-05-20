@@ -12,6 +12,20 @@ interface Drill { id: string; title: string; reps: string; description: string; 
 interface Completion { id: string; drill_id: string; player_id: string }
 interface Group { id: string; name: string; sport: string }
 
+interface ActivePackage {
+  id: string
+  sessions_total: number
+  sessions_remaining: number
+  sessions_used: number
+  price_paid: number
+  payment_status: string
+  status: string
+  refund_eligible: boolean
+  expiry_start_date: string | null
+  expiry_date: string | null
+  trainer_packages: { name: string; session_count: number } | null
+}
+
 interface Props {
   player: Player
   sessions: Session[]
@@ -22,11 +36,12 @@ interface Props {
   trainerName?: string
   trainerEmail?: string
   initialToast?: string | null
+  activePackage?: ActivePackage | null
 }
 
 const SKILL_LEVELS = ['beginner', 'intermediate', 'advanced', 'elite']
 
-export default function PlayerProfileClient({ player, sessions, drillWeeks, drills, completions, groups, trainerName, trainerEmail, initialToast }: Props) {
+export default function PlayerProfileClient({ player, sessions, drillWeeks, drills, completions, groups, trainerName, trainerEmail, initialToast, activePackage: initialActivePackage = null }: Props) {
   const group = groups[0] || null
   const router = useRouter()
   const supabase = createClient()
@@ -47,6 +62,9 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [archiving, setArchiving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [activePackage, setActivePackage] = useState<ActivePackage | null>(initialActivePackage)
+  const [pkgCancelOpen, setPkgCancelOpen] = useState(false)
+  const [pkgActionLoading, setPkgActionLoading] = useState(false)
 
   useEffect(() => {
     if (initialToast) {
@@ -320,6 +338,89 @@ export default function PlayerProfileClient({ player, sessions, drillWeeks, dril
             </button>
           </div>
         </div>
+
+        {/* ACTIVE PACKAGE CARD */}
+        {activePackage ? (
+          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '18px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Active Package</div>
+              <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '99px',
+                background: activePackage.payment_status === 'paid' ? 'rgba(0,255,159,0.12)' : 'rgba(245,166,35,0.12)',
+                color: activePackage.payment_status === 'paid' ? '#00FF9F' : '#F5A623',
+              }}>
+                {activePackage.payment_status === 'paid' ? 'Paid' : 'Payment Pending'}
+              </span>
+            </div>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', marginBottom: '4px' }}>
+              {activePackage.trainer_packages?.name || 'Package'}
+            </div>
+            <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '10px' }}>
+              {activePackage.sessions_remaining} of {activePackage.sessions_total} sessions remaining
+            </div>
+            {/* Progress bar */}
+            <div style={{ height: '6px', background: '#2A2A2D', borderRadius: '3px', marginBottom: '10px', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%',
+                width: `${Math.max(0, (activePackage.sessions_remaining / activePackage.sessions_total) * 100)}%`,
+                background: activePackage.sessions_remaining > activePackage.sessions_total / 2 ? '#00FF9F' : '#F5A623',
+                borderRadius: '3px',
+                transition: 'width 0.3s',
+              }} />
+            </div>
+            <div style={{ fontSize: '12px', color: '#555558', marginBottom: '12px' }}>
+              {activePackage.expiry_start_date
+                ? `Expires ${new Date(activePackage.expiry_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                : 'Expires 90 days from first session'}
+            </div>
+            {activePackage.refund_eligible && (
+              <div style={{ fontSize: '11px', color: '#555558', marginBottom: '12px' }}>Refund eligible · Full refund within 48h, unused sessions at package rate</div>
+            )}
+            {pkgCancelOpen && (
+              <div style={{ marginBottom: '10px', padding: '10px 12px', background: 'rgba(224,49,49,0.06)', border: '1px solid rgba(224,49,49,0.2)', borderRadius: '8px', fontSize: '12px', color: '#E03131' }}>
+                Cancel this package? This cannot be undone.
+                <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                  <button onClick={async () => {
+                    setPkgActionLoading(true)
+                    const res = await fetch(`/api/packages/player-packages/${activePackage.id}`, {
+                      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ status: 'cancelled' }),
+                    })
+                    if (res.ok) setActivePackage(null)
+                    setPkgActionLoading(false)
+                    setPkgCancelOpen(false)
+                  }} disabled={pkgActionLoading} style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#E03131', color: '#ffffff', cursor: 'pointer', fontWeight: 600 }}>
+                    {pkgActionLoading ? '...' : 'Cancel Package'}
+                  </button>
+                  <button onClick={() => setPkgCancelOpen(false)} style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Keep</button>
+                </div>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
+              {activePackage.payment_status !== 'paid' && (
+                <button onClick={async () => {
+                  setPkgActionLoading(true)
+                  const res = await fetch(`/api/packages/player-packages/${activePackage.id}`, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payment_status: 'paid' }),
+                  })
+                  const data = await res.json()
+                  if (res.ok && data.player_package) setActivePackage(prev => prev ? { ...prev, payment_status: 'paid' } : prev)
+                  setPkgActionLoading(false)
+                }} disabled={pkgActionLoading} style={{ fontSize: '13px', padding: '8px 14px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: 'pointer' }}>
+                  {pkgActionLoading ? '...' : 'Mark as Paid'}
+                </button>
+              )}
+              <button onClick={() => setPkgCancelOpen(c => !c)} style={{ fontSize: '13px', padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(224,49,49,0.3)', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>
+                Cancel Package
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '18px', marginBottom: '20px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: '8px' }}>Package</div>
+            <div style={{ fontSize: '13px', color: '#555558' }}>No active package. Share your booking link to prompt renewal.</div>
+          </div>
+        )}
 
         {/* PLAYER INFO — birth year + skill level */}
         <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '18px', marginBottom: '20px' }}>

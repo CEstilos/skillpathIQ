@@ -85,7 +85,20 @@ interface BlackoutDate {
   note: string | null
 }
 
-export default function SettingsClient({ profile }: { profile: Profile | null }) {
+interface TrainerPackage {
+  id: string
+  name: string
+  session_count: number
+  price: number
+  price_per_session: number
+  description: string | null
+  is_active: boolean
+  is_most_popular: boolean
+  is_best_value: boolean
+  sort_order: number
+}
+
+export default function SettingsClient({ profile, packages: initialPackages = [] }: { profile: Profile | null; packages?: TrainerPackage[] }) {
   const supabase = createClient()
   const router = useRouter()
 
@@ -113,7 +126,7 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
 
   // ── Rates ──────────────────────────────────────────────────────────────────
   const [individualRate, setIndividualRate] = useState(profile?.individual_rate?.toString() || '')
-  const [groupRate, setGroupRate] = useState(profile?.group_rate?.toString() || '')
+  const [groupRate] = useState(profile?.group_rate?.toString() || '')
   const [ratesLoading, setRatesLoading] = useState(false)
   const [ratesSaved, setRatesSaved] = useState(false)
   const [ratesError, setRatesError] = useState<string | null>(null)
@@ -130,6 +143,126 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
     markClean('rates')
     setRatesSaved(true)
     setTimeout(() => setRatesSaved(false), 2000)
+  }
+
+  // ── Packages ───────────────────────────────────────────────────────────────
+  const [packages, setPackages] = useState<TrainerPackage[]>(initialPackages)
+  const [pkgFormOpen, setPkgFormOpen] = useState(false)
+  const [editingPkgId, setEditingPkgId] = useState<string | null>(null)
+  const [deletingPkgId, setDeletingPkgId] = useState<string | null>(null)
+  const [pkgForm, setPkgForm] = useState({ name: '', session_count: '', price: '', description: '' })
+  const [pkgFormLoading, setPkgFormLoading] = useState(false)
+  const [pkgFormError, setPkgFormError] = useState<string | null>(null)
+
+  const pkgPerSession = pkgForm.session_count && pkgForm.price
+    ? (parseFloat(pkgForm.price) / parseInt(pkgForm.session_count)).toFixed(2)
+    : null
+
+  function openAddPkg() {
+    setEditingPkgId(null)
+    setPkgForm({ name: '', session_count: '', price: '', description: '' })
+    setPkgFormError(null)
+    setPkgFormOpen(true)
+  }
+
+  function openEditPkg(pkg: TrainerPackage) {
+    setEditingPkgId(pkg.id)
+    setPkgForm({
+      name: pkg.name,
+      session_count: pkg.session_count.toString(),
+      price: pkg.price.toString(),
+      description: pkg.description || '',
+    })
+    setPkgFormError(null)
+    setPkgFormOpen(true)
+  }
+
+  function cancelPkgForm() {
+    setPkgFormOpen(false)
+    setEditingPkgId(null)
+    setPkgFormError(null)
+  }
+
+  async function handleSavePkg() {
+    if (!pkgForm.name.trim() || !pkgForm.session_count || !pkgForm.price) {
+      setPkgFormError('Name, sessions, and price are required')
+      return
+    }
+    setPkgFormLoading(true)
+    setPkgFormError(null)
+    if (editingPkgId) {
+      const res = await fetch(`/api/packages/${editingPkgId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: pkgForm.name,
+          session_count: pkgForm.session_count,
+          price: pkgForm.price,
+          description: pkgForm.description || null,
+        }),
+      })
+      const data = await res.json()
+      setPkgFormLoading(false)
+      if (!res.ok || data.error) { setPkgFormError(data.error || 'Error saving'); return }
+      setPackages(prev => prev.map(p => p.id === editingPkgId ? data.package : p))
+    } else {
+      const res = await fetch('/api/packages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: pkgForm.name,
+          session_count: pkgForm.session_count,
+          price: pkgForm.price,
+          description: pkgForm.description || null,
+        }),
+      })
+      const data = await res.json()
+      setPkgFormLoading(false)
+      if (!res.ok || data.error) { setPkgFormError(data.error || 'Error saving'); return }
+      setPackages(prev => [...prev, data.package])
+    }
+    cancelPkgForm()
+  }
+
+  async function handleDeletePkg(id: string) {
+    const res = await fetch(`/api/packages/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setPackages(prev => prev.filter(p => p.id !== id))
+      setDeletingPkgId(null)
+    }
+  }
+
+  async function handleTogglePkgActive(pkg: TrainerPackage) {
+    const res = await fetch(`/api/packages/${pkg.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: !pkg.is_active }),
+    })
+    const data = await res.json()
+    if (res.ok && data.package) {
+      setPackages(prev => prev.map(p => p.id === pkg.id ? data.package : p))
+    }
+  }
+
+  async function handleReorderPkg(id: string, direction: 'up' | 'down') {
+    const res = await fetch(`/api/packages/${id}/reorder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ direction }),
+    })
+    if (res.ok) {
+      // Update local order
+      setPackages(prev => {
+        const arr = [...prev]
+        const idx = arr.findIndex(p => p.id === id)
+        const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+        if (swapIdx < 0 || swapIdx >= arr.length) return arr
+        const temp = arr[idx].sort_order
+        arr[idx] = { ...arr[idx], sort_order: arr[swapIdx].sort_order }
+        arr[swapIdx] = { ...arr[swapIdx], sort_order: temp }
+        return [...arr].sort((a, b) => a.sort_order - b.sort_order)
+      })
+    }
   }
 
   // ── Password ───────────────────────────────────────────────────────────────
@@ -944,26 +1077,123 @@ export default function SettingsClient({ profile }: { profile: Profile | null })
                 <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Applied to 1-on-1 training sessions</span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '13px', color: '#9A9A9F', fontWeight: 500 }}>Group session rate <span style={{ fontSize: '11px', color: '#9A9A9F', fontWeight: 400 }}>(per player)</span></label>
-                <div style={{ display: 'flex', alignItems: 'center', background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '8px', overflow: 'hidden' }}>
-                  <span style={{ padding: '11px 14px', fontSize: '14px', color: '#9A9A9F', borderRight: '1px solid #2A2A2D' }}>$</span>
-                  <input
-                    style={{ flex: 1, background: 'transparent', border: 'none', padding: '11px 14px', fontSize: '14px', color: '#ffffff', outline: 'none' }}
-                    type="number" min="0" step="0.01" placeholder="0.00"
-                    value={groupRate}
-                    onChange={e => { setGroupRate(e.target.value); markDirty('rates') }}
-                  />
-                  <span style={{ padding: '11px 14px', fontSize: '13px', color: '#9A9A9F' }}>per session</span>
-                </div>
-                <span style={{ fontSize: '12px', color: '#9A9A9F' }}>Rate per player · multiplied by attendance at each session</span>
-              </div>
-
               {ratesError && <p style={{ fontSize: '13px', color: '#E03131', background: '#1f0f0f', border: '1px solid #3a1a1a', borderRadius: '8px', padding: '10px 14px' }}>{ratesError}</p>}
 
               <button type="button" onClick={handleSaveRates} disabled={ratesLoading} style={saveBtn(true)}>
                 {ratesSaved ? '✓ Saved!' : ratesLoading ? 'Saving...' : 'Save rates'}
               </button>
+            </div>
+
+            {/* GROUP TRAINING PACKAGES */}
+            <div style={card}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={sectionLabel}>Group Training Packages</div>
+                {!pkgFormOpen && (
+                  <button type="button" onClick={openAddPkg} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: `1px solid rgba(0,255,159,0.3)`, background: 'transparent', color: GREEN, cursor: 'pointer', fontWeight: 600 }}>+ Add Package</button>
+                )}
+              </div>
+
+              {packages.length === 0 && !pkgFormOpen && (
+                <div style={{ fontSize: '13px', color: '#555558', textAlign: 'center', padding: '16px 0' }}>No packages yet. Add one to display on your public profile.</div>
+              )}
+
+              {packages.map((pkg, idx) => (
+                <div key={pkg.id}>
+                  {editingPkgId === pkg.id && pkgFormOpen ? null : (
+                    <div style={{ background: '#0E0E0F', border: '1px solid #2A2A2D', borderRadius: '10px', padding: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: pkg.is_active ? '#ffffff' : '#555558' }}>{pkg.name}</span>
+                            {pkg.is_most_popular && <span style={{ fontSize: '10px', fontWeight: 700, color: '#F5A623', background: 'rgba(245,166,35,0.15)', padding: '2px 7px', borderRadius: '99px' }}>POPULAR</span>}
+                            {pkg.is_best_value && <span style={{ fontSize: '10px', fontWeight: 700, color: GREEN, background: 'rgba(0,255,159,0.15)', padding: '2px 7px', borderRadius: '99px' }}>BEST VALUE</span>}
+                            {!pkg.is_active && <span style={{ fontSize: '10px', fontWeight: 700, color: '#555558', background: 'rgba(255,255,255,0.05)', padding: '2px 7px', borderRadius: '99px' }}>INACTIVE</span>}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '3px' }}>
+                            {pkg.session_count} session{pkg.session_count !== 1 ? 's' : ''} · ${Number(pkg.price).toFixed(2)}
+                            {pkg.session_count > 1 && <span style={{ color: '#555558' }}> · ${Number(pkg.price_per_session).toFixed(2)}/session</span>}
+                          </div>
+                          {pkg.description && <div style={{ fontSize: '12px', color: '#555558', marginTop: '4px', lineHeight: 1.4 }}>{pkg.description}</div>}
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+                          <button type="button" onClick={() => handleReorderPkg(pkg.id, 'up')} disabled={idx === 0} style={{ width: '24px', height: '24px', background: 'none', border: '1px solid #2A2A2D', borderRadius: '4px', color: idx === 0 ? '#333336' : '#9A9A9F', cursor: idx === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>↑</button>
+                          <button type="button" onClick={() => handleReorderPkg(pkg.id, 'down')} disabled={idx === packages.length - 1} style={{ width: '24px', height: '24px', background: 'none', border: '1px solid #2A2A2D', borderRadius: '4px', color: idx === packages.length - 1 ? '#333336' : '#9A9A9F', cursor: idx === packages.length - 1 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', flexShrink: 0 }}>↓</button>
+                          {/* Active toggle */}
+                          <button type="button" onClick={() => handleTogglePkgActive(pkg)} style={{ width: '36px', height: '20px', borderRadius: '10px', border: 'none', background: pkg.is_active ? GREEN : '#2A2A2D', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
+                            <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: '#ffffff', position: 'absolute', top: '3px', left: pkg.is_active ? '19px' : '3px', transition: 'left 0.2s' }} />
+                          </button>
+                          <button type="button" onClick={() => openEditPkg(pkg)} style={{ fontSize: '11px', padding: '4px 9px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Edit</button>
+                          <button type="button" onClick={() => setDeletingPkgId(deletingPkgId === pkg.id ? null : pkg.id)} style={{ fontSize: '11px', padding: '4px 9px', borderRadius: '6px', border: '1px solid rgba(224,49,49,0.3)', background: 'transparent', color: '#E03131', cursor: 'pointer' }}>Delete</button>
+                        </div>
+                      </div>
+                      {deletingPkgId === pkg.id && (
+                        <div style={{ marginTop: '10px', padding: '10px 12px', background: 'rgba(224,49,49,0.06)', border: '1px solid rgba(224,49,49,0.2)', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: '#E03131', marginBottom: '8px' }}>Delete {pkg.name}? This won&apos;t affect packages already purchased.</div>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button type="button" onClick={() => handleDeletePkg(pkg.id)} style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#E03131', color: '#ffffff', cursor: 'pointer', fontWeight: 600 }}>Delete</button>
+                            <button type="button" onClick={() => setDeletingPkgId(null)} style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: 'pointer' }}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {pkgFormOpen && (
+                <div style={{ background: '#0E0E0F', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{editingPkgId ? 'Edit package' : 'Add package'}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', color: '#9A9A9F' }}>Package name <span style={{ color: '#E03131' }}>*</span></label>
+                    <input
+                      type="text" placeholder="e.g. Standard — 4 Sessions"
+                      value={pkgForm.name}
+                      onChange={e => setPkgForm(prev => ({ ...prev, name: e.target.value }))}
+                      style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 12px', fontSize: '13px', color: '#ffffff', outline: 'none', width: '100%' }}
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '12px', color: '#9A9A9F' }}>Sessions <span style={{ color: '#E03131' }}>*</span></label>
+                      <input
+                        type="number" min="1" placeholder="4"
+                        value={pkgForm.session_count}
+                        onChange={e => setPkgForm(prev => ({ ...prev, session_count: e.target.value }))}
+                        style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 12px', fontSize: '13px', color: '#ffffff', outline: 'none', width: '100%' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '12px', color: '#9A9A9F' }}>Total price ($) <span style={{ color: '#E03131' }}>*</span></label>
+                      <input
+                        type="number" min="0" step="0.01" placeholder="140.00"
+                        value={pkgForm.price}
+                        onChange={e => setPkgForm(prev => ({ ...prev, price: e.target.value }))}
+                        style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 12px', fontSize: '13px', color: '#ffffff', outline: 'none', width: '100%' }}
+                      />
+                    </div>
+                  </div>
+                  {pkgPerSession && (
+                    <div style={{ fontSize: '12px', color: '#9A9A9F' }}>${pkgPerSession} per session</div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', color: '#9A9A9F' }}>Description <span style={{ color: '#555558', fontWeight: 400 }}>(optional)</span></label>
+                    <textarea
+                      placeholder="Brief description shown to parents..."
+                      value={pkgForm.description}
+                      onChange={e => setPkgForm(prev => ({ ...prev, description: e.target.value }))}
+                      rows={2}
+                      style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '7px', padding: '9px 12px', fontSize: '13px', color: '#ffffff', outline: 'none', width: '100%', resize: 'vertical' as const, fontFamily: 'sans-serif' }}
+                    />
+                  </div>
+                  {pkgFormError && <p style={{ fontSize: '12px', color: '#E03131', margin: 0 }}>{pkgFormError}</p>}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button type="button" onClick={handleSavePkg} disabled={pkgFormLoading} style={{ flex: 1, background: GREEN, color: '#0E0E0F', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                      {pkgFormLoading ? 'Saving...' : editingPkgId ? 'Save changes' : 'Add package'}
+                    </button>
+                    <button type="button" onClick={cancelPkgForm} style={{ flex: 1, background: 'transparent', color: '#9A9A9F', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '10px', fontSize: '13px', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              )}
             </div>
 
           </div>

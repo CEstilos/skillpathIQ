@@ -147,6 +147,53 @@ const [editingEmail, setEditingEmail] = useState<string | null>(null)
             status: 'logged',
           }))
         )
+
+        // Decrement player_packages for each attending player (silently)
+        const today = new Date().toISOString().split('T')[0]
+        for (const p of attendingPlayers) {
+          try {
+            const { data: pkgRows } = await supabase
+              .from('player_packages')
+              .select('*')
+              .eq('player_id', p.id)
+              .eq('trainer_id', user.id)
+              .eq('status', 'active')
+              .gt('sessions_remaining', 0)
+              .order('created_at', { ascending: true })
+              .limit(1)
+            const pkg = pkgRows?.[0]
+            if (pkg) {
+              const newRemaining = pkg.sessions_remaining - 1
+              const newUsed = pkg.sessions_used + 1
+              const refundEligible = newUsed <= pkg.sessions_total / 2
+              const newStatus = newRemaining <= 0 ? 'expired' : 'active'
+              const expiryStartDate = pkg.expiry_start_date || today
+              const expiryDate = pkg.expiry_date || (() => {
+                const d = new Date(today)
+                d.setDate(d.getDate() + 90)
+                return d.toISOString().split('T')[0]
+              })()
+              await supabase.from('player_packages').update({
+                sessions_remaining: newRemaining,
+                sessions_used: newUsed,
+                refund_eligible: refundEligible,
+                status: newStatus,
+                expiry_start_date: expiryStartDate,
+                expiry_date: expiryDate,
+              }).eq('id', pkg.id)
+              // Low sessions notification (1 remaining)
+              if (newRemaining === 1) {
+                try {
+                  await fetch('/api/packages/low-sessions-notify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ player_package_id: pkg.id }),
+                  })
+                } catch { /* ignore */ }
+              }
+            }
+          } catch { /* ignore — never block logging */ }
+        }
       }
     }
 

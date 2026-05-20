@@ -33,12 +33,19 @@ export default async function BusinessPage() {
   }
   const enrichedPlayers = (players || []).map(p => ({ ...p, group_ids: groupIdsMap.get(p.id) || [] }))
 
+  const { data: activePackages } = await supabase
+    .from('player_packages')
+    .select('*')
+    .eq('trainer_id', user.id)
+    .eq('status', 'active')
+
   return (
     <BusinessClient
       profile={profile}
       players={enrichedPlayers}
       sessions={sessions || []}
       attendance={attendance || []}
+      activePackages={activePackages || []}
     />
   )
 }

@@ -88,6 +88,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     .eq('trainer_id', user.id)
     .order('created_at', { ascending: false })
 
+  const { data: trainerPackages } = await supabase
+    .from('trainer_packages')
+    .select('id, name, session_count, price, price_per_session')
+    .eq('trainer_id', user.id)
+    .order('sort_order', { ascending: true })
+
   const { data: unloggedSessions } = await supabase
   .from('sessions')
   .select('*, groups(name, sport)')
@@ -163,6 +169,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         unloggedSessions={unloggedSessions || []}
         sessionRequests={sessionRequests || []}
         bookingRequests={bookingRequests || []}
+        packages={trainerPackages || []}
       />
     )
 }

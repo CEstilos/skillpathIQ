@@ -59,6 +59,16 @@ export default async function PlayerProfilePage({ params, searchParams }: { para
   const { data: profile } = await supabase
     .from('profiles').select('full_name, email').eq('id', user.id).single()
 
+  const { data: activePackageData } = await supabase
+    .from('player_packages')
+    .select('*, trainer_packages(name, session_count)')
+    .eq('player_id', params.id)
+    .eq('trainer_id', user.id)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
   return (
     <PlayerProfileClient
       player={player}
@@ -70,6 +80,7 @@ export default async function PlayerProfilePage({ params, searchParams }: { para
       trainerName={profile?.full_name || undefined}
       trainerEmail={(profile as { full_name?: string; email?: string } | null)?.email || undefined}
       initialToast={initialToast}
+      activePackage={activePackageData || null}
     />
   )
 }

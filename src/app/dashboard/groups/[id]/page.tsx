@@ -59,6 +59,8 @@ export default async function GroupDetailPage({
   // Booking request from ?request= param
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let bookingRequest: any = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let requestPackage: any = null
   if (requestId) {
     const { data: req } = await supabase
       .from('booking_requests')
@@ -68,6 +70,14 @@ export default async function GroupDetailPage({
       .single()
     if (req && req.status === 'pending') {
       bookingRequest = req
+      if (req.package_id) {
+        const { data: pkgData } = await supabase
+          .from('trainer_packages')
+          .select('*')
+          .eq('id', req.package_id)
+          .single()
+        requestPackage = pkgData || null
+      }
     }
   }
 
@@ -199,6 +209,7 @@ export default async function GroupDetailPage({
       allWindows={allWindows || []}
       linkedWindow={linkedWindow}
       bookingRequest={bookingRequest}
+      requestPackage={requestPackage}
       confirmedPlayers={confirmedPlayers}
       rosterPlayers={rosterPlayers}
       sessionHistory={sessionHistory}

@@ -95,11 +95,20 @@ interface DrillWeek { id: string; title: string; week_start: string; group_id: s
 interface Drill { id: string; title: string; description: string; drill_week_id: string; sort_order: number }
 interface Completion { player_id: string; drill_id: string }
 
+interface RequestPackage {
+  id: string
+  name: string
+  session_count: number
+  price: number
+  price_per_session: number
+}
+
 interface Props {
   group: Group
   allWindows: AvailabilityWindow[]
   linkedWindow: AvailabilityWindow | null
   bookingRequest: BookingRequest | null
+  requestPackage?: RequestPackage | null
   confirmedPlayers: ConfirmedPlayer[]
   rosterPlayers: RosterPlayer[]
   sessionHistory: SessionHistoryItem[]
@@ -171,6 +180,7 @@ export default function GroupDetailClient({
   allWindows,
   linkedWindow: initialLinkedWindow,
   bookingRequest,
+  requestPackage,
   confirmedPlayers: initialConfirmed,
   rosterPlayers: initialRoster,
   sessionHistory,
@@ -710,6 +720,13 @@ export default function GroupDetailClient({
             {bookingRequest.additional_info && (
               <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '10px' }}>
                 {bookingRequest.additional_info}
+              </div>
+            )}
+            {requestPackage && (
+              <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '10px', padding: '8px 12px', background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '8px' }}>
+                Package: <span style={{ color: '#ffffff', fontWeight: 600 }}>{requestPackage.name}</span>
+                {' · '}{requestPackage.session_count} sessions · ${Number(requestPackage.price).toFixed(2)}
+                <span style={{ marginLeft: '8px', fontSize: '11px', color: '#F5A623', fontWeight: 600 }}>Payment Pending</span>
               </div>
             )}
             <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' as const }}>

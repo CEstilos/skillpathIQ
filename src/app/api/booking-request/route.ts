@@ -79,6 +79,7 @@ export async function POST(request: Request) {
     player_name, player_age, player_gender, player_experience, additional_info, player_position, player_goals,
     preferred_session_type, message,
     preferred_slots,
+    package_id,
   } = body
 
   if (!trainer_id) {
@@ -91,6 +92,17 @@ export async function POST(request: Request) {
     .select('email, full_name')
     .eq('id', trainer_id)
     .single()
+
+  // Fetch package if provided
+  let packageRecord: { name: string; session_count: number; price: number } | null = null
+  if (package_id) {
+    const { data: pkgData } = await supabaseAdmin
+      .from('trainer_packages')
+      .select('name, session_count, price')
+      .eq('id', package_id)
+      .single()
+    packageRecord = pkgData || null
+  }
 
   if (!trainer) {
     return NextResponse.json({ error: 'Trainer not found' }, { status: 404 })
@@ -159,6 +171,7 @@ export async function POST(request: Request) {
       message: message || null,
       preferred_slots: preferred_slots || null,
       preferred_availability_text: preferred_availability_text || null,
+      package_id: package_id || null,
     })
 
   if (insertError) {
@@ -182,6 +195,7 @@ export async function POST(request: Request) {
       ``,
       `Session type: ${preferred_session_type === 'group' ? 'Group' : '1-on-1'}`,
       resolvedPlayerAge ? `Player age: ${resolvedPlayerAge}` : null,
+      packageRecord ? `Package selected: ${packageRecord.name} — ${packageRecord.session_count} sessions · $${Number(packageRecord.price).toFixed(2)}` : null,
       preferred_availability_text ? `\nPreferred times:\n${preferred_availability_text.split('\n').map(l => `  ${l}`).join('\n')}` : null,
       message ? `\nMessage: ${message}` : null,
       ``,
@@ -227,6 +241,7 @@ export async function POST(request: Request) {
       player_experience ? `  Experience: ${player_experience === 'beginner' ? 'Beginner' : player_experience === 'rec_league' ? 'Rec League' : 'Bantam/Club'}` : null,
       player_position ? `  Position: ${player_position}` : null,
       `  Session type: ${preferred_session_type === 'group' ? 'Group' : '1-on-1'}`,
+      packageRecord ? `  Package selected: ${packageRecord.name} — ${packageRecord.session_count} sessions · $${Number(packageRecord.price).toFixed(2)}` : null,
       player_goals ? `  Goals: ${player_goals}` : null,
       additional_info ? `  Additional info: ${additional_info}` : null,
       preferred_availability_text ? `\nPreferred times:\n${preferred_availability_text.split('\n').map(l => `  ${l}`).join('\n')}` : null,

@@ -39,7 +39,7 @@ export default async function TrainerProfilePage({ params }: { params: Promise<{
 
   const today = new Date().toISOString().split('T')[0]
 
-  const [{ data: rawWindows }, { data: sessionDurations }, { data: rawBlackouts }] = await Promise.all([
+  const [{ data: rawWindows }, { data: sessionDurations }, { data: rawBlackouts }, { data: trainerPackages }] = await Promise.all([
     supabase
       .from('trainer_availability_windows')
       .select('id, day_of_week, start_time, end_time, session_type, display_label, sort_order, duration_minutes, buffer_minutes, max_capacity, gender_filter, min_age, max_age, experience_filter')
@@ -56,6 +56,12 @@ export default async function TrainerProfilePage({ params }: { params: Promise<{
       .eq('trainer_id', trainer.id)
       .gte('blackout_date', today)
       .order('blackout_date', { ascending: true }),
+    supabase
+      .from('trainer_packages')
+      .select('*')
+      .eq('trainer_id', trainer.id)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true }),
   ])
 
   const availabilityWindows = rawWindows || []
@@ -69,6 +75,7 @@ export default async function TrainerProfilePage({ params }: { params: Promise<{
       upcomingBlackouts={upcomingBlackouts}
       schedulingMode="skillpathiq"
       calendlyUrl={null}
+      packages={trainerPackages || []}
     />
   )
 }

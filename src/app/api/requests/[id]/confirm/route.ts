@@ -135,12 +135,50 @@ export async function POST(
       return NextResponse.json({ error: sessionError?.message || 'Failed to create session' }, { status: 500 })
     }
 
+    // Step 2b: If request has a package_id, create player_package
+    let playerPackageId: string | null = null
+    if (req.package_id) {
+      try {
+        const { data: pkg } = await supabaseAdmin
+          .from('trainer_packages')
+          .select('*')
+          .eq('id', req.package_id)
+          .single()
+
+        if (pkg) {
+          const { data: newPlayerPkg } = await supabaseAdmin
+            .from('player_packages')
+            .insert({
+              player_id: playerId,
+              trainer_id: user.id,
+              group_id: null,
+              package_id: req.package_id,
+              sessions_total: pkg.session_count,
+              sessions_remaining: pkg.session_count,
+              sessions_used: 0,
+              price_paid: pkg.price,
+              payment_status: 'pending',
+              payment_method: 'venmo',
+              status: 'active',
+              refund_eligible: true,
+            })
+            .select('id')
+            .single()
+
+          if (newPlayerPkg) playerPackageId = newPlayerPkg.id
+        }
+      } catch {
+        // Don't block confirmation if package creation fails
+      }
+    }
+
     // Step 3: Update booking request to accepted, set player_id for new players
     await supabaseAdmin
       .from('booking_requests')
       .update({
         status: 'accepted',
         ...(req.request_type === 'new_player' ? { player_id: playerId } : {}),
+        ...(playerPackageId ? { player_package_id: playerPackageId } : {}),
       })
       .eq('id', bookingRequestId)
 
@@ -163,7 +201,20 @@ export async function POST(
       }
     }
 
-    // Step 4: Send confirmation email to parent
+    // Step 4: Fetch package info if needed
+    let confirmedPkg: { name: string; session_count: number; price: number } | null = null
+    if (req.package_id) {
+      try {
+        const { data: pkgInfo } = await supabaseAdmin
+          .from('trainer_packages')
+          .select('name, session_count, price')
+          .eq('id', req.package_id)
+          .single()
+        confirmedPkg = pkgInfo || null
+      } catch { /* ignore */ }
+    }
+
+    // Step 5: Send confirmation email to parent
     const resend = new Resend(process.env.RESEND_API_KEY)
     const formattedDate = formatDateLong(session_date)
     const formattedTime = formatTime(session_time)
@@ -181,7 +232,11 @@ export async function POST(
       `  Type: ${session_type === 'group' ? 'Group' : 'Individual'}`,
       `  Trainer: ${trainer.full_name}`,
       `  Location: ${location}`,
-      trainer.venmo_handle ? `  Payment: venmo.com/${trainer.venmo_handle}` : null,
+      confirmedPkg ? `\nPackage: ${confirmedPkg.name} — ${confirmedPkg.session_count} sessions` : null,
+      confirmedPkg ? `Total due: $${Number(confirmedPkg.price).toFixed(2)}` : null,
+      trainer.venmo_handle && confirmedPkg ? `Payment: venmo.com/${trainer.venmo_handle}` : (trainer.venmo_handle ? `  Payment: venmo.com/${trainer.venmo_handle}` : null),
+      confirmedPkg ? `\nSessions are valid for 90 days from your first training session.` : null,
+      confirmedPkg ? `Refund policy: Full refund within 48 hours. Unused sessions refunded at package rate until 50% of sessions are used.` : null,
       ``,
       `If you need to reschedule, please contact ${trainer.full_name} directly at ${trainer.email}.`,
       ``,

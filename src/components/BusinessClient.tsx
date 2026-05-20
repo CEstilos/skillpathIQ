@@ -9,11 +9,21 @@ interface Player { id: string; full_name: string; created_at: string; custom_rat
 interface Session { id: string; player_id: string; session_date: string; session_type: string; rate_override: number | null; group_id: string | null }
 interface Attendance { session_id: string; player_id: string; attended: boolean }
 
-interface Props { profile: Profile | null; players: Player[]; sessions: Session[]; attendance: Attendance[] }
+interface ActivePackage {
+  id: string
+  sessions_total: number
+  sessions_remaining: number
+  price_paid: number
+  payment_status: string
+  expiry_date: string | null
+  status: string
+}
+
+interface Props { profile: Profile | null; players: Player[]; sessions: Session[]; attendance: Attendance[]; activePackages?: ActivePackage[] }
 
 const GREEN = '#1dce7c'
 
-export default function BusinessClient({ profile, players, sessions, attendance }: Props) {
+export default function BusinessClient({ profile, players, sessions, attendance, activePackages = [] }: Props) {
   const router = useRouter()
 
   const now = new Date()
@@ -425,6 +435,28 @@ export default function BusinessClient({ profile, players, sessions, attendance 
             </div>
           )}
         </div>
+
+        {/* ── PACKAGES ── */}
+        {activePackages.length > 0 && (() => {
+          const pendingPayment = activePackages.filter(p => p.payment_status === 'pending')
+          const pendingAmount = pendingPayment.reduce((sum, p) => sum + Number(p.price_paid), 0)
+          const sessionsRemaining = activePackages.reduce((sum, p) => sum + p.sessions_remaining, 0)
+          const today = new Date().toISOString().split('T')[0]
+          const thirtyDaysFromNow = new Date()
+          thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
+          const expiringSoon = activePackages.filter(p => p.expiry_date && p.expiry_date >= today && p.expiry_date <= thirtyDaysFromNow.toISOString().split('T')[0]).length
+          return (
+            <>
+              <SectionLabel text="Group Training Packages" />
+              <div className="biz-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                <StatCard label="Active Packages" value={activePackages.length} compare="current active" change={null} accent={GREEN} />
+                <StatCard label="Pending Payments" value={pendingPayment.length > 0 ? `${pendingPayment.length} · ${formatCurrency(pendingAmount)}` : '0'} compare="outstanding" change={null} accent={pendingPayment.length > 0 ? '#F5A623' : undefined} />
+                <StatCard label="Sessions Remaining" value={sessionsRemaining} compare="across all packages" change={null} />
+                <StatCard label="Expiring Soon" value={expiringSoon} compare="within 30 days" change={null} accent={expiringSoon > 0 ? '#F5A623' : undefined} />
+              </div>
+            </>
+          )
+        })()}
 
         {/* ── RATES SUMMARY ── */}
         <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '16px', padding: '20px', marginBottom: '32px' }}>

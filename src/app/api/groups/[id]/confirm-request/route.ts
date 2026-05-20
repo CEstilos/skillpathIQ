@@ -73,7 +73,7 @@ export async function POST(
     // Fetch trainer profile
     const { data: trainer } = await supabaseAdmin
       .from('profiles')
-      .select('id, full_name, email, location')
+      .select('id, full_name, email, location, venmo_handle')
       .eq('id', user.id)
       .single()
     if (!trainer) return NextResponse.json({ error: 'Trainer not found' }, { status: 404 })
@@ -131,10 +131,64 @@ export async function POST(
       return NextResponse.json({ error: confirmError.message }, { status: 500 })
     }
 
+    // Create player_package if request has a package_id
+    let playerPackageId: string | null = null
+    if (req.package_id) {
+      try {
+        const { data: pkg } = await supabaseAdmin
+          .from('trainer_packages')
+          .select('*')
+          .eq('id', req.package_id)
+          .single()
+
+        if (pkg) {
+          const { data: newPlayerPkg } = await supabaseAdmin
+            .from('player_packages')
+            .insert({
+              player_id: playerId,
+              trainer_id: user.id,
+              group_id: groupId,
+              package_id: req.package_id,
+              sessions_total: pkg.session_count,
+              sessions_remaining: pkg.session_count,
+              sessions_used: 0,
+              price_paid: pkg.price,
+              payment_status: 'pending',
+              payment_method: 'venmo',
+              status: 'active',
+              refund_eligible: true,
+            })
+            .select('id')
+            .single()
+
+          if (newPlayerPkg) playerPackageId = newPlayerPkg.id
+        }
+      } catch {
+        // Don't block confirmation if package creation fails
+      }
+    }
+
+    // Fetch package info for email
+    let confirmedPkg: { name: string; session_count: number; price: number } | null = null
+    if (req.package_id) {
+      try {
+        const { data: pkgInfo } = await supabaseAdmin
+          .from('trainer_packages')
+          .select('name, session_count, price')
+          .eq('id', req.package_id)
+          .single()
+        confirmedPkg = pkgInfo || null
+      } catch { /* ignore */ }
+    }
+
     // Update booking request to accepted
     await supabaseAdmin
       .from('booking_requests')
-      .update({ status: 'accepted', player_id: playerId })
+      .update({
+        status: 'accepted',
+        player_id: playerId,
+        ...(playerPackageId ? { player_package_id: playerPackageId } : {}),
+      })
       .eq('id', booking_request_id)
 
     // Fetch the player we just inserted/used to return to client
@@ -160,6 +214,11 @@ export async function POST(
       `Trainer: ${trainer.full_name}`,
       scheduleLine,
       location ? `Location: ${location}` : null,
+      confirmedPkg ? `\nPackage: ${confirmedPkg.name} — ${confirmedPkg.session_count} sessions` : null,
+      confirmedPkg ? `Total due: $${Number(confirmedPkg.price).toFixed(2)}` : null,
+      (trainer as { venmo_handle?: string | null }).venmo_handle && confirmedPkg ? `Payment: venmo.com/${(trainer as { venmo_handle?: string | null }).venmo_handle}` : null,
+      confirmedPkg ? `\nSessions are valid for 90 days from your first training session.` : null,
+      confirmedPkg ? `Refund policy: Full refund within 48 hours. Unused sessions refunded at package rate until 50% of sessions are used.` : null,
       ``,
       `${trainerFirstName} will be in touch with session details. If you have any questions, reply to this email.`,
       ``,

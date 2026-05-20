@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { generateSlots, filterSlots } from '@/lib/generateSlots'
 
 const GREEN = '#00FF9F'
@@ -55,6 +55,18 @@ interface SessionDuration {
   label: string
 }
 
+interface TrainingPackage {
+  id: string
+  name: string
+  session_count: number
+  price: number
+  price_per_session: number
+  description: string | null
+  is_most_popular: boolean
+  is_best_value: boolean
+  sort_order: number
+}
+
 type SelectedSlot = { window_id: string; slot_time: string }
 
 const DAY_NUM: Record<string, number> = {
@@ -103,6 +115,7 @@ export default function TrainerProfileClient({
   upcomingBlackouts,
   schedulingMode = 'skillpathiq',
   calendlyUrl,
+  packages = [],
 }: {
   trainer: Trainer
   availabilityWindows: AvailabilityWindow[]
@@ -110,7 +123,18 @@ export default function TrainerProfileClient({
   upcomingBlackouts: string[]
   schedulingMode?: 'skillpathiq' | 'calendly' | 'both'
   calendlyUrl?: string | null
+  packages?: TrainingPackage[]
 }) {
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (packages.length > 0 && !selectedPackageId) {
+      const def = packages.find(p => p.is_most_popular) || packages[0]
+      setSelectedPackageId(def.id)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packages])
+
   const [form, setForm] = useState({
     parentName: '',
     parentEmail: '',
@@ -234,6 +258,10 @@ export default function TrainerProfileClient({
       setError('Please select at least one preferred time.')
       return
     }
+    if (packages.length > 0 && !selectedPackageId) {
+      setError('Please select a package.')
+      return
+    }
     setLoading(true)
     setError(null)
 
@@ -263,6 +291,7 @@ export default function TrainerProfileClient({
           preferred_session_type: form.sessionType,
           message: form.message.trim() || null,
           preferred_slots: preferredSlots.length > 0 ? preferredSlots : null,
+          package_id: selectedPackageId || null,
         }),
       })
       const data = await res.json()
@@ -337,39 +366,6 @@ export default function TrainerProfileClient({
           )}
         </div>
 
-        {/* RATES */}
-        {(trainer.individual_rate || trainer.group_rate) && (
-          <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', padding: '18px 20px', marginBottom: '28px', display: 'flex' }}>
-            {trainer.individual_rate ? (
-              <div style={{ flex: 1, textAlign: 'center', borderRight: trainer.group_rate ? '1px solid #2A2A2D' : 'none', paddingRight: trainer.group_rate ? '16px' : '0' }}>
-                <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Individual</div>
-                <div style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff' }}>${trainer.individual_rate}</div>
-                <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>per session</div>
-              </div>
-            ) : null}
-            {trainer.group_rate ? (
-              <div style={{ flex: 1, textAlign: 'center', paddingLeft: trainer.individual_rate ? '16px' : '0' }}>
-                <div style={{ fontSize: '11px', color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Group</div>
-                <div style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff' }}>${trainer.group_rate}</div>
-                <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>per player / session</div>
-              </div>
-            ) : null}
-          </div>
-        )}
-
-        {/* VENMO */}
-        {trainer.venmo_handle && (
-          <div style={{ marginBottom: '28px' }}>
-            <a
-              href={`https://venmo.com/${trainer.venmo_handle}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', background: '#3D95CE', color: '#ffffff', border: 'none', borderRadius: '12px', padding: '14px 20px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.3 1.8c.6 1 .9 2.1.9 3.5 0 4.3-3.7 9.9-6.7 13.8H6.8L4 2.6l6.2-.6 1.4 11.3c1.3-2.2 2.9-5.6 2.9-7.9 0-1.3-.2-2.1-.6-2.8l5.4-.8z"/></svg>
-              Pay via Venmo
-            </a>
-          </div>
-        )}
 
         {/* CALENDLY ONLY — book button */}
         {schedulingMode === 'calendly' && calendlyUrl && (
@@ -624,6 +620,40 @@ export default function TrainerProfileClient({
               </div>
             </div>
 
+            {/* PACKAGE SELECTION */}
+            {packages.length > 0 && (
+              <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Select a package</div>
+                {packages.map(pkg => (
+                  <div
+                    key={pkg.id}
+                    onClick={() => setSelectedPackageId(pkg.id)}
+                    style={{
+                      border: `1px solid ${selectedPackageId === pkg.id ? 'rgba(0,255,159,0.5)' : '#2A2A2D'}`,
+                      background: selectedPackageId === pkg.id ? 'rgba(0,255,159,0.06)' : '#0E0E0F',
+                      borderRadius: '12px', padding: '16px', cursor: 'pointer',
+                    }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff' }}>{pkg.name}</div>
+                      <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                        {pkg.is_most_popular && <span style={{ fontSize: '10px', fontWeight: 700, color: '#F5A623', background: 'rgba(245,166,35,0.15)', padding: '3px 8px', borderRadius: '99px' }}>MOST POPULAR</span>}
+                        {pkg.is_best_value && <span style={{ fontSize: '10px', fontWeight: 700, color: GREEN, background: 'rgba(0,255,159,0.15)', padding: '3px 8px', borderRadius: '99px' }}>BEST VALUE</span>}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '4px' }}>
+                      {pkg.session_count} session{pkg.session_count !== 1 ? 's' : ''} · ${Number(pkg.price).toFixed(2)}
+                    </div>
+                    {pkg.session_count > 1 && (
+                      <div style={{ fontSize: '12px', color: '#555558', marginTop: '2px' }}>${Number(pkg.price_per_session).toFixed(2)} per session</div>
+                    )}
+                    {pkg.description && (
+                      <div style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '8px', lineHeight: 1.5 }}>{pkg.description}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {error && (
               <div style={{ background: 'rgba(224,49,49,0.08)', border: '1px solid rgba(224,49,49,0.25)', borderRadius: '10px', padding: '12px 14px', fontSize: '14px', color: '#E03131' }}>
                 {error}
@@ -636,10 +666,7 @@ export default function TrainerProfileClient({
 
             {trainer.venmo_handle && (
               <p style={{ fontSize: '12px', color: '#555558', textAlign: 'center' }}>
-                Payment accepted via{' '}
-                <a href={`https://venmo.com/${trainer.venmo_handle}`} target="_blank" rel="noopener noreferrer" style={{ color: '#9A9A9F', textDecoration: 'none' }}>
-                  Venmo @{trainer.venmo_handle}
-                </a>
+                Payment accepted via Venmo @{trainer.venmo_handle} after package is confirmed.
               </p>
             )}
 
