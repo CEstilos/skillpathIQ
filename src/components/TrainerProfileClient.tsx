@@ -479,6 +479,40 @@ export default function TrainerProfileClient({
               </div>
             </div>
 
+            {/* PACKAGE SELECTION */}
+            {packages.length > 0 && (
+              <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Select a package</div>
+                {packages.map(pkg => (
+                  <div
+                    key={pkg.id}
+                    onClick={() => setSelectedPackageId(pkg.id)}
+                    style={{
+                      border: `1px solid ${selectedPackageId === pkg.id ? 'rgba(0,255,159,0.5)' : '#2A2A2D'}`,
+                      background: selectedPackageId === pkg.id ? 'rgba(0,255,159,0.06)' : '#0E0E0F',
+                      borderRadius: '12px', padding: '16px', cursor: 'pointer',
+                    }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff' }}>{pkg.name}</div>
+                      <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                        {pkg.is_most_popular && <span style={{ fontSize: '10px', fontWeight: 700, color: '#F5A623', background: 'rgba(245,166,35,0.15)', padding: '3px 8px', borderRadius: '99px' }}>MOST POPULAR</span>}
+                        {pkg.is_best_value && <span style={{ fontSize: '10px', fontWeight: 700, color: GREEN, background: 'rgba(0,255,159,0.15)', padding: '3px 8px', borderRadius: '99px' }}>BEST VALUE</span>}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '4px' }}>
+                      {pkg.session_count} session{pkg.session_count !== 1 ? 's' : ''} · ${Number(pkg.price).toFixed(2)}
+                    </div>
+                    {pkg.session_count > 1 && (
+                      <div style={{ fontSize: '12px', color: '#555558', marginTop: '2px' }}>${Number(pkg.price_per_session).toFixed(2)} per session</div>
+                    )}
+                    {pkg.description && (
+                      <div style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '8px', lineHeight: 1.5 }}>{pkg.description}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* SESSION PREFERENCE */}
             <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Session preference</div>
@@ -619,40 +653,6 @@ export default function TrainerProfileClient({
                 <textarea style={{ ...inputStyle, minHeight: '72px', resize: 'vertical' as const, lineHeight: 1.6 }} placeholder="Scheduling preferences, questions, or anything else..." value={form.message} onChange={e => set('message', e.target.value)} />
               </div>
             </div>
-
-            {/* PACKAGE SELECTION */}
-            {packages.length > 0 && (
-              <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Select a package</div>
-                {packages.map(pkg => (
-                  <div
-                    key={pkg.id}
-                    onClick={() => setSelectedPackageId(pkg.id)}
-                    style={{
-                      border: `1px solid ${selectedPackageId === pkg.id ? 'rgba(0,255,159,0.5)' : '#2A2A2D'}`,
-                      background: selectedPackageId === pkg.id ? 'rgba(0,255,159,0.06)' : '#0E0E0F',
-                      borderRadius: '12px', padding: '16px', cursor: 'pointer',
-                    }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff' }}>{pkg.name}</div>
-                      <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                        {pkg.is_most_popular && <span style={{ fontSize: '10px', fontWeight: 700, color: '#F5A623', background: 'rgba(245,166,35,0.15)', padding: '3px 8px', borderRadius: '99px' }}>MOST POPULAR</span>}
-                        {pkg.is_best_value && <span style={{ fontSize: '10px', fontWeight: 700, color: GREEN, background: 'rgba(0,255,159,0.15)', padding: '3px 8px', borderRadius: '99px' }}>BEST VALUE</span>}
-                      </div>
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '4px' }}>
-                      {pkg.session_count} session{pkg.session_count !== 1 ? 's' : ''} · ${Number(pkg.price).toFixed(2)}
-                    </div>
-                    {pkg.session_count > 1 && (
-                      <div style={{ fontSize: '12px', color: '#555558', marginTop: '2px' }}>${Number(pkg.price_per_session).toFixed(2)} per session</div>
-                    )}
-                    {pkg.description && (
-                      <div style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '8px', lineHeight: 1.5 }}>{pkg.description}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
 
             {error && (
               <div style={{ background: 'rgba(224,49,49,0.08)', border: '1px solid rgba(224,49,49,0.25)', borderRadius: '10px', padding: '12px 14px', fontSize: '14px', color: '#E03131' }}>
