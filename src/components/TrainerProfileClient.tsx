@@ -73,7 +73,10 @@ function getNextNDates(dayOfWeek: string, n: number, blackouts: string[]): strin
   let safety = 0
   while (results.length < n && safety < 365) {
     if (cursor.getDay() === target) {
-      const iso = cursor.toISOString().split('T')[0]
+      const y = cursor.getFullYear()
+      const m = String(cursor.getMonth() + 1).padStart(2, '0')
+      const d = String(cursor.getDate()).padStart(2, '0')
+      const iso = `${y}-${m}-${d}`
       if (!blackoutSet.has(iso)) {
         results.push(cursor.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
       }

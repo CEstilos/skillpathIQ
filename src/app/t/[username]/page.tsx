@@ -1,8 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import TrainerProfileClient from '@/components/TrainerProfileClient'
 
-const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-
 export default async function TrainerProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params
 
@@ -60,11 +58,7 @@ export default async function TrainerProfilePage({ params }: { params: Promise<{
       .order('blackout_date', { ascending: true }),
   ])
 
-  // Filter windows whose day-of-week is entirely blacked out by an upcoming date
-  const blackoutDaySet = new Set(
-    (rawBlackouts || []).map(b => DAY_NAMES[new Date(b.blackout_date + 'T00:00:00').getDay()])
-  )
-  const availabilityWindows = (rawWindows || []).filter(w => !blackoutDaySet.has(w.day_of_week))
+  const availabilityWindows = rawWindows || []
   const upcomingBlackouts = (rawBlackouts || []).map(b => b.blackout_date)
 
   return (
