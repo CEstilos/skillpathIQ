@@ -57,6 +57,33 @@ interface SessionDuration {
 
 type SelectedSlot = { window_id: string; slot_time: string }
 
+const DAY_NUM: Record<string, number> = {
+  sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+  thursday: 4, friday: 5, saturday: 6,
+}
+
+function getNextNDates(dayOfWeek: string, n: number, blackouts: string[]): string[] {
+  const target = DAY_NUM[dayOfWeek.toLowerCase()] ?? -1
+  if (target === -1) return []
+  const blackoutSet = new Set(blackouts)
+  const cursor = new Date()
+  cursor.setHours(0, 0, 0, 0)
+  cursor.setDate(cursor.getDate() + 1)
+  const results: string[] = []
+  let safety = 0
+  while (results.length < n && safety < 365) {
+    if (cursor.getDay() === target) {
+      const iso = cursor.toISOString().split('T')[0]
+      if (!blackoutSet.has(iso)) {
+        results.push(cursor.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
+      }
+    }
+    cursor.setDate(cursor.getDate() + 1)
+    safety++
+  }
+  return results
+}
+
 const RANK_LABELS = ['1st', '2nd', '3rd']
 const RANK_COLORS = ['#00FF9F', '#4A9EFF', '#F5A623']
 
@@ -510,9 +537,21 @@ export default function TrainerProfileClient({
                     </div>
                   )}
 
+                  {trainer.location && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#9A9A9F', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid #2A2A2D' }}>
+                      <span style={{ flexShrink: 0 }}>Location:</span>
+                      <span style={{ color: '#ffffff', fontWeight: 500 }}>{trainer.location}</span>
+                    </div>
+                  )}
+
                   {DAY_ORDER.filter(day => filteredSlotsByDay[day]).map(day => (
                     <div key={day}>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>{day}</div>
+                      <div style={{ marginBottom: '6px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{day}</div>
+                        <div style={{ fontSize: '11px', color: '#555558', marginTop: '2px' }}>
+                          {getNextNDates(day, 4, upcomingBlackouts).join(' · ')}
+                        </div>
+                      </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {filteredSlotsByDay[day].map(({ window: w, time }) => {
                           const rank = slotRank(w.id, time)
