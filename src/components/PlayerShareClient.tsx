@@ -83,18 +83,47 @@ interface AllDrill { id: string; title: string; reps: string; drill_week_id: str
 type SelectedSlot = { window_id: string; slot_time: string }
 type Tab = 'drills' | 'sessions' | 'history'
 
+interface UpcomingGroupSession {
+  id: string
+  session_date: string
+  session_time: string
+  duration_minutes: number | null
+  group_id: string
+  group_name: string
+  group_window_id: string | null
+  display_label: string | null
+  max_capacity: number | null
+  confirmed_count: number
+}
+
+interface ActivePackage {
+  id: string
+  sessions_remaining: number
+  package_name: string
+}
+
 export default function PlayerShareClient({
   player,
   trainer,
   availabilityWindows,
   sessionDurations,
   upcomingBlackouts,
+  upcomingGroupSessions = [],
+  confirmedGroupIds = [],
+  pendingAttendanceSessionIds = [],
+  activePackage = null,
+  trainerUsername = null,
 }: {
   player: Player
   trainer: Trainer | null
   availabilityWindows: AvailabilityWindow[]
   sessionDurations: SessionDuration[]
   upcomingBlackouts: string[]
+  upcomingGroupSessions?: UpcomingGroupSession[]
+  confirmedGroupIds?: string[]
+  pendingAttendanceSessionIds?: string[]
+  activePackage?: ActivePackage | null
+  trainerUsername?: string | null
 }) {
   const supabase = createClient()
 
@@ -116,6 +145,15 @@ export default function PlayerShareClient({
   const [bookingLoading, setBookingLoading] = useState(false)
   const [bookingSubmitted, setBookingSubmitted] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
+
+  // Attendance request state
+  const [localPendingSessionIds, setLocalPendingSessionIds] = useState<Set<string>>(
+    new Set(pendingAttendanceSessionIds)
+  )
+  const [localRequestsMade, setLocalRequestsMade] = useState(0)
+  const [requestModal, setRequestModal] = useState<UpcomingGroupSession | null>(null)
+  const [requestLoading, setRequestLoading] = useState(false)
+  const [requestErrors, setRequestErrors] = useState<Record<string, string>>({})
 
   useEffect(() => { loadPlayerData() }, [])
 
@@ -281,6 +319,38 @@ export default function PlayerShareClient({
     if (days < 30) return `${Math.floor(days / 7)}w ago`
     return `${Math.floor(days / 30)}mo ago`
   }
+
+  async function handleRequestSpot(session: UpcomingGroupSession) {
+    setRequestLoading(true)
+    setRequestErrors(prev => { const next = { ...prev }; delete next[session.id]; return next })
+    try {
+      const res = await fetch('/api/session-attendance-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_id: player.id, session_id: session.id }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        setRequestErrors(prev => ({ ...prev, [session.id]: data.error || 'Request failed. Please try again.' }))
+        return
+      }
+      setLocalPendingSessionIds(prev => new Set([...prev, session.id]))
+      setLocalRequestsMade(prev => prev + 1)
+      setRequestModal(null)
+    } catch {
+      setRequestErrors(prev => ({ ...prev, [session.id]: 'Request failed. Please try again.' }))
+    } finally {
+      setRequestLoading(false)
+    }
+  }
+
+  function formatSessionDate(dateStr: string) {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  }
+
+  const effectiveSessionsRemaining = activePackage
+    ? Math.max(0, activePackage.sessions_remaining - localRequestsMade)
+    : 0
 
   const playerAge = player.birth_year ? new Date().getFullYear() - player.birth_year : null
 
@@ -539,6 +609,143 @@ export default function PlayerShareClient({
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* UPCOMING SESSIONS */}
+        {upcomingGroupSessions.length > 0 && (
+          <div style={{ marginTop: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>Upcoming Sessions</div>
+              {activePackage && effectiveSessionsRemaining > 0 && (
+                <div style={{ fontSize: '12px', color: '#9A9A9F' }}>
+                  {effectiveSessionsRemaining} session{effectiveSessionsRemaining !== 1 ? 's' : ''} remaining
+                </div>
+              )}
+            </div>
+
+            {/* No package prompt */}
+            {(!activePackage || effectiveSessionsRemaining === 0) && (
+              <div style={{ background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '12px', padding: '16px', marginBottom: '12px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>No sessions remaining</div>
+                <p style={{ fontSize: '13px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: '12px' }}>
+                  {player.full_name.split(' ')[0]} has no sessions left in their current package. Book a new package to reserve upcoming sessions.
+                </p>
+                {trainerUsername && (
+                  <a href={`/t/${trainerUsername}`} style={{ display: 'inline-block', padding: '9px 16px', background: GREEN, color: '#0E0E0F', borderRadius: '8px', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
+                    View Packages →
+                  </a>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {upcomingGroupSessions.map(session => {
+                const isConfirmed = confirmedGroupIds.includes(session.group_id)
+                const isPending = localPendingSessionIds.has(session.id)
+                const isFull = session.max_capacity !== null && session.confirmed_count >= session.max_capacity
+                const hasPackage = activePackage !== null && effectiveSessionsRemaining > 0
+                const sessionError = requestErrors[session.id]
+
+                return (
+                  <div key={session.id} style={{ background: '#1A1A1C', border: `1px solid ${isConfirmed ? 'rgba(0,255,159,0.3)' : '#2A2A2D'}`, borderRadius: '12px', padding: '16px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '4px' }}>
+                      {formatSessionDate(session.session_date)}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '12px' }}>
+                      {formatTime(session.session_time)}
+                      {session.display_label ? ` · ${session.display_label}` : ` · ${session.group_name}`}
+                      {session.duration_minutes ? ` · ${session.duration_minutes} min` : ''}
+                    </div>
+
+                    {isConfirmed ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <circle cx="7" cy="7" r="7" fill="rgba(0,255,159,0.15)" />
+                          <polyline points="3.5,7 6,9.5 10.5,4.5" stroke="#00FF9F" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: GREEN }}>Confirmed</span>
+                      </div>
+                    ) : isPending ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F5A623' }} />
+                        <span style={{ fontSize: '13px', fontWeight: 500, color: '#F5A623' }}>Request pending</span>
+                      </div>
+                    ) : isFull ? (
+                      <span style={{ fontSize: '13px', color: '#555558', fontWeight: 500 }}>Full</span>
+                    ) : !hasPackage ? (
+                      <span style={{ fontSize: '13px', color: '#555558', fontWeight: 500 }}>No sessions remaining</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setRequestModal(session)}
+                        style={{ padding: '9px 18px', background: 'transparent', border: `1px solid ${GREEN}`, borderRadius: '8px', color: GREEN, fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                        Request Spot
+                      </button>
+                    )}
+
+                    {sessionError && (
+                      <div style={{ marginTop: '8px', fontSize: '12px', color: '#E03131' }}>{sessionError}</div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* REQUEST SPOT MODAL */}
+        {requestModal && (
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 env(safe-area-inset-bottom,0)' }}
+            onClick={e => { if (e.target === e.currentTarget) setRequestModal(null) }}>
+            <div style={{ background: '#1A1A1C', borderRadius: '20px 20px 0 0', padding: '24px 20px 32px', width: '100%', maxWidth: '480px', border: '1px solid #2A2A2D', borderBottom: 'none' }}>
+              <div style={{ width: '36px', height: '4px', background: '#2A2A2D', borderRadius: '99px', margin: '0 auto 20px' }} />
+              <div style={{ fontSize: '17px', fontWeight: 700, color: '#ffffff', marginBottom: '16px' }}>Request this session?</div>
+              <div style={{ background: '#0E0E0F', borderRadius: '10px', padding: '14px', marginBottom: '16px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '4px' }}>
+                  {formatSessionDate(requestModal.session_date)}
+                </div>
+                <div style={{ fontSize: '13px', color: '#9A9A9F' }}>
+                  {formatTime(requestModal.session_time)}
+                  {requestModal.display_label ? ` · ${requestModal.display_label}` : ` · ${requestModal.group_name}`}
+                  {requestModal.duration_minutes ? ` · ${requestModal.duration_minutes} min` : ''}
+                </div>
+                {trainer?.full_name && (
+                  <div style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '2px' }}>{trainer.full_name}</div>
+                )}
+              </div>
+
+              {activePackage && (
+                <div style={{ marginBottom: '20px' }}>
+                  {activePackage.sessions_remaining - localRequestsMade - 1 <= 0 ? (
+                    <p style={{ fontSize: '13px', color: '#F5A623', lineHeight: 1.5 }}>
+                      This is your last session. Your package will be empty after this request.
+                    </p>
+                  ) : (
+                    <p style={{ fontSize: '13px', color: '#9A9A9F', lineHeight: 1.5 }}>
+                      <span style={{ color: '#ffffff', fontWeight: 600 }}>{activePackage.sessions_remaining - localRequestsMade - 1}</span> session{activePackage.sessions_remaining - localRequestsMade - 1 !== 1 ? 's' : ''} remaining in your package after this request.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleRequestSpot(requestModal)}
+                  disabled={requestLoading}
+                  style={{ flex: 1, padding: '13px', background: GREEN, color: '#0E0E0F', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: 700, cursor: requestLoading ? 'default' : 'pointer', opacity: requestLoading ? 0.7 : 1 }}>
+                  {requestLoading ? 'Sending…' : 'Confirm Request'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRequestModal(null)}
+                  style={{ flex: 1, padding: '13px', background: 'transparent', color: '#9A9A9F', border: '1px solid #2A2A2D', borderRadius: '10px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

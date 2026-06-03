@@ -153,6 +153,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     .sort((a, b) => a.session_date.localeCompare(b.session_date))
     .slice(0, 20)
 
+  // Fetch pending session attendance requests for this trainer
+  const { data: attendanceRequests } = await supabase
+    .from('session_attendance_requests')
+    .select('id, player_id, group_id, session_id, player_package_id, status, created_at, players(id, full_name, parent_name, parent_email), groups(id, name), sessions(id, session_date, session_time, duration_minutes), player_packages(id, sessions_remaining, trainer_packages(name))')
+    .eq('trainer_id', user.id)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+
     return (
       <DashboardClient
         profile={profile}
@@ -170,6 +178,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         sessionRequests={sessionRequests || []}
         bookingRequests={bookingRequests || []}
         packages={trainerPackages || []}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        attendanceRequests={(attendanceRequests || []) as any}
       />
     )
 }

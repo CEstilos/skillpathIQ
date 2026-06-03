@@ -47,6 +47,20 @@ interface TrainerPackage {
   price_per_session: number
 }
 
+interface AttendanceRequest {
+  id: string
+  player_id: string
+  group_id: string
+  session_id: string
+  player_package_id: string | null
+  status: string
+  created_at: string
+  players: { id: string; full_name: string; parent_name: string | null; parent_email: string | null } | null
+  groups: { id: string; name: string } | null
+  sessions: { id: string; session_date: string; session_time: string; duration_minutes: number | null } | null
+  player_packages: { id: string; sessions_remaining: number; trainer_packages: { name: string } | null } | null
+}
+
 interface Props {
   profile: Profile | null
   players: Player[]
@@ -63,9 +77,10 @@ interface Props {
   sessionRequests: SessionRequest[]
   bookingRequests: BookingRequest[]
   packages?: TrainerPackage[]
+  attendanceRequests?: AttendanceRequest[]
 }
 
-export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions, allSessionPlayers, sessionLogs, unloggedSessions, sessionRequests, bookingRequests, packages = [] }: Props) {
+export default function DashboardClient({ profile, players, groups, sessions, drillWeeks, drills, completions, todaySessions, upcomingSessions, allSessionPlayers, sessionLogs, unloggedSessions, sessionRequests, bookingRequests, packages = [], attendanceRequests = [] }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -91,6 +106,8 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
   const [drillNudgeLoading, setDrillNudgeLoading] = useState(false)
   const [localSessionRequests, setLocalSessionRequests] = useState<SessionRequest[]>(sessionRequests)
   const [localBookingRequests, setLocalBookingRequests] = useState<BookingRequest[]>(bookingRequests)
+  const [localAttendanceRequests, setLocalAttendanceRequests] = useState<AttendanceRequest[]>(attendanceRequests)
+  const [attendanceActionLoading, setAttendanceActionLoading] = useState<string | null>(null)
   const [bookingHistoryOpen, setBookingHistoryOpen] = useState(false)
   const [decliningBooking, setDecliningBooking] = useState<string | null>(null)
   const [dashToast, setDashToast] = useState<string | null>(null)
@@ -503,6 +520,51 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
     }
   }
 
+  async function handleConfirmAttendance(req: AttendanceRequest) {
+    setAttendanceActionLoading(req.id)
+    try {
+      const res = await fetch(`/api/attendance-requests/${req.id}/confirm`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        showDashToast('Error: ' + (data.error || 'Failed'))
+        return
+      }
+      setLocalAttendanceRequests(prev => prev.filter(r => r.id !== req.id))
+      const playerName = req.players?.full_name || 'Player'
+      const sessionDate = req.sessions?.session_date
+        ? new Date(req.sessions.session_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        : ''
+      showDashToast(`${playerName} confirmed${sessionDate ? ` for ${sessionDate}` : ''}`)
+    } finally {
+      setAttendanceActionLoading(null)
+    }
+  }
+
+  async function handleDeclineAttendance(req: AttendanceRequest) {
+    setAttendanceActionLoading(req.id)
+    try {
+      const res = await fetch(`/api/attendance-requests/${req.id}/decline`, { method: 'POST' })
+      if (res.ok) {
+        setLocalAttendanceRequests(prev => prev.filter(r => r.id !== req.id))
+        showDashToast('Request declined')
+      }
+    } finally {
+      setAttendanceActionLoading(null)
+    }
+  }
+
+  function formatAttendanceDate(dateStr: string) {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  }
+
+  function formatAttendanceTime(t: string) {
+    if (!t) return ''
+    const [h, m] = t.split(':').map(Number)
+    const ampm = h >= 12 ? 'pm' : 'am'
+    const hour = h > 12 ? h - 12 : h === 0 ? 12 : h
+    return `${hour}:${m.toString().padStart(2, '0')}${ampm}`
+  }
+
   async function dismissRequest(requestId: string) {
     setDismissingRequest(requestId)
     const supabaseClient = createClient()
@@ -708,6 +770,54 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* SPOT REQUESTS - MOBILE */}
+        {localAttendanceRequests.length > 0 && (
+          <div style={{ padding: '4px 16px 12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Spot Requests</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {localAttendanceRequests.map(req => {
+                const isLoading = attendanceActionLoading === req.id
+                const pkg = req.player_packages
+                const pkgName = pkg?.trainer_packages?.name || 'Package'
+                return (
+                  <div key={req.id} style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', padding: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
+                        {req.players?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div onClick={() => router.push(`/dashboard/players/${req.player_id}`)} style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>
+                          {req.players?.full_name}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '1px' }}>{req.groups?.name}</div>
+                      </div>
+                    </div>
+                    {req.sessions && (
+                      <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '4px' }}>
+                        {formatAttendanceDate(req.sessions.session_date)} · {formatAttendanceTime(req.sessions.session_time)}
+                        {req.sessions.duration_minutes ? ` · ${req.sessions.duration_minutes}min` : ''}
+                      </div>
+                    )}
+                    {pkg && (
+                      <div style={{ fontSize: '12px', color: '#9A9A9F', marginBottom: '10px' }}>
+                        {pkgName} · {pkg.sessions_remaining} session{pkg.sessions_remaining !== 1 ? 's' : ''} remaining
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => handleConfirmAttendance(req)} disabled={isLoading} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: isLoading ? 'default' : 'pointer', opacity: isLoading ? 0.7 : 1 }}>
+                        {isLoading ? '…' : 'Confirm'}
+                      </button>
+                      <button onClick={() => handleDeclineAttendance(req)} disabled={isLoading} style={{ flex: 1, fontSize: '13px', padding: '9px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: isLoading ? 'default' : 'pointer' }}>
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
@@ -1273,6 +1383,61 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
               </div>
             )}
 
+            {/* SPOT REQUESTS */}
+            {localAttendanceRequests.length > 0 && (
+              <div style={{ background: '#1A1A1C', border: '1px solid rgba(0,255,159,0.25)', borderRadius: '12px', overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid #2A2A2D', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F' }} />
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#00FF9F', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>
+                    Spot Requests ({localAttendanceRequests.length})
+                  </span>
+                </div>
+                {localAttendanceRequests.map((req, i) => {
+                  const isLoading = attendanceActionLoading === req.id
+                  const pkg = req.player_packages
+                  const pkgName = pkg?.trainer_packages?.name || 'Package'
+                  return (
+                    <div key={req.id} style={{ padding: '14px 16px', borderBottom: i < localAttendanceRequests.length - 1 ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,255,159,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#00FF9F', flexShrink: 0 }}>
+                        {req.players?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' as const }}>
+                          <span onClick={() => router.push(`/dashboard/players/${req.player_id}`)} style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>
+                            {req.players?.full_name}
+                          </span>
+                          {req.groups?.name && (
+                            <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 7px', borderRadius: '99px', background: 'rgba(245,166,35,0.12)', color: '#F5A623' }}>
+                              {req.groups.name}
+                            </span>
+                          )}
+                        </div>
+                        {req.sessions && (
+                          <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+                            {formatAttendanceDate(req.sessions.session_date)} · {formatAttendanceTime(req.sessions.session_time)}
+                            {req.sessions.duration_minutes ? ` · ${req.sessions.duration_minutes}min` : ''}
+                          </div>
+                        )}
+                        {pkg && (
+                          <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+                            {pkgName} · {pkg.sessions_remaining} session{pkg.sessions_remaining !== 1 ? 's' : ''} remaining
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                        <button onClick={() => handleConfirmAttendance(req)} disabled={isLoading} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#00FF9F', color: '#0E0E0F', fontWeight: 700, cursor: isLoading ? 'default' : 'pointer', opacity: isLoading ? 0.7 : 1 }}>
+                          {isLoading ? '…' : 'Confirm'}
+                        </button>
+                        <button onClick={() => handleDeclineAttendance(req)} disabled={isLoading} style={{ fontSize: '12px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2A2A2D', background: 'transparent', color: '#9A9A9F', cursor: isLoading ? 'default' : 'pointer' }}>
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
             {/* BOOKING REQUESTS */}
             {(() => {
               const pendingReqs = localBookingRequests.filter(r => r.status === 'pending')
@@ -1545,7 +1710,7 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
           <div style={{ position: 'sticky', top: '76px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
             {/* ACTION NEEDED */}
-            {(unloggedSessions.length > 0 || unscheduledNewPlayers.length > 0 || localSessionRequests.length > 0 || localBookingRequests.filter(r => r.status === 'pending').length > 0 || lowEngagementPlayers.length > 0) && (
+            {(unloggedSessions.length > 0 || unscheduledNewPlayers.length > 0 || localSessionRequests.length > 0 || localAttendanceRequests.length > 0 || localBookingRequests.filter(r => r.status === 'pending').length > 0 || lowEngagementPlayers.length > 0) && (
               <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
                 <div style={{ padding: '14px 16px', borderBottom: '1px solid #2A2A2D' }}>
                   <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A9A9F', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Action Needed</div>
@@ -1579,6 +1744,15 @@ export default function DashboardClient({ profile, players, groups, sessions, dr
                         <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>Players waiting for a response</div>
                       </div>
                       <button onClick={() => router.push('/dashboard/clients')} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(0,255,159,0.3)', background: 'transparent', color: '#00FF9F', cursor: 'pointer', flexShrink: 0, fontWeight: 600 }}>View</button>
+                    </div>
+                  )}
+                  {localAttendanceRequests.length > 0 && (
+                    <div style={{ padding: '12px 16px', borderBottom: (localBookingRequests.filter(r => r.status === 'pending').length > 0 || lowEngagementPlayers.length > 0) ? '1px solid #2A2A2D' : 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF9F', flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{localAttendanceRequests.length} spot request{localAttendanceRequests.length !== 1 ? 's' : ''}</div>
+                        <div style={{ fontSize: '11px', color: '#9A9A9F', marginTop: '2px' }}>Players requesting group session spots</div>
+                      </div>
                     </div>
                   )}
                   {localBookingRequests.filter(r => r.status === 'pending').length > 0 && (
