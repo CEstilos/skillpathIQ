@@ -196,9 +196,18 @@ export default function PlayerShareClient({
     new Set(pendingAttendanceSessionIds)
   )
   const [localRequestsMade, setLocalRequestsMade] = useState(0)
-  const [requestModal, setRequestModal] = useState<UpcomingGroupSession | null>(null)
-  const [requestLoading, setRequestLoading] = useState(false)
+  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set())
+  const [multiRequestLoading, setMultiRequestLoading] = useState(false)
   const [requestErrors, setRequestErrors] = useState<Record<string, string>>({})
+
+  function toggleSessionSelection(sessionId: string) {
+    setSelectedSessionIds(prev => {
+      const next = new Set(prev)
+      if (next.has(sessionId)) next.delete(sessionId)
+      else next.add(sessionId)
+      return next
+    })
+  }
 
   async function toggleDrill(drillId: string) {
     const isCompleted = completions.some(c => c.drill_id === drillId)
@@ -298,37 +307,54 @@ export default function PlayerShareClient({
     return `${Math.floor(days / 30)}mo ago`
   }
 
-  async function handleRequestSpot(session: UpcomingGroupSession) {
-    setRequestLoading(true)
-    setRequestErrors(prev => { const next = { ...prev }; delete next[session.id]; return next })
-    try {
-      const res = await fetch('/api/session-attendance-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player_id: player.id, session_id: session.id }),
-      })
-      const data = await res.json()
-      if (!res.ok || data.error) {
-        setRequestErrors(prev => ({ ...prev, [session.id]: data.error || 'Request failed. Please try again.' }))
-        return
+  async function handleRequestSelected() {
+    if (selectedSessionIds.size === 0) return
+    setMultiRequestLoading(true)
+    const idsToRequest = [...selectedSessionIds]
+    const results = await Promise.allSettled(
+      idsToRequest.map(sessionId =>
+        fetch('/api/session-attendance-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ player_id: player.id, session_id: sessionId }),
+        }).then(async r => ({ ok: r.ok, data: await r.json(), sessionId }))
+      )
+    )
+    const newPending = new Set(localPendingSessionIds)
+    let newRequests = localRequestsMade
+    const errors: Record<string, string> = { ...requestErrors }
+    for (const r of results) {
+      if (r.status === 'fulfilled') {
+        const { ok, data, sessionId } = r.value
+        if (ok && !data.error) {
+          newPending.add(sessionId)
+          newRequests++
+          delete errors[sessionId]
+        } else {
+          errors[sessionId] = data.error || 'Request failed. Please try again.'
+        }
       }
-      setLocalPendingSessionIds(prev => new Set([...prev, session.id]))
-      setLocalRequestsMade(prev => prev + 1)
-      setRequestModal(null)
-    } catch {
-      setRequestErrors(prev => ({ ...prev, [session.id]: 'Request failed. Please try again.' }))
-    } finally {
-      setRequestLoading(false)
     }
+    setLocalPendingSessionIds(newPending)
+    setLocalRequestsMade(newRequests)
+    setRequestErrors(errors)
+    setSelectedSessionIds(new Set())
+    setMultiRequestLoading(false)
   }
 
-  function formatSessionDate(dateStr: string) {
-    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  function formatSessionDateShort(dateStr: string) {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   }
 
   const effectiveSessionsRemaining = activePackage
     ? Math.max(0, activePackage.sessions_remaining - localRequestsMade)
     : 0
+
+  const sessionsByGroup = upcomingGroupSessions.reduce<Record<string, UpcomingGroupSession[]>>((acc, s) => {
+    if (!acc[s.group_id]) acc[s.group_id] = []
+    acc[s.group_id].push(s)
+    return acc
+  }, {})
 
   const playerAge = player.birth_year ? new Date().getFullYear() - player.birth_year : null
 
@@ -578,10 +604,10 @@ export default function PlayerShareClient({
           </div>
         )}
 
-        {/* UPCOMING SESSIONS */}
+        {/* UPCOMING SESSIONS — grouped by training group with per-date checkboxes */}
         {upcomingGroupSessions.length > 0 && (
           <div style={{ marginTop: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
               <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>Upcoming Sessions</div>
               {activePackage && effectiveSessionsRemaining > 0 && (
                 <div style={{ fontSize: '12px', color: '#9A9A9F' }}>
@@ -589,12 +615,15 @@ export default function PlayerShareClient({
                 </div>
               )}
             </div>
+            <p style={{ fontSize: '13px', color: '#555558', marginBottom: '14px' }}>
+              Select the dates you'd like {player.full_name.split(' ')[0]} to attend, then tap Request.
+            </p>
 
             {/* No package prompt */}
             {(!activePackage || effectiveSessionsRemaining === 0) && (
               <div style={{ background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '12px', padding: '16px', marginBottom: '12px' }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>No sessions remaining</div>
-                <p style={{ fontSize: '13px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: '12px' }}>
+                <p style={{ fontSize: '13px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: trainerUsername ? '12px' : '0' }}>
                   {player.full_name.split(' ')[0]} has no sessions left in their current package. Book a new package to reserve upcoming sessions.
                 </p>
                 {trainerUsername && (
@@ -605,113 +634,117 @@ export default function PlayerShareClient({
               </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {upcomingGroupSessions.map(session => {
-                const isConfirmed = confirmedGroupIds.includes(session.group_id)
-                const isPending = localPendingSessionIds.has(session.id)
-                const isFull = session.max_capacity !== null && session.confirmed_count >= session.max_capacity
-                const hasPackage = activePackage !== null && effectiveSessionsRemaining > 0
-                const sessionError = requestErrors[session.id]
-
+            {/* Per-group session cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {Object.entries(sessionsByGroup).map(([groupId, groupSessions]) => {
+                const first = groupSessions[0]
                 return (
-                  <div key={session.id} style={{ background: '#1A1A1C', border: `1px solid ${isConfirmed ? 'rgba(0,255,159,0.3)' : '#2A2A2D'}`, borderRadius: '12px', padding: '16px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '4px' }}>
-                      {formatSessionDate(session.session_date)}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '12px' }}>
-                      {formatTime(session.session_time)}
-                      {session.display_label ? ` · ${session.display_label}` : ` · ${session.group_name}`}
-                      {session.duration_minutes ? ` · ${session.duration_minutes} min` : ''}
+                  <div key={groupId} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
+                    {/* Group header */}
+                    <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid #2A2A2D' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
+                        {first.display_label || first.group_name}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+                        {formatTime(first.session_time)}{first.duration_minutes ? ` · ${first.duration_minutes} min` : ''}
+                      </div>
                     </div>
 
-                    {isConfirmed ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <circle cx="7" cy="7" r="7" fill="rgba(0,255,159,0.15)" />
-                          <polyline points="3.5,7 6,9.5 10.5,4.5" stroke="#00FF9F" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: GREEN }}>Confirmed</span>
-                      </div>
-                    ) : isPending ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F5A623' }} />
-                        <span style={{ fontSize: '13px', fontWeight: 500, color: '#F5A623' }}>Request pending</span>
-                      </div>
-                    ) : isFull ? (
-                      <span style={{ fontSize: '13px', color: '#555558', fontWeight: 500 }}>Full</span>
-                    ) : !hasPackage ? (
-                      <span style={{ fontSize: '13px', color: '#555558', fontWeight: 500 }}>No sessions remaining</span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setRequestModal(session)}
-                        style={{ padding: '9px 18px', background: 'transparent', border: `1px solid ${GREEN}`, borderRadius: '8px', color: GREEN, fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-                        Request Spot
-                      </button>
-                    )}
+                    {/* Session rows */}
+                    {groupSessions.map((session, idx) => {
+                      const isConfirmed = confirmedGroupIds.includes(session.group_id)
+                      const isPending = localPendingSessionIds.has(session.id)
+                      const isFull = session.max_capacity !== null && session.confirmed_count >= session.max_capacity
+                      const hasPackage = activePackage !== null && effectiveSessionsRemaining > 0
+                      const isSelectable = !isConfirmed && !isPending && !isFull && hasPackage
+                      const isSelected = selectedSessionIds.has(session.id)
+                      const sessionError = requestErrors[session.id]
 
-                    {sessionError && (
-                      <div style={{ marginTop: '8px', fontSize: '12px', color: '#E03131' }}>{sessionError}</div>
-                    )}
+                      return (
+                        <div
+                          key={session.id}
+                          onClick={isSelectable ? () => toggleSessionSelection(session.id) : undefined}
+                          style={{
+                            padding: '13px 16px',
+                            borderBottom: idx < groupSessions.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                            display: 'flex', alignItems: 'center', gap: '12px',
+                            background: isSelected ? 'rgba(0,255,159,0.04)' : 'transparent',
+                            cursor: isSelectable ? 'pointer' : 'default',
+                            transition: 'background 0.12s',
+                          }}>
+
+                          {/* Checkbox / status icon */}
+                          {isConfirmed ? (
+                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,255,159,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                <polyline points="2,5 4.5,7.5 8,3" stroke="#00FF9F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </div>
+                          ) : isPending ? (
+                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(245,166,35,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F5A623' }} />
+                            </div>
+                          ) : (
+                            <div style={{
+                              width: '20px', height: '20px', borderRadius: '5px', flexShrink: 0,
+                              border: isSelected ? 'none' : `1.5px solid ${isSelectable ? '#555558' : '#2A2A2D'}`,
+                              background: isSelected ? GREEN : 'transparent',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              transition: 'all 0.12s',
+                            }}>
+                              {isSelected && (
+                                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                                  <polyline points="2,5.5 4.5,8 9,3" stroke="#0E0E0F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Date */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '14px', fontWeight: 500, color: isConfirmed ? GREEN : isPending ? '#F5A623' : isSelectable ? '#ffffff' : '#555558' }}>
+                              {formatSessionDateShort(session.session_date)}
+                            </div>
+                            {sessionError && (
+                              <div style={{ fontSize: '11px', color: '#E03131', marginTop: '2px' }}>{sessionError}</div>
+                            )}
+                          </div>
+
+                          {/* Right status / capacity */}
+                          <div style={{ flexShrink: 0, textAlign: 'right' as const }}>
+                            {isConfirmed && <span style={{ fontSize: '12px', color: GREEN, fontWeight: 600 }}>Confirmed</span>}
+                            {isPending && <span style={{ fontSize: '12px', color: '#F5A623', fontWeight: 500 }}>Pending</span>}
+                            {!isConfirmed && !isPending && isFull && <span style={{ fontSize: '12px', color: '#555558' }}>Full</span>}
+                            {!isConfirmed && !isPending && !isFull && !hasPackage && <span style={{ fontSize: '12px', color: '#555558' }}>No sessions left</span>}
+                            {!isConfirmed && !isPending && !isFull && hasPackage && session.max_capacity && (
+                              <span style={{ fontSize: '11px', color: '#555558' }}>{session.confirmed_count}/{session.max_capacity}</span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 )
               })}
             </div>
-          </div>
-        )}
 
-        {/* REQUEST SPOT MODAL */}
-        {requestModal && (
-          <div
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 env(safe-area-inset-bottom,0)' }}
-            onClick={e => { if (e.target === e.currentTarget) setRequestModal(null) }}>
-            <div style={{ background: '#1A1A1C', borderRadius: '20px 20px 0 0', padding: '24px 20px 32px', width: '100%', maxWidth: '480px', border: '1px solid #2A2A2D', borderBottom: 'none' }}>
-              <div style={{ width: '36px', height: '4px', background: '#2A2A2D', borderRadius: '99px', margin: '0 auto 20px' }} />
-              <div style={{ fontSize: '17px', fontWeight: 700, color: '#ffffff', marginBottom: '16px' }}>Request this session?</div>
-              <div style={{ background: '#0E0E0F', borderRadius: '10px', padding: '14px', marginBottom: '16px' }}>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '4px' }}>
-                  {formatSessionDate(requestModal.session_date)}
-                </div>
-                <div style={{ fontSize: '13px', color: '#9A9A9F' }}>
-                  {formatTime(requestModal.session_time)}
-                  {requestModal.display_label ? ` · ${requestModal.display_label}` : ` · ${requestModal.group_name}`}
-                  {requestModal.duration_minutes ? ` · ${requestModal.duration_minutes} min` : ''}
-                </div>
-                {trainer?.full_name && (
-                  <div style={{ fontSize: '13px', color: '#9A9A9F', marginTop: '2px' }}>{trainer.full_name}</div>
+            {/* Request button */}
+            {selectedSessionIds.size > 0 && (
+              <div style={{ marginTop: '16px' }}>
+                {activePackage && effectiveSessionsRemaining - selectedSessionIds.size <= 0 && (
+                  <p style={{ fontSize: '12px', color: '#F5A623', marginBottom: '10px' }}>
+                    This will use your last {selectedSessionIds.size === 1 ? 'session' : `${selectedSessionIds.size} sessions`}. Your package will be empty after these requests.
+                  </p>
                 )}
-              </div>
-
-              {activePackage && (
-                <div style={{ marginBottom: '20px' }}>
-                  {activePackage.sessions_remaining - localRequestsMade - 1 <= 0 ? (
-                    <p style={{ fontSize: '13px', color: '#F5A623', lineHeight: 1.5 }}>
-                      This is your last session. Your package will be empty after this request.
-                    </p>
-                  ) : (
-                    <p style={{ fontSize: '13px', color: '#9A9A9F', lineHeight: 1.5 }}>
-                      <span style={{ color: '#ffffff', fontWeight: 600 }}>{activePackage.sessions_remaining - localRequestsMade - 1}</span> session{activePackage.sessions_remaining - localRequestsMade - 1 !== 1 ? 's' : ''} remaining in your package after this request.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: '10px' }}>
                 <button
                   type="button"
-                  onClick={() => handleRequestSpot(requestModal)}
-                  disabled={requestLoading}
-                  style={{ flex: 1, padding: '13px', background: GREEN, color: '#0E0E0F', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: 700, cursor: requestLoading ? 'default' : 'pointer', opacity: requestLoading ? 0.7 : 1 }}>
-                  {requestLoading ? 'Sending…' : 'Confirm Request'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRequestModal(null)}
-                  style={{ flex: 1, padding: '13px', background: 'transparent', color: '#9A9A9F', border: '1px solid #2A2A2D', borderRadius: '10px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}>
-                  Cancel
+                  onClick={handleRequestSelected}
+                  disabled={multiRequestLoading}
+                  style={{ width: '100%', padding: '14px', background: GREEN, color: '#0E0E0F', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: multiRequestLoading ? 'default' : 'pointer', opacity: multiRequestLoading ? 0.7 : 1, transition: 'opacity 0.15s' }}>
+                  {multiRequestLoading ? 'Sending…' : `Request ${selectedSessionIds.size} session${selectedSessionIds.size !== 1 ? 's' : ''}`}
                 </button>
               </div>
-            </div>
+            )}
           </div>
         )}
 

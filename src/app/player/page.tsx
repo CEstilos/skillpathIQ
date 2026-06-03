@@ -184,7 +184,7 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
         .is('player_id', null)
         .order('session_date', { ascending: true })
         .order('session_time', { ascending: true })
-        .limit(5),
+        .limit(20),
       supabaseAdmin
         .from('group_confirmed_players')
         .select('group_id')
