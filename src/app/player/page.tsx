@@ -19,6 +19,7 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
     { auth: { persistSession: false } }
   )
 
+  // Service role client for all data that requires bypassing RLS on the public profile page
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -38,15 +39,22 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
   const group_ids = (memberRows || []).map(m => m.group_id)
   const playerWithGroups = { ...player, group_ids }
 
-  const { data: trainer } = await supabase
-    .from('profiles')
-    .select('id, full_name, bio, sport, location, profile_photo_url, individual_rate, group_rate, username')
-    .eq('id', player.trainer_id)
-    .single()
-
   const today = new Date().toISOString().split('T')[0]
 
-  const [{ data: rawWindows }, { data: sessionDurations }, { data: rawBlackouts }] = await Promise.all([
+  // Fetch all independent data in parallel
+  const [
+    { data: trainer },
+    { data: rawWindows },
+    { data: sessionDurations },
+    { data: rawBlackouts },
+    { data: latestFeedbackRow },
+    { data: allSessionsData },
+  ] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name, bio, sport, location, profile_photo_url, individual_rate, group_rate, username')
+      .eq('id', player.trainer_id)
+      .single(),
     supabase
       .from('trainer_availability_windows')
       .select('id, day_of_week, start_time, end_time, session_type, display_label, sort_order, duration_minutes, buffer_minutes, max_capacity, gender_filter, min_age, max_age, experience_filter')
@@ -63,6 +71,22 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
       .eq('trainer_id', player.trainer_id)
       .gte('blackout_date', today)
       .order('blackout_date', { ascending: true }),
+    // Latest coach feedback — service role bypasses RLS
+    supabaseAdmin
+      .from('sessions')
+      .select('feedback, session_date')
+      .eq('player_id', player.id)
+      .not('feedback', 'is', null)
+      .order('session_date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    // Session history for the Sessions tab
+    supabaseAdmin
+      .from('sessions')
+      .select('id, feedback, session_date, session_type, notes, drills_covered')
+      .eq('player_id', player.id)
+      .order('session_date', { ascending: false })
+      .limit(20),
   ])
 
   const blackoutDaySet = new Set(
@@ -71,20 +95,75 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
   const availabilityWindows = (rawWindows || []).filter(w => !blackoutDaySet.has(w.day_of_week))
   const upcomingBlackouts = (rawBlackouts || []).map(b => b.blackout_date)
 
-  // Fetch upcoming group sessions for player's groups
-  let upcomingGroupSessions: {
-    id: string
-    session_date: string
-    session_time: string
-    duration_minutes: number | null
-    group_id: string
-    group_name: string
-    group_window_id: string | null
-    display_label: string | null
-    max_capacity: number | null
-    confirmed_count: number
-  }[] = []
+  // Fetch current drill week: player-specific first, then group fallback
+  let drillWeekData: { id: string; title: string; group_id: string | null; player_id: string | null; week_start: string } | null = null
+  const { data: playerDrillWeek } = await supabaseAdmin
+    .from('drill_weeks')
+    .select('id, title, group_id, player_id, week_start')
+    .eq('player_id', player.id)
+    .order('week_start', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (playerDrillWeek) {
+    drillWeekData = playerDrillWeek
+  } else if (group_ids.length > 0) {
+    const groupFilter = group_ids.map(gid => `group_id.eq.${gid}`).join(',')
+    const { data: groupDrillWeek } = await supabaseAdmin
+      .from('drill_weeks')
+      .select('id, title, group_id, player_id, week_start')
+      .or(groupFilter)
+      .order('week_start', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (groupDrillWeek) drillWeekData = groupDrillWeek
+  }
 
+  // Fetch all drill weeks for the history tab
+  const orFilter = group_ids.length > 0
+    ? `player_id.eq.${player.id},${group_ids.map(gid => `group_id.eq.${gid}`).join(',')}`
+    : `player_id.eq.${player.id}`
+  const { data: allDrillWeeksData } = await supabaseAdmin
+    .from('drill_weeks')
+    .select('id, title, week_start')
+    .or(orFilter)
+    .order('week_start', { ascending: false })
+
+  // Fetch drills + completions in parallel (depends on week IDs)
+  const currentWeekDrillIds: string[] = []
+  const allWeekIds = (allDrillWeeksData || []).map(w => w.id)
+
+  const [currentDrillsResult, allDrillsResult] = await Promise.all([
+    drillWeekData
+      ? supabaseAdmin.from('drills').select('id, title, description, reps, drill_week_id, sort_order').eq('drill_week_id', drillWeekData.id).order('sort_order', { ascending: true })
+      : Promise.resolve({ data: [] as { id: string; title: string; description: string; reps: string; drill_week_id: string; sort_order: number }[] }),
+    allWeekIds.length > 0
+      ? supabaseAdmin.from('drills').select('id, title, reps, drill_week_id').in('drill_week_id', allWeekIds)
+      : Promise.resolve({ data: [] as { id: string; title: string; reps: string; drill_week_id: string }[] }),
+  ])
+
+  const currentDrills = currentDrillsResult.data || []
+  const allDrills = allDrillsResult.data || []
+  currentWeekDrillIds.push(...currentDrills.map(d => d.id))
+
+  const allDrillIds = allDrills.map(d => d.id)
+  const [currentCompletionsResult, allCompletionsResult] = await Promise.all([
+    currentWeekDrillIds.length > 0
+      ? supabaseAdmin.from('completions').select('id, drill_id, player_id').eq('player_id', player.id).in('drill_id', currentWeekDrillIds)
+      : Promise.resolve({ data: [] as { id: string; drill_id: string; player_id: string }[] }),
+    allDrillIds.length > 0
+      ? supabaseAdmin.from('completions').select('id, drill_id, player_id').eq('player_id', player.id).in('drill_id', allDrillIds)
+      : Promise.resolve({ data: [] as { id: string; drill_id: string; player_id: string }[] }),
+  ])
+
+  const initialCompletions = currentCompletionsResult.data || []
+  const allCompletions = allCompletionsResult.data || []
+
+  // Upcoming group sessions + package/attendance data
+  let upcomingGroupSessions: {
+    id: string; session_date: string; session_time: string; duration_minutes: number | null
+    group_id: string; group_name: string; group_window_id: string | null
+    display_label: string | null; max_capacity: number | null; confirmed_count: number
+  }[] = []
   let confirmedGroupIds: string[] = []
   let pendingAttendanceSessionIds: string[] = []
   let activePackage: { id: string; sessions_remaining: number; package_name: string } | null = null
@@ -129,7 +208,6 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
       }
       const typedSessions = rawSessions as unknown as RawSession[]
 
-      // Gather unique window IDs from groups for capacity info
       const windowIds = [...new Set(
         typedSessions.map(s => s.groups?.window_id).filter(Boolean) as string[]
       )]
@@ -145,7 +223,6 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
         }
       }
 
-      // Get confirmed counts per group
       const relevantGroupIds = [...new Set(typedSessions.map(s => s.group_id))]
       const { data: confirmedCounts } = await supabaseAdmin
         .from('group_confirmed_players')
@@ -176,7 +253,7 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
     }
   }
 
-  // Fetch active player_package
+  // Active player_package
   const { data: pkgRow } = await supabaseAdmin
     .from('player_packages')
     .select('id, sessions_remaining, trainer_packages(name)')
@@ -203,6 +280,14 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
       availabilityWindows={availabilityWindows}
       sessionDurations={sessionDurations || []}
       upcomingBlackouts={upcomingBlackouts}
+      latestFeedback={latestFeedbackRow?.feedback || null}
+      initialSessions={(allSessionsData || []) as { id: string; feedback: string | null; session_date: string; session_type: string; notes: string | null; drills_covered: string | null }[]}
+      initialDrillWeek={drillWeekData}
+      initialDrills={currentDrills}
+      initialCompletions={initialCompletions}
+      initialAllDrillWeeks={(allDrillWeeksData || []) as { id: string; title: string; week_start: string }[]}
+      initialAllDrills={allDrills}
+      initialAllCompletions={allCompletions}
       upcomingGroupSessions={upcomingGroupSessions}
       confirmedGroupIds={confirmedGroupIds}
       pendingAttendanceSessionIds={pendingAttendanceSessionIds}

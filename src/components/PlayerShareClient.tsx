@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { generateSlots, filterSlots } from '@/lib/generateSlots'
 
@@ -108,6 +108,14 @@ export default function PlayerShareClient({
   availabilityWindows,
   sessionDurations,
   upcomingBlackouts,
+  latestFeedback = null,
+  initialSessions = [],
+  initialDrillWeek = null,
+  initialDrills = [],
+  initialCompletions = [],
+  initialAllDrillWeeks = [],
+  initialAllDrills = [],
+  initialAllCompletions = [],
   upcomingGroupSessions = [],
   confirmedGroupIds = [],
   pendingAttendanceSessionIds = [],
@@ -119,6 +127,14 @@ export default function PlayerShareClient({
   availabilityWindows: AvailabilityWindow[]
   sessionDurations: SessionDuration[]
   upcomingBlackouts: string[]
+  latestFeedback?: string | null
+  initialSessions?: Session[]
+  initialDrillWeek?: DrillWeek | null
+  initialDrills?: Drill[]
+  initialCompletions?: Completion[]
+  initialAllDrillWeeks?: AllDrillWeek[]
+  initialAllDrills?: AllDrill[]
+  initialAllCompletions?: Completion[]
   upcomingGroupSessions?: UpcomingGroupSession[]
   confirmedGroupIds?: string[]
   pendingAttendanceSessionIds?: string[]
@@ -127,15 +143,13 @@ export default function PlayerShareClient({
 }) {
   const supabase = createClient()
 
-  const [drillWeek, setDrillWeek] = useState<DrillWeek | null>(null)
-  const [drills, setDrills] = useState<Drill[]>([])
-  const [completions, setCompletions] = useState<Completion[]>([])
-  const [sessions, setSessions] = useState<Session[]>([])
-  const [allDrillWeeks, setAllDrillWeeks] = useState<AllDrillWeek[]>([])
-  const [allDrills, setAllDrills] = useState<AllDrill[]>([])
-  const [allCompletions, setAllCompletions] = useState<Completion[]>([])
-  const [latestFeedback, setLatestFeedback] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const drillWeek = initialDrillWeek
+  const [drills] = useState<Drill[]>(initialDrills)
+  const [completions, setCompletions] = useState<Completion[]>(initialCompletions)
+  const sessions = initialSessions
+  const allDrillWeeks = initialAllDrillWeeks
+  const allDrills = initialAllDrills
+  const allCompletions = initialAllCompletions
   const [activeTab, setActiveTab] = useState<Tab>('drills')
 
   // Booking form state
@@ -154,73 +168,6 @@ export default function PlayerShareClient({
   const [requestModal, setRequestModal] = useState<UpcomingGroupSession | null>(null)
   const [requestLoading, setRequestLoading] = useState(false)
   const [requestErrors, setRequestErrors] = useState<Record<string, string>>({})
-
-  useEffect(() => { loadPlayerData() }, [])
-
-  async function loadPlayerData() {
-    setLoading(true)
-    const playerId = player.id
-
-    const { data: sessionData } = await supabase
-      .from('sessions').select('feedback, session_date')
-      .eq('player_id', playerId).not('feedback', 'is', null)
-      .order('session_date', { ascending: false }).limit(1).single()
-    if (sessionData?.feedback) setLatestFeedback(sessionData.feedback)
-
-    const { data: sessionsData } = await supabase
-      .from('sessions').select('*').eq('player_id', playerId)
-      .order('session_date', { ascending: false }).limit(20)
-    setSessions(sessionsData || [])
-
-    let weekData: DrillWeek | null = null
-    const { data: playerWeek } = await supabase
-      .from('drill_weeks').select('*').eq('player_id', playerId)
-      .order('week_start', { ascending: false }).limit(1).single()
-    if (playerWeek) {
-      weekData = playerWeek
-    } else if (player.group_ids.length > 0) {
-      const groupFilter = player.group_ids.map(gid => `group_id.eq.${gid}`).join(',')
-      const { data: groupWeek } = await supabase
-        .from('drill_weeks').select('*').or(groupFilter)
-        .order('week_start', { ascending: false }).limit(1).single()
-      if (groupWeek) weekData = groupWeek
-    }
-
-    if (weekData) {
-      setDrillWeek(weekData)
-      const { data: drillsData } = await supabase
-        .from('drills').select('*').eq('drill_week_id', weekData.id)
-        .order('sort_order', { ascending: true })
-      setDrills(drillsData || [])
-      const { data: completionsData } = await supabase
-        .from('completions').select('*').eq('player_id', playerId)
-        .in('drill_id', drillsData?.map((d: Drill) => d.id) || [])
-      setCompletions(completionsData || [])
-    }
-
-    const groupFilter = player.group_ids.map(gid => `group_id.eq.${gid}`).join(',')
-    const orFilter = player.group_ids.length > 0
-      ? `player_id.eq.${playerId},${groupFilter}`
-      : `player_id.eq.${playerId}`
-    const { data: allWeeksData } = await supabase
-      .from('drill_weeks').select('*')
-      .or(orFilter)
-      .order('week_start', { ascending: false })
-    setAllDrillWeeks(allWeeksData || [])
-
-    if (allWeeksData && allWeeksData.length > 0) {
-      const { data: allDrillsData } = await supabase
-        .from('drills').select('*')
-        .in('drill_week_id', allWeeksData.map(w => w.id))
-      setAllDrills(allDrillsData || [])
-      const { data: allCompletionsData } = await supabase
-        .from('completions').select('*').eq('player_id', playerId)
-        .in('drill_id', allDrillsData?.map(d => d.id) || [])
-      setAllCompletions(allCompletionsData || [])
-    }
-
-    setLoading(false)
-  }
 
   async function toggleDrill(drillId: string) {
     const isCompleted = completions.some(c => c.drill_id === drillId)
@@ -456,11 +403,7 @@ export default function PlayerShareClient({
         {/* TAB: THIS WEEK */}
         {activeTab === 'drills' && (
           <>
-            {loading ? (
-              <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
-                <p style={{ fontSize: '13px', color: '#9A9A9F' }}>Loading...</p>
-              </div>
-            ) : drillWeek ? (
+            {drillWeek ? (
               <>
                 <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -513,11 +456,7 @@ export default function PlayerShareClient({
         {/* TAB: SESSIONS */}
         {activeTab === 'sessions' && (
           <div>
-            {loading ? (
-              <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
-                <p style={{ fontSize: '13px', color: '#9A9A9F' }}>Loading...</p>
-              </div>
-            ) : sessions.length === 0 ? (
+            {sessions.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px' }}>
                 <div style={{ fontSize: '32px', marginBottom: '12px' }}>📋</div>
                 <p style={{ fontSize: '14px', color: '#9A9A9F' }}>No sessions logged yet.</p>
@@ -555,11 +494,7 @@ export default function PlayerShareClient({
         {/* TAB: DRILL HISTORY */}
         {activeTab === 'history' && (
           <div>
-            {loading ? (
-              <div style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
-                <p style={{ fontSize: '13px', color: '#9A9A9F' }}>Loading...</p>
-              </div>
-            ) : allDrillWeeks.length === 0 ? (
+            {allDrillWeeks.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0', background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '12px' }}>
                 <div style={{ fontSize: '32px', marginBottom: '12px' }}>📝</div>
                 <p style={{ fontSize: '14px', color: '#9A9A9F' }}>No drill history yet.</p>
