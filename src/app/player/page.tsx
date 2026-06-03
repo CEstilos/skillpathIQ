@@ -34,7 +34,7 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
 
   if (!player) return <NotFound message="Player not found." />
 
-  const { data: memberRows } = await supabase
+  const { data: memberRows } = await supabaseAdmin
     .from('group_members').select('group_id').eq('player_id', player.id)
   const group_ids = (memberRows || []).map(m => m.group_id)
   const playerWithGroups = { ...player, group_ids }
