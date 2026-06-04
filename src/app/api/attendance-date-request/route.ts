@@ -59,10 +59,10 @@ export async function POST(request: NextRequest) {
       .gt('sessions_remaining', 0)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single()
-    if (!pkg) return NextResponse.json({ error: 'No active package sessions remaining' }, { status: 400 })
+      .maybeSingle()
 
-    if (requests.length > pkg.sessions_remaining) {
+    // If a package exists, validate there are enough sessions
+    if (pkg && requests.length > pkg.sessions_remaining) {
       return NextResponse.json({
         error: `You have ${pkg.sessions_remaining} session${pkg.sessions_remaining !== 1 ? 's' : ''} remaining but selected ${requests.length}. Please deselect some dates.`,
       }, { status: 400 })
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
           trainer_id: player.trainer_id,
           group_id: req.group_id,
           session_id: sessionId,
-          player_package_id: pkg.id,
+          player_package_id: pkg?.id || null,
           status: 'pending',
         })
       if (insertError) {
@@ -176,11 +176,15 @@ export async function POST(request: NextRequest) {
         .from('groups').select('name').eq('id', requests[0].group_id).single()
 
       if (trainer?.email) {
-        const pkgTemplate = Array.isArray(pkg.trainer_packages) ? pkg.trainer_packages[0] : pkg.trainer_packages
-        const packageName = (pkgTemplate as { name: string } | null)?.name || 'Package'
+        const pkgTemplate = pkg ? (Array.isArray(pkg.trainer_packages) ? pkg.trainer_packages[0] : pkg.trainer_packages) : null
+        const packageName = (pkgTemplate as { name: string } | null)?.name
         const groupName = group?.name || 'Group'
 
         const dateLines = successful.map(r => `  • ${formatDateLong(r.date)}`).join('\n')
+
+        const packageLine = pkg
+          ? `Package: ${packageName || 'Package'} · ${pkg.sessions_remaining} session${pkg.sessions_remaining !== 1 ? 's' : ''} remaining`
+          : `⚠️ Note: ${player.full_name} has no active package. You can approve this request manually.`
 
         const trainerBody = [
           `Hi ${trainer.full_name?.split(' ')[0] || 'Coach'},`,
@@ -189,7 +193,7 @@ export async function POST(request: NextRequest) {
           ``,
           dateLines,
           ``,
-          `Package: ${packageName} · ${pkg.sessions_remaining} session${pkg.sessions_remaining !== 1 ? 's' : ''} remaining`,
+          packageLine,
           ``,
           `Confirm or decline from your Training Hub: https://skillpathiq.com/dashboard`,
           ``,
@@ -206,7 +210,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, results, sessions_remaining: pkg.sessions_remaining })
+    return NextResponse.json({ success: true, results, sessions_remaining: pkg?.sessions_remaining ?? 0 })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })

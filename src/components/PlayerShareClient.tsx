@@ -651,7 +651,7 @@ export default function PlayerShareClient({
               <div style={{ background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '12px', padding: '16px', marginBottom: '12px' }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>No sessions remaining</div>
                 <p style={{ fontSize: '13px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: trainerUsername ? '12px' : '0' }}>
-                  {player.full_name.split(' ')[0]} needs a new package to book sessions.
+                  {player.full_name.split(' ')[0]} has no sessions left in their current package. You can still select dates below — your trainer can approve the request manually.
                 </p>
                 {trainerUsername && (
                   <a href={`/t/${trainerUsername}`} style={{ display: 'inline-block', padding: '9px 16px', background: GREEN, color: '#0E0E0F', borderRadius: '8px', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
@@ -677,8 +677,7 @@ export default function PlayerShareClient({
                     const key = `${schedule.group_id}|${date}`
                     const isPending = localPendingDateKeys.has(key)
                     const isConfirmed = confirmedGroupIds.includes(schedule.group_id)
-                    const hasPackage = activePackage !== null && effectiveSessionsRemaining > 0
-                    const isSelectable = !isPending && !isConfirmed && hasPackage
+                    const isSelectable = !isPending && !isConfirmed
                     const isSelected = selectedDateKeys.has(key)
                     const rowError = dateRequestErrors[key]
 
@@ -731,7 +730,6 @@ export default function PlayerShareClient({
                         <div style={{ flexShrink: 0 }}>
                           {isConfirmed && <span style={{ fontSize: '12px', color: GREEN, fontWeight: 600 }}>Confirmed</span>}
                           {isPending && <span style={{ fontSize: '12px', color: '#F5A623', fontWeight: 500 }}>Pending</span>}
-                          {!isConfirmed && !isPending && !hasPackage && <span style={{ fontSize: '12px', color: '#555558' }}>No sessions left</span>}
                         </div>
                       </div>
                     )
@@ -748,7 +746,7 @@ export default function PlayerShareClient({
 
             {selectedDateKeys.size > 0 && (
               <div style={{ marginTop: '16px' }}>
-                {activePackage && effectiveSessionsRemaining - selectedDateKeys.size <= 0 && (
+                {activePackage && effectiveSessionsRemaining > 0 && effectiveSessionsRemaining - selectedDateKeys.size <= 0 && (
                   <p style={{ fontSize: '12px', color: '#F5A623', marginBottom: '10px' }}>
                     This will use your last {selectedDateKeys.size === 1 ? 'session' : `${selectedDateKeys.size} sessions`}. Your package will be empty after these requests.
                   </p>

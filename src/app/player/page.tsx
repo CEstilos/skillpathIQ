@@ -86,7 +86,7 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
       .select('id, duration_minutes, label')
       .eq('trainer_id', player.trainer_id)
       .order('duration_minutes', { ascending: true }),
-    supabase
+    supabaseAdmin
       .from('trainer_blackout_dates')
       .select('blackout_date')
       .eq('trainer_id', player.trainer_id)
