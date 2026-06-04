@@ -68,6 +68,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Fetch group names upfront for use as session titles
+    const uniqueGroupIds = [...new Set(requests.map(r => r.group_id))]
+    const { data: groupRows } = await supabase
+      .from('groups').select('id, name').in('id', uniqueGroupIds)
+    const groupNameMap: Record<string, string> = {}
+    for (const g of groupRows || []) groupNameMap[g.id] = g.name
+
     const results: DateResult[] = []
 
     for (const req of requests) {
@@ -109,6 +116,7 @@ export async function POST(request: NextRequest) {
           .insert({
             trainer_id: player.trainer_id,
             group_id: req.group_id,
+            title: groupNameMap[req.group_id] || 'Group Session',
             session_date: req.date,
             session_time: win.start_time,
             duration_minutes: win.duration_minutes,
