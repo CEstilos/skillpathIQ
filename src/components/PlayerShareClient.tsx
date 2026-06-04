@@ -133,6 +133,16 @@ interface ActivePackage {
   package_name: string
 }
 
+interface GroupSchedule {
+  group_id: string
+  group_name: string
+  window_id: string
+  display_label: string | null
+  session_time: string
+  duration_minutes: number
+  upcoming_dates: string[]
+}
+
 export default function PlayerShareClient({
   player,
   trainer,
@@ -152,6 +162,7 @@ export default function PlayerShareClient({
   pendingAttendanceSessionIds = [],
   activePackage = null,
   trainerUsername = null,
+  groupSchedules = [],
 }: {
   player: Player
   trainer: Trainer | null
@@ -171,6 +182,7 @@ export default function PlayerShareClient({
   pendingAttendanceSessionIds?: string[]
   activePackage?: ActivePackage | null
   trainerUsername?: string | null
+  groupSchedules?: GroupSchedule[]
 }) {
   const supabase = createClient()
 
@@ -191,20 +203,24 @@ export default function PlayerShareClient({
   const [bookingSubmitted, setBookingSubmitted] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
 
-  // Attendance request state
-  const [localPendingSessionIds, setLocalPendingSessionIds] = useState<Set<string>>(
-    new Set(pendingAttendanceSessionIds)
+  // Attendance request state — keyed by "group_id|date"
+  const initialPendingKeys = new Set(
+    upcomingGroupSessions
+      .filter(s => pendingAttendanceSessionIds.includes(s.id))
+      .map(s => `${s.group_id}|${s.session_date}`)
   )
+  const [localPendingDateKeys, setLocalPendingDateKeys] = useState<Set<string>>(initialPendingKeys)
   const [localRequestsMade, setLocalRequestsMade] = useState(0)
-  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set())
-  const [multiRequestLoading, setMultiRequestLoading] = useState(false)
-  const [requestErrors, setRequestErrors] = useState<Record<string, string>>({})
+  const [selectedDateKeys, setSelectedDateKeys] = useState<Set<string>>(new Set())
+  const [dateRequestLoading, setDateRequestLoading] = useState(false)
+  const [dateRequestErrors, setDateRequestErrors] = useState<Record<string, string>>({})
+  const [globalRequestError, setGlobalRequestError] = useState<string | null>(null)
 
-  function toggleSessionSelection(sessionId: string) {
-    setSelectedSessionIds(prev => {
+  function toggleDateSelection(key: string) {
+    setSelectedDateKeys(prev => {
       const next = new Set(prev)
-      if (next.has(sessionId)) next.delete(sessionId)
-      else next.add(sessionId)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
   }
@@ -307,39 +323,57 @@ export default function PlayerShareClient({
     return `${Math.floor(days / 30)}mo ago`
   }
 
-  async function handleRequestSelected() {
-    if (selectedSessionIds.size === 0) return
-    setMultiRequestLoading(true)
-    const idsToRequest = [...selectedSessionIds]
-    const results = await Promise.allSettled(
-      idsToRequest.map(sessionId =>
-        fetch('/api/session-attendance-request', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ player_id: player.id, session_id: sessionId }),
-        }).then(async r => ({ ok: r.ok, data: await r.json(), sessionId }))
-      )
-    )
-    const newPending = new Set(localPendingSessionIds)
-    let newRequests = localRequestsMade
-    const errors: Record<string, string> = { ...requestErrors }
-    for (const r of results) {
-      if (r.status === 'fulfilled') {
-        const { ok, data, sessionId } = r.value
-        if (ok && !data.error) {
-          newPending.add(sessionId)
-          newRequests++
-          delete errors[sessionId]
+  async function handleRequestDates() {
+    if (selectedDateKeys.size === 0) return
+    setDateRequestLoading(true)
+    setGlobalRequestError(null)
+
+    const requestsToSend = [...selectedDateKeys].map(key => {
+      const pipeIdx = key.indexOf('|')
+      const group_id = key.slice(0, pipeIdx)
+      const date = key.slice(pipeIdx + 1)
+      const schedule = groupSchedules.find(g => g.group_id === group_id)!
+      return { group_id, window_id: schedule.window_id, date }
+    })
+
+    try {
+      const res = await fetch('/api/attendance-date-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_id: player.id, requests: requestsToSend }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setGlobalRequestError(data.error || 'Request failed. Please try again.')
+        return
+      }
+
+      const newPending = new Set(localPendingDateKeys)
+      const errors: Record<string, string> = {}
+      let successCount = 0
+
+      for (const r of data.results || []) {
+        const req = requestsToSend.find(x => x.date === r.date)
+        if (!req) continue
+        const key = `${req.group_id}|${r.date}`
+        if (r.success) {
+          newPending.add(key)
+          successCount++
         } else {
-          errors[sessionId] = data.error || 'Request failed. Please try again.'
+          errors[key] = r.error || 'Request failed'
         }
       }
+
+      setLocalPendingDateKeys(newPending)
+      setLocalRequestsMade(prev => prev + successCount)
+      setDateRequestErrors(errors)
+      setSelectedDateKeys(new Set())
+    } catch {
+      setGlobalRequestError('Request failed. Please try again.')
+    } finally {
+      setDateRequestLoading(false)
     }
-    setLocalPendingSessionIds(newPending)
-    setLocalRequestsMade(newRequests)
-    setRequestErrors(errors)
-    setSelectedSessionIds(new Set())
-    setMultiRequestLoading(false)
   }
 
   function formatSessionDateShort(dateStr: string) {
@@ -349,12 +383,6 @@ export default function PlayerShareClient({
   const effectiveSessionsRemaining = activePackage
     ? Math.max(0, activePackage.sessions_remaining - localRequestsMade)
     : 0
-
-  const sessionsByGroup = upcomingGroupSessions.reduce<Record<string, UpcomingGroupSession[]>>((acc, s) => {
-    if (!acc[s.group_id]) acc[s.group_id] = []
-    acc[s.group_id].push(s)
-    return acc
-  }, {})
 
   const playerAge = player.birth_year ? new Date().getFullYear() - player.birth_year : null
 
@@ -604,8 +632,8 @@ export default function PlayerShareClient({
           </div>
         )}
 
-        {/* UPCOMING SESSIONS — grouped by training group with per-date checkboxes */}
-        {upcomingGroupSessions.length > 0 && (
+        {/* UPCOMING SESSIONS — per-group checkbox date picker */}
+        {groupSchedules.length > 0 && (
           <div style={{ marginTop: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
               <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>Upcoming Sessions</div>
@@ -616,15 +644,14 @@ export default function PlayerShareClient({
               )}
             </div>
             <p style={{ fontSize: '13px', color: '#555558', marginBottom: '14px' }}>
-              Select the dates you'd like {player.full_name.split(' ')[0]} to attend, then tap Request.
+              Select the dates you&apos;d like {player.full_name.split(' ')[0]} to attend, then tap Request.
             </p>
 
-            {/* No package prompt */}
             {(!activePackage || effectiveSessionsRemaining === 0) && (
               <div style={{ background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '12px', padding: '16px', marginBottom: '12px' }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>No sessions remaining</div>
                 <p style={{ fontSize: '13px', color: '#9A9A9F', lineHeight: 1.6, marginBottom: trainerUsername ? '12px' : '0' }}>
-                  {player.full_name.split(' ')[0]} has no sessions left in their current package. Book a new package to reserve upcoming sessions.
+                  {player.full_name.split(' ')[0]} needs a new package to book sessions.
                 </p>
                 {trainerUsername && (
                   <a href={`/t/${trainerUsername}`} style={{ display: 'inline-block', padding: '9px 16px', background: GREEN, color: '#0E0E0F', borderRadius: '8px', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
@@ -634,114 +661,104 @@ export default function PlayerShareClient({
               </div>
             )}
 
-            {/* Per-group session cards */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {Object.entries(sessionsByGroup).map(([groupId, groupSessions]) => {
-                const first = groupSessions[0]
-                return (
-                  <div key={groupId} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
-                    {/* Group header */}
-                    <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid #2A2A2D' }}>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
-                        {first.display_label || first.group_name}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
-                        {formatTime(first.session_time)}{first.duration_minutes ? ` · ${first.duration_minutes} min` : ''}
-                      </div>
+              {groupSchedules.map(schedule => (
+                <div key={schedule.group_id} style={{ background: '#1A1A1C', border: '1px solid #2A2A2D', borderRadius: '14px', overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid #2A2A2D' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
+                      {schedule.display_label || schedule.group_name}
                     </div>
-
-                    {/* Session rows */}
-                    {groupSessions.map((session, idx) => {
-                      const isConfirmed = confirmedGroupIds.includes(session.group_id)
-                      const isPending = localPendingSessionIds.has(session.id)
-                      const isFull = session.max_capacity !== null && session.confirmed_count >= session.max_capacity
-                      const hasPackage = activePackage !== null && effectiveSessionsRemaining > 0
-                      const isSelectable = !isConfirmed && !isPending && !isFull && hasPackage
-                      const isSelected = selectedSessionIds.has(session.id)
-                      const sessionError = requestErrors[session.id]
-
-                      return (
-                        <div
-                          key={session.id}
-                          onClick={isSelectable ? () => toggleSessionSelection(session.id) : undefined}
-                          style={{
-                            padding: '13px 16px',
-                            borderBottom: idx < groupSessions.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                            display: 'flex', alignItems: 'center', gap: '12px',
-                            background: isSelected ? 'rgba(0,255,159,0.04)' : 'transparent',
-                            cursor: isSelectable ? 'pointer' : 'default',
-                            transition: 'background 0.12s',
-                          }}>
-
-                          {/* Checkbox / status icon */}
-                          {isConfirmed ? (
-                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,255,159,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                <polyline points="2,5 4.5,7.5 8,3" stroke="#00FF9F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </div>
-                          ) : isPending ? (
-                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(245,166,35,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F5A623' }} />
-                            </div>
-                          ) : (
-                            <div style={{
-                              width: '20px', height: '20px', borderRadius: '5px', flexShrink: 0,
-                              border: isSelected ? 'none' : `1.5px solid ${isSelectable ? '#555558' : '#2A2A2D'}`,
-                              background: isSelected ? GREEN : 'transparent',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              transition: 'all 0.12s',
-                            }}>
-                              {isSelected && (
-                                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                                  <polyline points="2,5.5 4.5,8 9,3" stroke="#0E0E0F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Date */}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '14px', fontWeight: 500, color: isConfirmed ? GREEN : isPending ? '#F5A623' : isSelectable ? '#ffffff' : '#555558' }}>
-                              {formatSessionDateShort(session.session_date)}
-                            </div>
-                            {sessionError && (
-                              <div style={{ fontSize: '11px', color: '#E03131', marginTop: '2px' }}>{sessionError}</div>
-                            )}
-                          </div>
-
-                          {/* Right status / capacity */}
-                          <div style={{ flexShrink: 0, textAlign: 'right' as const }}>
-                            {isConfirmed && <span style={{ fontSize: '12px', color: GREEN, fontWeight: 600 }}>Confirmed</span>}
-                            {isPending && <span style={{ fontSize: '12px', color: '#F5A623', fontWeight: 500 }}>Pending</span>}
-                            {!isConfirmed && !isPending && isFull && <span style={{ fontSize: '12px', color: '#555558' }}>Full</span>}
-                            {!isConfirmed && !isPending && !isFull && !hasPackage && <span style={{ fontSize: '12px', color: '#555558' }}>No sessions left</span>}
-                            {!isConfirmed && !isPending && !isFull && hasPackage && session.max_capacity && (
-                              <span style={{ fontSize: '11px', color: '#555558' }}>{session.confirmed_count}/{session.max_capacity}</span>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
+                    <div style={{ fontSize: '12px', color: '#9A9A9F', marginTop: '2px' }}>
+                      {formatTime(schedule.session_time)}{schedule.duration_minutes ? ` · ${schedule.duration_minutes} min` : ''}
+                    </div>
                   </div>
-                )
-              })}
+
+                  {schedule.upcoming_dates.map((date, idx) => {
+                    const key = `${schedule.group_id}|${date}`
+                    const isPending = localPendingDateKeys.has(key)
+                    const isConfirmed = confirmedGroupIds.includes(schedule.group_id)
+                    const hasPackage = activePackage !== null && effectiveSessionsRemaining > 0
+                    const isSelectable = !isPending && !isConfirmed && hasPackage
+                    const isSelected = selectedDateKeys.has(key)
+                    const rowError = dateRequestErrors[key]
+
+                    return (
+                      <div
+                        key={date}
+                        onClick={isSelectable ? () => toggleDateSelection(key) : undefined}
+                        style={{
+                          padding: '13px 16px',
+                          borderBottom: idx < schedule.upcoming_dates.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                          display: 'flex', alignItems: 'center', gap: '12px',
+                          background: isSelected ? 'rgba(0,255,159,0.04)' : 'transparent',
+                          cursor: isSelectable ? 'pointer' : 'default',
+                          transition: 'background 0.12s',
+                        }}>
+
+                        {isConfirmed ? (
+                          <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,255,159,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                              <polyline points="2,5 4.5,7.5 8,3" stroke="#00FF9F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </div>
+                        ) : isPending ? (
+                          <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(245,166,35,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F5A623' }} />
+                          </div>
+                        ) : (
+                          <div style={{
+                            width: '20px', height: '20px', borderRadius: '5px', flexShrink: 0,
+                            border: isSelected ? 'none' : `1.5px solid ${isSelectable ? '#555558' : '#2A2A2D'}`,
+                            background: isSelected ? GREEN : 'transparent',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.12s',
+                          }}>
+                            {isSelected && (
+                              <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                                <polyline points="2,5.5 4.5,8 9,3" stroke="#0E0E0F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </div>
+                        )}
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '14px', fontWeight: 500, color: isConfirmed ? GREEN : isPending ? '#F5A623' : isSelectable ? '#ffffff' : '#555558' }}>
+                            {formatSessionDateShort(date)}
+                          </div>
+                          {rowError && <div style={{ fontSize: '11px', color: '#E03131', marginTop: '2px' }}>{rowError}</div>}
+                        </div>
+
+                        <div style={{ flexShrink: 0 }}>
+                          {isConfirmed && <span style={{ fontSize: '12px', color: GREEN, fontWeight: 600 }}>Confirmed</span>}
+                          {isPending && <span style={{ fontSize: '12px', color: '#F5A623', fontWeight: 500 }}>Pending</span>}
+                          {!isConfirmed && !isPending && !hasPackage && <span style={{ fontSize: '12px', color: '#555558' }}>No sessions left</span>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
 
-            {/* Request button */}
-            {selectedSessionIds.size > 0 && (
+            {globalRequestError && (
+              <div style={{ marginTop: '12px', background: 'rgba(224,49,49,0.08)', border: '1px solid rgba(224,49,49,0.25)', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: '#E03131' }}>
+                {globalRequestError}
+              </div>
+            )}
+
+            {selectedDateKeys.size > 0 && (
               <div style={{ marginTop: '16px' }}>
-                {activePackage && effectiveSessionsRemaining - selectedSessionIds.size <= 0 && (
+                {activePackage && effectiveSessionsRemaining - selectedDateKeys.size <= 0 && (
                   <p style={{ fontSize: '12px', color: '#F5A623', marginBottom: '10px' }}>
-                    This will use your last {selectedSessionIds.size === 1 ? 'session' : `${selectedSessionIds.size} sessions`}. Your package will be empty after these requests.
+                    This will use your last {selectedDateKeys.size === 1 ? 'session' : `${selectedDateKeys.size} sessions`}. Your package will be empty after these requests.
                   </p>
                 )}
                 <button
                   type="button"
-                  onClick={handleRequestSelected}
-                  disabled={multiRequestLoading}
-                  style={{ width: '100%', padding: '14px', background: GREEN, color: '#0E0E0F', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: multiRequestLoading ? 'default' : 'pointer', opacity: multiRequestLoading ? 0.7 : 1, transition: 'opacity 0.15s' }}>
-                  {multiRequestLoading ? 'Sending…' : `Request ${selectedSessionIds.size} session${selectedSessionIds.size !== 1 ? 's' : ''}`}
+                  onClick={handleRequestDates}
+                  disabled={dateRequestLoading}
+                  style={{ width: '100%', padding: '14px', background: GREEN, color: '#0E0E0F', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: dateRequestLoading ? 'default' : 'pointer', opacity: dateRequestLoading ? 0.7 : 1, transition: 'opacity 0.15s' }}>
+                  {dateRequestLoading ? 'Sending…' : `Request ${selectedDateKeys.size} session${selectedDateKeys.size !== 1 ? 's' : ''}`}
                 </button>
               </div>
             )}

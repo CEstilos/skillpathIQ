@@ -4,6 +4,27 @@ import PlayerShareClient from '@/components/PlayerShareClient'
 
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
+function getNextNDateISOs(dayOfWeek: string, n: number, blackouts: string[]): string[] {
+  const dayNums: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 }
+  const target = dayNums[dayOfWeek.toLowerCase()] ?? -1
+  if (target === -1) return []
+  const blackoutSet = new Set(blackouts)
+  const cursor = new Date()
+  cursor.setHours(0, 0, 0, 0)
+  cursor.setDate(cursor.getDate() + 1)
+  const results: string[] = []
+  let safety = 0
+  while (results.length < n && safety < 365) {
+    if (cursor.getDay() === target) {
+      const iso = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`
+      if (!blackoutSet.has(iso)) results.push(iso)
+    }
+    cursor.setDate(cursor.getDate() + 1)
+    safety++
+  }
+  return results
+}
+
 function NotFound({ message }: { message: string }) {
   return (
     <div style={{ minHeight: '100vh', background: '#0E0E0F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
@@ -167,12 +188,15 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
   let confirmedGroupIds: string[] = []
   let pendingAttendanceSessionIds: string[] = []
   let activePackage: { id: string; sessions_remaining: number; package_name: string } | null = null
+  type GroupSchedule = { group_id: string; group_name: string; window_id: string; display_label: string | null; session_time: string; duration_minutes: number; upcoming_dates: string[] }
+  let groupSchedules: GroupSchedule[] = []
 
   if (group_ids.length > 0) {
     const [
       { data: rawSessions },
       { data: confirmedRows },
       { data: pendingRows },
+      { data: playerGroupsData },
     ] = await Promise.all([
       supabaseAdmin
         .from('sessions')
@@ -195,6 +219,10 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
         .select('session_id')
         .eq('player_id', player.id)
         .eq('status', 'pending'),
+      supabaseAdmin
+        .from('groups')
+        .select('id, name, window_id')
+        .in('id', group_ids),
     ])
 
     confirmedGroupIds = (confirmedRows || []).map(r => r.group_id)
@@ -251,6 +279,23 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
         }
       })
     }
+
+    // Compute upcoming dates per group from availability windows (for date-selection UI)
+    groupSchedules = (playerGroupsData || [])
+      .filter((g): g is typeof g & { window_id: string } => !!g.window_id)
+      .flatMap(g => {
+        const w = (rawWindows || []).find(w => w.id === g.window_id)
+        if (!w) return []
+        return [{
+          group_id: g.id,
+          group_name: g.name,
+          window_id: w.id,
+          display_label: w.display_label,
+          session_time: w.start_time,
+          duration_minutes: w.duration_minutes,
+          upcoming_dates: getNextNDateISOs(w.day_of_week, 5, upcomingBlackouts),
+        }]
+      })
   }
 
   // Active player_package
@@ -293,6 +338,7 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
       pendingAttendanceSessionIds={pendingAttendanceSessionIds}
       activePackage={activePackage}
       trainerUsername={trainer?.username || null}
+      groupSchedules={groupSchedules}
     />
   )
 }
