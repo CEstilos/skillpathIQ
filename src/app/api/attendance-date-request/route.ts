@@ -112,13 +112,14 @@ export async function POST(request: NextRequest) {
             session_date: req.date,
             session_time: win.start_time,
             duration_minutes: win.duration_minutes,
+            session_type: 'group',
             status: 'upcoming',
             type: 'one-off',
           })
           .select('id')
           .single()
         if (sessionError || !newSession) {
-          results.push({ date: req.date, success: false, error: 'Failed to create session' })
+          results.push({ date: req.date, success: false, error: sessionError?.message || 'Failed to create session' })
           continue
         }
         sessionId = newSession.id
