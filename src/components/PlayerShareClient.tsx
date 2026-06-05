@@ -136,7 +136,7 @@ interface ActivePackage {
 interface GroupSchedule {
   group_id: string
   group_name: string
-  window_id: string
+  window_id: string | null
   display_label: string | null
   session_time: string
   duration_minutes: number
@@ -333,7 +333,13 @@ export default function PlayerShareClient({
       const group_id = key.slice(0, pipeIdx)
       const date = key.slice(pipeIdx + 1)
       const schedule = groupSchedules.find(g => g.group_id === group_id)!
-      return { group_id, window_id: schedule.window_id, date }
+      return {
+        group_id,
+        window_id: schedule.window_id,
+        date,
+        session_time: schedule.session_time,
+        duration_minutes: schedule.duration_minutes,
+      }
     })
 
     try {

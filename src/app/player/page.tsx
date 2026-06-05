@@ -188,7 +188,7 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
   let confirmedGroupIds: string[] = []
   let pendingAttendanceSessionIds: string[] = []
   let activePackage: { id: string; sessions_remaining: number; package_name: string } | null = null
-  type GroupSchedule = { group_id: string; group_name: string; window_id: string; display_label: string | null; session_time: string; duration_minutes: number; upcoming_dates: string[] }
+  type GroupSchedule = { group_id: string; group_name: string; window_id: string | null; display_label: string | null; session_time: string; duration_minutes: number; upcoming_dates: string[] }
   let groupSchedules: GroupSchedule[] = []
 
   if (group_ids.length > 0) {
@@ -280,22 +280,58 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
       })
     }
 
+    // For groups without a resolvable window, fall back to inferring day/time from existing sessions
+    const fallbackGroupIds = (playerGroupsData || [])
+      .filter(g => !g.window_id || !(rawWindows || []).find(w => w.id === g.window_id))
+      .map(g => g.id)
+
+    const fallbackInfoMap: Record<string, { day_of_week: string; session_time: string; duration_minutes: number }> = {}
+    if (fallbackGroupIds.length > 0) {
+      const { data: fallbackSessions } = await supabaseAdmin
+        .from('sessions')
+        .select('group_id, session_date, session_time, duration_minutes')
+        .in('group_id', fallbackGroupIds)
+        .not('session_time', 'is', null)
+        .order('session_date', { ascending: false })
+        .limit(fallbackGroupIds.length * 5)
+      for (const s of (fallbackSessions || [])) {
+        if (!fallbackInfoMap[s.group_id] && s.session_time) {
+          const d = new Date(s.session_date + 'T00:00:00')
+          fallbackInfoMap[s.group_id] = {
+            day_of_week: DAY_NAMES[d.getDay()],
+            session_time: s.session_time,
+            duration_minutes: s.duration_minutes || 60,
+          }
+        }
+      }
+    }
+
     // Compute upcoming dates per group from availability windows (for date-selection UI)
-    groupSchedules = (playerGroupsData || [])
-      .filter((g): g is typeof g & { window_id: string } => !!g.window_id)
-      .flatMap(g => {
-        const w = (rawWindows || []).find(w => w.id === g.window_id)
-        if (!w) return []
+    groupSchedules = (playerGroupsData || []).flatMap(g => {
+      const w = g.window_id ? (rawWindows || []).find(w => w.id === g.window_id) : null
+      if (w) {
         return [{
           group_id: g.id,
           group_name: g.name,
-          window_id: w.id,
+          window_id: w.id as string | null,
           display_label: w.display_label,
           session_time: w.start_time,
           duration_minutes: w.duration_minutes,
           upcoming_dates: getNextNDateISOs(w.day_of_week, 5, upcomingBlackouts),
         }]
-      })
+      }
+      const fallback = fallbackInfoMap[g.id]
+      if (!fallback) return []
+      return [{
+        group_id: g.id,
+        group_name: g.name,
+        window_id: null as string | null,
+        display_label: null,
+        session_time: fallback.session_time,
+        duration_minutes: fallback.duration_minutes,
+        upcoming_dates: getNextNDateISOs(fallback.day_of_week, 5, upcomingBlackouts),
+      }]
+    })
   }
 
   // Active player_package

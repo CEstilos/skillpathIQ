@@ -23,7 +23,7 @@ function emailHtml(body: string) {
   `
 }
 
-type DateRequest = { group_id: string; window_id: string; date: string }
+type DateRequest = { group_id: string; window_id: string | null; date: string; session_time?: string; duration_minutes?: number }
 type DateResult = { date: string; success: boolean; error?: string; session_id?: string }
 
 export async function POST(request: NextRequest) {
@@ -83,14 +83,30 @@ export async function POST(request: NextRequest) {
         continue
       }
 
-      const { data: win } = await supabase
-        .from('trainer_availability_windows')
-        .select('id, start_time, duration_minutes, max_capacity')
-        .eq('id', req.window_id)
-        .single()
-      if (!win) {
-        results.push({ date: req.date, success: false, error: 'Invalid training slot' })
-        continue
+      let winStartTime: string
+      let winDurationMinutes: number
+      let winMaxCapacity: number | null = null
+
+      if (req.window_id) {
+        const { data: win } = await supabase
+          .from('trainer_availability_windows')
+          .select('id, start_time, duration_minutes, max_capacity')
+          .eq('id', req.window_id)
+          .single()
+        if (!win) {
+          results.push({ date: req.date, success: false, error: 'Invalid training slot' })
+          continue
+        }
+        winStartTime = win.start_time
+        winDurationMinutes = win.duration_minutes
+        winMaxCapacity = win.max_capacity
+      } else {
+        if (!req.session_time) {
+          results.push({ date: req.date, success: false, error: 'Missing session time' })
+          continue
+        }
+        winStartTime = req.session_time
+        winDurationMinutes = req.duration_minutes || 60
       }
 
       // Find or create session for this group + date
@@ -118,8 +134,8 @@ export async function POST(request: NextRequest) {
             group_id: req.group_id,
             title: groupNameMap[req.group_id] || 'Group Session',
             session_date: req.date,
-            session_time: win.start_time,
-            duration_minutes: win.duration_minutes,
+            session_time: winStartTime,
+            duration_minutes: winDurationMinutes,
             session_type: 'group',
             status: 'upcoming',
             type: 'one-off',
@@ -133,13 +149,13 @@ export async function POST(request: NextRequest) {
         sessionId = newSession.id
       }
 
-      // Check capacity
-      if (win.max_capacity) {
+      // Check capacity (only when window is known)
+      if (winMaxCapacity) {
         const { count: confirmedCount } = await supabase
           .from('group_confirmed_players')
           .select('id', { count: 'exact', head: true })
           .eq('group_id', req.group_id)
-        if (confirmedCount !== null && confirmedCount >= win.max_capacity) {
+        if (confirmedCount !== null && confirmedCount >= winMaxCapacity) {
           results.push({ date: req.date, success: false, error: 'Session is at capacity' })
           continue
         }
