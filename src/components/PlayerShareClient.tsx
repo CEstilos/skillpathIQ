@@ -159,7 +159,8 @@ export default function PlayerShareClient({
   initialAllCompletions = [],
   upcomingGroupSessions = [],
   confirmedGroupIds = [],
-  pendingAttendanceSessionIds = [],
+  pendingAttendanceDateKeys = [],
+  confirmedAttendanceDateKeys = [],
   activePackage = null,
   trainerUsername = null,
   groupSchedules = [],
@@ -179,7 +180,8 @@ export default function PlayerShareClient({
   initialAllCompletions?: Completion[]
   upcomingGroupSessions?: UpcomingGroupSession[]
   confirmedGroupIds?: string[]
-  pendingAttendanceSessionIds?: string[]
+  pendingAttendanceDateKeys?: string[]
+  confirmedAttendanceDateKeys?: string[]
   activePackage?: ActivePackage | null
   trainerUsername?: string | null
   groupSchedules?: GroupSchedule[]
@@ -204,12 +206,8 @@ export default function PlayerShareClient({
   const [bookingError, setBookingError] = useState<string | null>(null)
 
   // Attendance request state — keyed by "group_id|date"
-  const initialPendingKeys = new Set(
-    upcomingGroupSessions
-      .filter(s => pendingAttendanceSessionIds.includes(s.id))
-      .map(s => `${s.group_id}|${s.session_date}`)
-  )
-  const [localPendingDateKeys, setLocalPendingDateKeys] = useState<Set<string>>(initialPendingKeys)
+  const [localPendingDateKeys, setLocalPendingDateKeys] = useState<Set<string>>(new Set(pendingAttendanceDateKeys))
+  const confirmedDateKeySet = new Set(confirmedAttendanceDateKeys)
   const [localRequestsMade, setLocalRequestsMade] = useState(0)
   const [selectedDateKeys, setSelectedDateKeys] = useState<Set<string>>(new Set())
   const [dateRequestLoading, setDateRequestLoading] = useState(false)
@@ -682,7 +680,7 @@ export default function PlayerShareClient({
                   {schedule.upcoming_dates.map((date, idx) => {
                     const key = `${schedule.group_id}|${date}`
                     const isPending = localPendingDateKeys.has(key)
-                    const isConfirmed = confirmedGroupIds.includes(schedule.group_id)
+                    const isConfirmed = confirmedDateKeySet.has(key)
                     const isSelectable = !isPending && !isConfirmed
                     const isSelected = selectedDateKeys.has(key)
                     const rowError = dateRequestErrors[key]

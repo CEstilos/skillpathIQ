@@ -186,7 +186,8 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
     display_label: string | null; max_capacity: number | null; confirmed_count: number
   }[] = []
   let confirmedGroupIds: string[] = []
-  let pendingAttendanceSessionIds: string[] = []
+  let pendingAttendanceDateKeys: string[] = []
+  let confirmedAttendanceDateKeys: string[] = []
   let activePackage: { id: string; sessions_remaining: number; package_name: string } | null = null
   type GroupSchedule = { group_id: string; group_name: string; window_id: string | null; display_label: string | null; session_time: string; duration_minutes: number; upcoming_dates: string[] }
   let groupSchedules: GroupSchedule[] = []
@@ -216,9 +217,9 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
         .in('group_id', group_ids),
       supabaseAdmin
         .from('session_attendance_requests')
-        .select('session_id')
+        .select('session_id, status, group_id, sessions(session_date)')
         .eq('player_id', player.id)
-        .eq('status', 'pending'),
+        .in('status', ['pending', 'confirmed']),
       supabaseAdmin
         .from('groups')
         .select('id, name, window_id')
@@ -226,7 +227,14 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
     ])
 
     confirmedGroupIds = (confirmedRows || []).map(r => r.group_id)
-    pendingAttendanceSessionIds = (pendingRows || []).map(r => r.session_id)
+    type AttReq = { session_id: string; status: string; group_id: string; sessions: { session_date: string } | null }
+    const typedAttReqs = (pendingRows || []) as unknown as AttReq[]
+    pendingAttendanceDateKeys = typedAttReqs
+      .filter(r => r.status === 'pending' && r.sessions?.session_date)
+      .map(r => `${r.group_id}|${r.sessions!.session_date}`)
+    confirmedAttendanceDateKeys = typedAttReqs
+      .filter(r => r.status === 'confirmed' && r.sessions?.session_date)
+      .map(r => `${r.group_id}|${r.sessions!.session_date}`)
 
     if (rawSessions && rawSessions.length > 0) {
       type RawSession = {
@@ -296,11 +304,21 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
         .limit(fallbackGroupIds.length * 5)
       for (const s of (fallbackSessions || [])) {
         if (!fallbackInfoMap[s.group_id] && s.session_time) {
-          const d = new Date(s.session_date + 'T00:00:00')
-          fallbackInfoMap[s.group_id] = {
-            day_of_week: DAY_NAMES[d.getDay()],
-            session_time: s.session_time,
-            duration_minutes: s.duration_minutes || 60,
+          // If exactly one availability window matches this session time, trust its day_of_week
+          const windowsAtTime = (rawWindows || []).filter(w => w.start_time === s.session_time)
+          if (windowsAtTime.length === 1) {
+            fallbackInfoMap[s.group_id] = {
+              day_of_week: windowsAtTime[0].day_of_week,
+              session_time: s.session_time,
+              duration_minutes: s.duration_minutes || windowsAtTime[0].duration_minutes || 60,
+            }
+          } else {
+            const d = new Date(s.session_date + 'T00:00:00')
+            fallbackInfoMap[s.group_id] = {
+              day_of_week: DAY_NAMES[d.getDay()],
+              session_time: s.session_time,
+              duration_minutes: s.duration_minutes || 60,
+            }
           }
         }
       }
@@ -371,7 +389,8 @@ async function PlayerPageInner({ playerId }: { playerId: string }) {
       initialAllCompletions={allCompletions}
       upcomingGroupSessions={upcomingGroupSessions}
       confirmedGroupIds={confirmedGroupIds}
-      pendingAttendanceSessionIds={pendingAttendanceSessionIds}
+      pendingAttendanceDateKeys={pendingAttendanceDateKeys}
+      confirmedAttendanceDateKeys={confirmedAttendanceDateKeys}
       activePackage={activePackage}
       trainerUsername={trainer?.username || null}
       groupSchedules={groupSchedules}
