@@ -234,6 +234,11 @@ export default function GroupDetailClient({
   // Session history collapse
   const [historyOpen, setHistoryOpen] = useState(false)
 
+  // Delete state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
   // Toast
   const [toast, setToast] = useState<string | null>(null)
 
@@ -331,6 +336,13 @@ export default function GroupDetailClient({
     setEditWindowId(group.window_id || '')
     setEditDescription(group.description || '')
     setEditMode(false); setSaveError(null)
+  }
+
+  async function handleDeleteGroup() {
+    setDeleting(true); setDeleteError(null)
+    const { error } = await supabase.from('groups').delete().eq('id', group.id)
+    if (error) { setDeleteError(error.message); setDeleting(false); return }
+    router.push('/dashboard/groups')
   }
 
   // Banner handlers
@@ -618,6 +630,11 @@ export default function GroupDetailClient({
                   <button onClick={() => setEditMode(true)} style={{ background: 'transparent', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '7px 14px', fontSize: '13px', color: '#9A9A9F', cursor: 'pointer' }}>
                     Edit
                   </button>
+                  <button
+                    onClick={() => { setShowDeleteConfirm(true); setDeleteError(null) }}
+                    style={{ background: 'transparent', border: '1px solid rgba(224,49,49,0.35)', borderRadius: '8px', padding: '7px 14px', fontSize: '13px', color: RED, cursor: 'pointer' }}>
+                    Delete
+                  </button>
                   <button onClick={() => router.push('/dashboard/groups')} style={{ background: 'transparent', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '7px 14px', fontSize: '13px', color: '#9A9A9F', cursor: 'pointer' }}>
                     ← Back
                   </button>
@@ -666,6 +683,29 @@ export default function GroupDetailClient({
             </div>
           )}
         </div>
+
+        {/* DELETE CONFIRMATION */}
+        {showDeleteConfirm && (
+          <div style={{ background: 'rgba(224,49,49,0.06)', border: '1px solid rgba(224,49,49,0.3)', borderRadius: '12px', padding: '16px 20px', marginBottom: '16px' }}>
+            <div style={{ fontSize: '14px', color: '#ffffff', fontWeight: 600, marginBottom: '6px' }}>Delete &ldquo;{group.name}&rdquo;?</div>
+            <div style={{ fontSize: '13px', color: '#9A9A9F', marginBottom: '14px' }}>This will permanently delete the group and remove all members. Sessions and players will not be deleted.</div>
+            {deleteError && <p style={{ fontSize: '13px', color: RED, marginBottom: '10px' }}>{deleteError}</p>}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={handleDeleteGroup}
+                disabled={deleting}
+                style={{ background: RED, color: '#ffffff', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, cursor: deleting ? 'default' : 'pointer' }}>
+                {deleting ? 'Deleting...' : 'Yes, delete group'}
+              </button>
+              <button
+                onClick={() => { setShowDeleteConfirm(false); setDeleteError(null) }}
+                disabled={deleting}
+                style={{ background: 'transparent', border: '1px solid #2A2A2D', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', color: '#9A9A9F', cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* SAVED TOAST */}
         {saved && (
