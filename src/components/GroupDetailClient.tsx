@@ -340,6 +340,14 @@ export default function GroupDetailClient({
 
   async function handleDeleteGroup() {
     setDeleting(true); setDeleteError(null)
+    const todayStr = new Date().toISOString().split('T')[0]
+    // Cancel upcoming sessions for this group so they don't linger in the schedule
+    await supabase
+      .from('sessions')
+      .update({ status: 'cancelled' })
+      .eq('group_id', group.id)
+      .gte('session_date', todayStr)
+      .neq('status', 'logged')
     const { error } = await supabase.from('groups').delete().eq('id', group.id)
     if (error) { setDeleteError(error.message); setDeleting(false); return }
     router.push('/dashboard/groups')
